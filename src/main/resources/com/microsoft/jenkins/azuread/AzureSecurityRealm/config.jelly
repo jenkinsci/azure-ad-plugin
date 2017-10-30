@@ -1,0 +1,23 @@
+<?jelly escape-by-default='true'?>
+<!--
+  ~ Copyright (c) Microsoft Corporation. All rights reserved.
+  ~ Licensed under the MIT License. See LICENSE file in the project root for license information.
+  -->
+
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
+    <f:block>
+        <f:entry title="Client ID"  field="clientId" help="/plugin/azure-ad/help/help-client-id.html" >
+            <f:textbox />
+        </f:entry>
+
+        <f:entry title="Client Secret" field="clientSecret" help="/plugin/azure-ad/help/help-client-secret.html">
+            <f:password />
+        </f:entry>
+
+        <f:entry title="Tenant" field="tenant" help="/plugin/azure-ad/help/help-tenant.html">
+            <f:textbox />
+        </f:entry>
+
+        <f:validateButton title="Verify Application" method="verifyConfiguration" progress="Verifying..." with="clientId,clientSecret,tenant" ></f:validateButton>
+    </f:block>
+</j:jelly>

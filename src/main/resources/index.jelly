@@ -1,0 +1,4 @@
+<?jelly escape-by-default='true'?>
+<div>
+  A Jenkins authentication &amp; authorization plugin for Azure Active Directory
+</div>
