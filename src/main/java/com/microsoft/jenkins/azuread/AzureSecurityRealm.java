@@ -377,6 +377,7 @@ public class AzureSecurityRealm extends SecurityRealm {
             description.append("Given Name: " + user.getGivenName() + "\n");
             description.append("Family Name: " + user.getFamilyName() + "\n");
             description.append("Unique Principal Name: " + user.getUniqueName() + "\n");
+            description.append("Email: " + user.getEmail() + "\n");
             description.append("Object ID: " + user.getObjectID() + "\n");
             description.append("Tenant ID: " + user.getTenantID() + "\n");
             return description.toString();

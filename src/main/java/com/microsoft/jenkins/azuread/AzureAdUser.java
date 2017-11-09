@@ -26,6 +26,8 @@ public final class AzureAdUser implements UserDetails {
 
     private String objectID;
 
+    private String email;
+
     private transient volatile GrantedAuthority[] authorities;
 
     private AzureAdUser() {
@@ -45,6 +47,7 @@ public final class AzureAdUser implements UserDetails {
         user.uniqueName = decoded.getClaim("unique_name").asString();
         user.tenantID = decoded.getClaim("tid").asString();
         user.objectID = decoded.getClaim("oid").asString();
+        user.email = decoded.getClaim("email").asString();
         if (user.objectID == null || user.userName == null) {
             throw new RuntimeException("Invalid id token: " + decoded.getPayload());
         }
@@ -136,6 +139,10 @@ public final class AzureAdUser implements UserDetails {
 
     public String getGivenName() {
         return givenName;
+    }
+
+    public String getEmail() {
+        return email;
     }
 }
 

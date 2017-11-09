@@ -56,7 +56,7 @@ public class AzureAuthenticationToken implements Authentication {
 
     @Override
     public String getName() {
-        return (azureAdUser != null ? azureAdUser.getUsername() : null);
+        return (azureAdUser != null ? azureAdUser.getObjectID() : null);
     }
 
     public AzureAdUser getAzureAdUser() {
