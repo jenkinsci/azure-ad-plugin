@@ -8,6 +8,7 @@ package com.microsoft.jenkins.azuread.scribe;
 import com.github.scribejava.core.extractors.TokenExtractor;
 import com.github.scribejava.core.model.OAuth2AccessToken;
 import com.github.scribejava.core.model.OAuthConfig;
+import com.github.scribejava.core.model.ParameterList;
 import com.github.scribejava.core.oauth.OAuth20Service;
 import com.microsoft.jenkins.azuread.Constants;
 import org.apache.commons.lang.StringUtils;
@@ -71,5 +72,17 @@ public class AzureApi extends DefaultApi20 {
 
     public String getResource() {
         return resource;
+    }
+
+    protected String getLogoutBaseUrl() {
+        return getBaseEndpoint() + "/logout";
+    }
+
+    public String getLogoutUrl(String postLogoutUrl) {
+        final ParameterList parameters = new ParameterList();
+        if (postLogoutUrl != null) {
+            parameters.add("post_logout_redirect_uri", postLogoutUrl);
+        }
+        return parameters.appendTo(getLogoutBaseUrl());
     }
 }

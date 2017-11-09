@@ -14,6 +14,7 @@ import com.microsoft.azure.credentials.ApplicationTokenCredentials;
 import com.microsoft.azure.credentials.AzureTokenCredentials;
 import com.microsoft.azure.management.Azure;
 import com.microsoft.jenkins.azuread.scribe.AzureApi;
+import com.microsoft.jenkins.azuread.scribe.AzureOAuthServiceImpl;
 import com.microsoft.jenkins.azuread.scribe.AzureToken;
 import com.thoughtworks.xstream.converters.ConversionException;
 import com.thoughtworks.xstream.converters.Converter;
@@ -103,8 +104,9 @@ public class AzureSecurityRealm extends SecurityRealm {
         this.tenant = Secret.fromString(tenant);
     }
 
-    OAuth20Service getOAuthService() {
-        OAuth20Service service = new ServiceBuilder(clientId.getPlainText()).apiSecret(clientSecret.getPlainText())
+    AzureOAuthServiceImpl getOAuthService() {
+        AzureOAuthServiceImpl service = (AzureOAuthServiceImpl) new ServiceBuilder(clientId.getPlainText())
+                .apiSecret(clientSecret.getPlainText())
                 .callback(getRootUrl() + "/securityRealm/finishLogin")
                 .build(AzureApi.instance(Constants.DEFAULT_GRAPH_ENDPOINT, this.getTenant()));
         return service;
@@ -210,12 +212,7 @@ public class AzureSecurityRealm extends SecurityRealm {
             AzureCachePool.invalidateBelongingGroupsByOid(oid);
             System.out.println("invalidateBelongingGroupsByOid cache entry when sign out");
         }
-        Jenkins j = Jenkins.getInstance();
-        assert j != null;
-        if (j.hasPermission(Jenkins.READ)) {
-            return super.getPostLogOutUrl(req, auth);
-        }
-        return req.getContextPath() + "/" + AzureLogoutAction.POST_LOGOUT_URL;
+        return getOAuthService().getLogoutUrl();
     }
 
     @Override

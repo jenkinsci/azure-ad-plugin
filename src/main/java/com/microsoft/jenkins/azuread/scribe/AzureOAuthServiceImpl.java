@@ -26,4 +26,12 @@ public class AzureOAuthServiceImpl extends OAuth20Service {
     public AzureApi getApi() {
         return (AzureApi) super.getApi();
     }
+
+    public final String getLogoutUrl() {
+        return getLogoutUrl(null);
+    }
+
+    public String getLogoutUrl(String postLogoutUrl) {
+        return getApi().getLogoutUrl(postLogoutUrl);
+    }
 }
