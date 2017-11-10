@@ -6,7 +6,6 @@
 package com.microsoft.jenkins.azuread;
 
 import com.microsoft.azure.PagedList;
-import com.microsoft.azure.credentials.AzureTokenCredentials;
 import com.microsoft.azure.management.Azure;
 import com.microsoft.azure.management.graphrbac.implementation.ADGroupInner;
 import com.microsoft.azure.management.graphrbac.implementation.UserInner;
@@ -73,6 +72,9 @@ public class AzureAdMatrixAuthorizationStategy extends GlobalMatrixAuthorization
 
     @Override
     public boolean hasExplicitPermission(String sid, Permission p) {
+        if (sid == null) {
+            return false;
+        }
         return super.hasExplicitPermission(getLongName(sid), p);
     }
 
@@ -113,13 +115,12 @@ public class AzureAdMatrixAuthorizationStategy extends GlobalMatrixAuthorization
             if (!(realm instanceof AzureSecurityRealm)) {
                 return null;
             }
-            AzureTokenCredentials cred = ((AzureSecurityRealm) realm).getAzureCredential();
+            Azure.Authenticated authenticated = ((AzureSecurityRealm) realm).getAzureClient();
 
             List<AzureObject> candidates = new ArrayList<>();
             System.out.println("search users with prefix: " + value);
-            Azure.Authenticated authenticated = Azure.authenticate(cred);
-            PagedList<UserInner> matchedUsers = authenticated.activeDirectoryUsers()
-                    .inner().list("startswith(displayName,'" + value + "')");
+            PagedList<UserInner> matchedUsers = authenticated.activeDirectoryUsers().inner()
+                    .list(String.format("startswith(displayName,'%s') or startswith(mail, '%s')", value, value));
             for (UserInner user : matchedUsers.currentPage().items()) {
                 candidates.add(new AzureObject(user.objectId(), user.displayName()));
                 if (candidates.size() > maxCandidates) {
@@ -140,15 +141,13 @@ public class AzureAdMatrixAuthorizationStategy extends GlobalMatrixAuthorization
             }
 
             for (AzureObject obj : candidates) {
-                String candadateText = generateLongName(obj.getDisplayName(), obj.getObjectId());
-                if (StringUtils.startsWithIgnoreCase(candadateText, value)) {
-                    c.add(candadateText);
-                }
+                String candidateText = generateLongName(obj.getDisplayName(), obj.getObjectId());
+                c.add(candidateText);
             }
 
             return c;
         }
-    };
+    }
 
     @Restricted(DoNotUse.class)
     public static class ConverterImpl extends GlobalMatrixAuthorizationStrategy.ConverterImpl {

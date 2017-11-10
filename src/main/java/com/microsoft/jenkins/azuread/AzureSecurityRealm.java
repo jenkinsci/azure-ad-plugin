@@ -7,6 +7,8 @@ package com.microsoft.jenkins.azuread;
 
 import com.github.scribejava.core.builder.ServiceBuilder;
 import com.github.scribejava.core.oauth.OAuth20Service;
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
 import com.google.common.collect.ImmutableMap;
 import com.microsoft.azure.AzureEnvironment;
 import com.microsoft.azure.credentials.ApplicationTokenCredentials;
@@ -65,6 +67,16 @@ public class AzureSecurityRealm extends SecurityRealm {
     private Secret clientId;
     private Secret clientSecret;
     private Secret tenant;
+    private Supplier<Azure.Authenticated> cachedAzureClient = Suppliers.memoize(new Supplier<Azure.Authenticated>() {
+        @Override
+        public Azure.Authenticated get() {
+            return Azure.authenticate(new ApplicationTokenCredentials(
+                    getClientId(),
+                    getTenant(),
+                    getClientSecret(),
+                    AzureEnvironment.AZURE));
+        }
+    });
     // TODO: replace with azure credential
 
     public String getClientIdSecret() {
@@ -113,12 +125,8 @@ public class AzureSecurityRealm extends SecurityRealm {
         return service;
     }
 
-    AzureTokenCredentials getAzureCredential() throws IOException {
-        return new ApplicationTokenCredentials(
-                getClientId(),
-                getTenant(),
-                getClientSecret(),
-                AzureEnvironment.AZURE);
+    Azure.Authenticated getAzureClient() throws IOException {
+        return cachedAzureClient.get();
     }
 
 

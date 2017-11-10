@@ -4,7 +4,6 @@ package com.microsoft.jenkins.azuread;
 import com.google.common.base.Stopwatch;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import com.microsoft.azure.management.Azure;
 import jenkins.model.Jenkins;
 
 import java.io.IOException;
@@ -31,7 +30,7 @@ public final class AzureCachePool {
                     Stopwatch stopwatch = Stopwatch.createStarted();
                     AzureSecurityRealm securityRealm =
                             (AzureSecurityRealm) Jenkins.getActiveInstance().getSecurityRealm();
-                    List<String> groups = Azure.authenticate(securityRealm.getAzureCredential())
+                    List<String> groups = securityRealm.getAzureClient()
                             .activeDirectoryUsers().inner().getMemberGroups(oid, false);
 
                     stopwatch.stop();
