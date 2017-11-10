@@ -33,7 +33,6 @@ public final class AzureCachePool {
                             (AzureSecurityRealm) Jenkins.getActiveInstance().getSecurityRealm();
                     List<String> groups = Azure.authenticate(securityRealm.getAzureCredential())
                             .activeDirectoryUsers().inner().getMemberGroups(oid, false);
-                    Azure.authenticate(securityRealm.getAzureCredential()).activeDirectoryUsers().list().loadAll();
 
                     stopwatch.stop();
                     System.out.println("getBelongingGroupsByOid time (debug) = "

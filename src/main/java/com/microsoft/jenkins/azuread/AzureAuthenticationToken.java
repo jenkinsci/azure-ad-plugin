@@ -5,7 +5,6 @@
 
 package com.microsoft.jenkins.azuread;
 
-import com.microsoft.jenkins.azuread.scribe.AzureToken;
 import org.acegisecurity.Authentication;
 import org.acegisecurity.GrantedAuthority;
 import org.acegisecurity.providers.AbstractAuthenticationToken;
@@ -17,11 +16,11 @@ public class AzureAuthenticationToken implements Authentication {
 
     private static final long serialVersionUID = 2L;
 
-    private AzureAdUser azureAdUser;
+    private final AzureAdUser azureAdUser;
     private static final Logger LOGGER = Logger.getLogger(AbstractAuthenticationToken.class.getName());
 
-    public AzureAuthenticationToken(AzureToken token) {
-        this.azureAdUser = AzureAdUser.createFromJwt(token.getIdToken());
+    public AzureAuthenticationToken(AzureAdUser user) {
+        this.azureAdUser = user;
     }
 
     @Override

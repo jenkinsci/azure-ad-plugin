@@ -6,15 +6,14 @@
 package com.microsoft.jenkins.azuread;
 
 import com.github.scribejava.core.builder.ServiceBuilder;
-import com.github.scribejava.core.model.OAuth2AccessToken;
 import com.github.scribejava.core.oauth.OAuth20Service;
-import com.google.common.base.Stopwatch;
+import com.google.common.collect.ImmutableMap;
 import com.microsoft.azure.AzureEnvironment;
 import com.microsoft.azure.credentials.ApplicationTokenCredentials;
 import com.microsoft.azure.credentials.AzureTokenCredentials;
 import com.microsoft.azure.management.Azure;
 import com.microsoft.jenkins.azuread.scribe.AzureApi;
-import com.microsoft.jenkins.azuread.scribe.AzureOAuthServiceImpl;
+import com.microsoft.jenkins.azuread.scribe.AzureOAuthService;
 import com.microsoft.jenkins.azuread.scribe.AzureToken;
 import com.thoughtworks.xstream.converters.ConversionException;
 import com.thoughtworks.xstream.converters.Converter;
@@ -55,7 +54,6 @@ import org.springframework.dao.DataAccessException;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -67,6 +65,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     private Secret clientId;
     private Secret clientSecret;
     private Secret tenant;
+    // TODO: replace with azure credential
 
     public String getClientIdSecret() {
         return clientId.getEncryptedValue();
@@ -104,9 +103,11 @@ public class AzureSecurityRealm extends SecurityRealm {
         this.tenant = Secret.fromString(tenant);
     }
 
-    AzureOAuthServiceImpl getOAuthService() {
-        AzureOAuthServiceImpl service = (AzureOAuthServiceImpl) new ServiceBuilder(clientId.getPlainText())
+    AzureOAuthService getOAuthService() {
+        AzureOAuthService service = (AzureOAuthService) new ServiceBuilder(clientId.getPlainText())
                 .apiSecret(clientSecret.getPlainText())
+                .responseType("id_token")
+                .scope("openid")
                 .callback(getRootUrl() + "/securityRealm/finishLogin")
                 .build(AzureApi.instance(Constants.DEFAULT_GRAPH_ENDPOINT, this.getTenant()));
         return service;
@@ -147,7 +148,9 @@ public class AzureSecurityRealm extends SecurityRealm {
         request.getSession().setAttribute(REFERER_ATTRIBUTE, referer);
         OAuth20Service service = getOAuthService();
         request.getSession().setAttribute(TIMESTAMP_ATTRIBUTE, System.currentTimeMillis());
-        return new HttpRedirect(service.getAuthorizationUrl());
+        return new HttpRedirect(service.getAuthorizationUrl(ImmutableMap.of(
+                "nonce", "random",
+                "response_mode", "form_post")));
     }
 
     public HttpResponse doFinishLogin(StaplerRequest request) throws Exception {
@@ -156,21 +159,14 @@ public class AzureSecurityRealm extends SecurityRealm {
             long endTime = System.currentTimeMillis();
             System.out.println("Requesting oauth code time = " + (endTime - beginTime) + " ms");
         }
-        String code = request.getParameter("code");
+        final String idToken = request.getParameter("id_token");
 
-        if (StringUtils.isBlank(code)) {
-            LOGGER.log(Level.SEVERE, "doFinishLogin() code = null");
+        if (StringUtils.isBlank(idToken)) {
+            LOGGER.log(Level.SEVERE, "doFinishLogin() idToken = null");
+            LOGGER.severe(Utils.JsonUtil.toJson(request.getParameterMap()));
             return HttpResponses.redirectTo(this.getRootUrl() + AzureAuthFailAction.POST_LOGOUT_URL);
-        }
-
-        OAuth20Service service = getOAuthService();
-        Stopwatch stopwatch = Stopwatch.createStarted();
-        OAuth2AccessToken accessToken = service.getAccessToken(code);
-        stopwatch.stop();
-        System.out.println("Requesting access token time = " + stopwatch.elapsed(TimeUnit.MILLISECONDS) + " ms");
-
-        if (accessToken != null) {
-            AzureAuthenticationToken auth = new AzureAuthenticationToken((AzureToken) accessToken);
+        } else {
+            final AzureAuthenticationToken auth = new AzureAuthenticationToken(AzureAdUser.createFromJwt(idToken));
             Collection<String> groups = AzureCachePool.getBelongingGroupsByOid(auth.getAzureAdUser().getObjectID());
             GrantedAuthority[] authorities = new GrantedAuthority[groups.size()];
             int i = 0;
@@ -186,8 +182,6 @@ public class AzureSecurityRealm extends SecurityRealm {
                 u.setDescription(description);
                 u.setFullName(auth.getAzureAdUser().getUsername());
             }
-        } else {
-            LOGGER.log(Level.SEVERE, "doFinishLogin() accessToken = null");
         }
 
         // redirect to referer
@@ -373,14 +367,13 @@ public class AzureSecurityRealm extends SecurityRealm {
     private String generateDescription(Authentication auth) {
         if (auth instanceof AzureAuthenticationToken) {
             AzureAdUser user = ((AzureAuthenticationToken) auth).getAzureAdUser();
-            StringBuffer description = new StringBuffer("Azure Active Directory User\n\n");
-            description.append("Given Name: " + user.getGivenName() + "\n");
-            description.append("Family Name: " + user.getFamilyName() + "\n");
-            description.append("Unique Principal Name: " + user.getUniqueName() + "\n");
-            description.append("Email: " + user.getEmail() + "\n");
-            description.append("Object ID: " + user.getObjectID() + "\n");
-            description.append("Tenant ID: " + user.getTenantID() + "\n");
-            return description.toString();
+            return "Azure Active Directory User\n"
+                    + "\nGiven Name: " + user.getGivenName()
+                    + "\nFamily Name: " + user.getFamilyName()
+                    + "\nUnique Principal Name: " + user.getUniqueName()
+                    + "\nEmail: " + user.getEmail()
+                    + "\nObject ID: " + user.getObjectID()
+                    + "\nTenant ID: " + user.getTenantID() + "\n";
         }
         return "";
     }
