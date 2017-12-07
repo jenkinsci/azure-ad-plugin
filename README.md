@@ -11,8 +11,6 @@ In Application setting page, add a new entry [http://{your_jenkins_host}/securit
 
 In Application setting page, click `Keys`, generate a new key, copy the `value`, it will be used as `Client Secret` in Jenkins.
 
-In Application setting page, click `Required Permissions` and select `Windows Azure Service Management API`, then select `Access Azure Service Management as organization users (preview)` and save. This API and permission is for manage resource in subscription
-
 In Application setting page, click `Required Permissions` and select `Windows Azure Active Directory`, then select `Read directory data` permissions in Application permissions section
 
 Click `Grant Permissions`. If you are not an admin in your tenant, please contact admin to grant the permissions which declared as `require admin` in `Enable Access` page

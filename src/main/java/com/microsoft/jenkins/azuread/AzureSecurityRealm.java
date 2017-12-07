@@ -16,7 +16,6 @@ import com.microsoft.azure.credentials.AzureTokenCredentials;
 import com.microsoft.azure.management.Azure;
 import com.microsoft.jenkins.azuread.scribe.AzureApi;
 import com.microsoft.jenkins.azuread.scribe.AzureOAuthService;
-import com.microsoft.jenkins.azuread.scribe.AzureToken;
 import com.thoughtworks.xstream.converters.ConversionException;
 import com.thoughtworks.xstream.converters.Converter;
 import com.thoughtworks.xstream.converters.MarshallingContext;
@@ -31,6 +30,7 @@ import hudson.model.User;
 import hudson.security.GroupDetails;
 import hudson.security.SecurityRealm;
 import hudson.security.UserMayOrMayNotExistException;
+import hudson.security.csrf.CrumbExclusion;
 import hudson.util.FormValidation;
 import hudson.util.Secret;
 import jenkins.model.Jenkins;
@@ -53,6 +53,10 @@ import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 import org.springframework.dao.DataAccessException;
 
+import javax.servlet.FilterChain;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.concurrent.ExecutionException;
@@ -64,6 +68,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     private static final String REFERER_ATTRIBUTE = AzureSecurityRealm.class.getName() + ".referer";
     private static final String TIMESTAMP_ATTRIBUTE = AzureSecurityRealm.class.getName() + ".beginTime";
     private static final Logger LOGGER = Logger.getLogger(AzureSecurityRealm.class.getName());
+    public static final String CALLBACK_URL = "/securityRealm/finishLogin";
     private Secret clientId;
     private Secret clientSecret;
     private Secret tenant;
@@ -120,7 +125,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                 .apiSecret(clientSecret.getPlainText())
                 .responseType("id_token")
                 .scope("openid")
-                .callback(getRootUrl() + "/securityRealm/finishLogin")
+                .callback(getRootUrl() + CALLBACK_URL)
                 .build(AzureApi.instance(Constants.DEFAULT_GRAPH_ENDPOINT, this.getTenant()));
         return service;
     }
@@ -222,7 +227,7 @@ public class AzureSecurityRealm extends SecurityRealm {
         return new SecurityComponents(new AuthenticationManager() {
             @Override
             public Authentication authenticate(Authentication authentication) throws AuthenticationException {
-                if (authentication instanceof AzureToken) {
+                if (authentication instanceof AzureAuthenticationToken) {
                     return authentication;
                 }
                 throw new BadCredentialsException("Unexpected authentication type: " + authentication);
@@ -333,6 +338,21 @@ public class AzureSecurityRealm extends SecurityRealm {
                 throw new ConversionException("invalid node value = " + node);
             }
 
+        }
+    }
+
+    @Extension
+    public static final class CrumbExempt extends CrumbExclusion {
+
+        @Override
+        public boolean process(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+                throws IOException, ServletException {
+            String pathInfo = request.getPathInfo();
+            if (pathInfo != null && pathInfo.equals(CALLBACK_URL)) {
+                chain.doFilter(request, response);
+                return true;
+            }
+            return false;
         }
     }
 
