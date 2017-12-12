@@ -33,3 +33,9 @@ Click `Verify Application` to make sure your input is valid.
 
 To enable Azure Authentication, check `Azure Active Directory Matrix-based security`
 
+## FAQ
+#### Q: How to recovery if Jenkins keeps failing during the login phase?
+A: You can disable the security from the config file (see https://wiki.jenkins.io/display/JENKINS/Disable+security)
+
+#### Q: Why getting a error "insufficient privileges to complete the operation" even having granted the permission?
+A: It takes rather long time for the privileges to take effect, which could be 10-20 minutes. So just wait for a while and try again.
