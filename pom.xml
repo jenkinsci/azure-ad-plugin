@@ -13,6 +13,7 @@
 
     <name>Azure AD Plugin</name>
     <description>A Jenkins authentication &amp; authorization plugin for Azure Active Directory</description>
+    <url>https://wiki.jenkins.io/display/JENKINS/Azure+AD+Plugin</url>
 
     <packaging>hpi</packaging>
 
