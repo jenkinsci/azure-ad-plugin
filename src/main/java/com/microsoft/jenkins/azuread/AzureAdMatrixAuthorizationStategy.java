@@ -9,12 +9,14 @@ import com.microsoft.azure.PagedList;
 import com.microsoft.azure.management.Azure;
 import com.microsoft.azure.management.graphrbac.implementation.ADGroupInner;
 import com.microsoft.azure.management.graphrbac.implementation.UserInner;
+import com.thoughtworks.xstream.mapper.Mapper;
 import hudson.Extension;
 import hudson.model.AutoCompletionCandidates;
 import hudson.model.Descriptor;
 import hudson.security.AuthorizationStrategy;
 import hudson.security.GlobalMatrixAuthorizationStrategy;
 import hudson.security.Permission;
+import hudson.security.ProjectMatrixAuthorizationStrategy;
 import hudson.security.SecurityRealm;
 import jenkins.model.Jenkins;
 import org.apache.commons.lang.StringUtils;
@@ -25,67 +27,41 @@ import org.kohsuke.stapler.QueryParameter;
 import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ExecutionException;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
-public class AzureAdMatrixAuthorizationStategy extends GlobalMatrixAuthorizationStrategy {
+public class AzureAdMatrixAuthorizationStategy extends ProjectMatrixAuthorizationStrategy {
 
-    private static final Pattern LONGNAME_PATTERN = Pattern.compile("(.*) \\((.*)\\)");
-
-    private final transient Map<String, String> objId2LongNameMap = new HashMap<>();
+    private final transient ObjId2FullSidMap objId2FullSidMap = new ObjId2FullSidMap();
 
     @Override
     public void add(Permission p, String sid) {
         super.add(p, sid);
-        String objectId = extractObjectId(sid);
-        if (objectId != null) {
-            objId2LongNameMap.put(objectId, sid);
-        }
-    }
-
-    protected static String extractObjectId(String sid) {
-        Matcher matcher = LONGNAME_PATTERN.matcher(sid);
-        if (matcher.matches()) {
-            String displayName = matcher.group(1);
-            String objectId = matcher.group(2);
-            return objectId;
-        } else {
-            return null;
-        }
-    }
-
-    protected static String generateLongName(final String displayName, final String objectId) {
-        return String.format("%s (%s)", displayName, objectId);
-    }
-
-    protected String getLongName(final String sid) {
-        if (objId2LongNameMap.containsKey(sid)) {
-            return objId2LongNameMap.get(sid);
-        } else {
-            return sid;
-        }
+        objId2FullSidMap.putFullSid(sid);
     }
 
     @Override
     public boolean hasExplicitPermission(String sid, Permission p) {
-        if (sid == null) {
+        // Jenkins will pass in the object Id as sid
+        final String objectId = sid;
+        if (objectId == null) {
             return false;
         }
-        return super.hasExplicitPermission(getLongName(sid), p);
+        return super.hasExplicitPermission(objId2FullSidMap.getOrOriginal(objectId), p);
     }
 
     @Override
     public boolean hasPermission(String sid, Permission p) {
-        return super.hasPermission(getLongName(sid), p);
+        // Jenkins will pass in the object Id as sid
+        final String objectId = sid;
+        return super.hasPermission(objId2FullSidMap.getOrOriginal(objectId), p);
     }
 
     @Override
     public boolean hasPermission(String sid, Permission p, boolean principal) {
-        return super.hasPermission(getLongName(sid), p, principal);
+        // Jenkins will pass in the object Id as sid
+        final String objectId = sid;
+        return super.hasPermission(objId2FullSidMap.getOrOriginal(objectId), p, principal);
     }
 
     @Extension
@@ -141,7 +117,7 @@ public class AzureAdMatrixAuthorizationStategy extends GlobalMatrixAuthorization
             }
 
             for (AzureObject obj : candidates) {
-                String candidateText = generateLongName(obj.getDisplayName(), obj.getObjectId());
+                String candidateText = ObjId2FullSidMap.generateFullSid(obj.getDisplayName(), obj.getObjectId());
                 c.add(candidateText);
             }
 
@@ -150,7 +126,11 @@ public class AzureAdMatrixAuthorizationStategy extends GlobalMatrixAuthorization
     }
 
     @Restricted(DoNotUse.class)
-    public static class ConverterImpl extends GlobalMatrixAuthorizationStrategy.ConverterImpl {
+    public static class ConverterImpl extends ProjectMatrixAuthorizationStrategy.ConverterImpl {
+
+        public ConverterImpl(Mapper m) {
+            super(m);
+        }
 
         @Override
         public GlobalMatrixAuthorizationStrategy create() {
