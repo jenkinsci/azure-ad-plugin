@@ -82,7 +82,6 @@ public class AzureSecurityRealm extends SecurityRealm {
                     AzureEnvironment.AZURE));
         }
     });
-    // TODO: replace with azure credential
 
     public String getClientIdSecret() {
         return clientId.getEncryptedValue();
@@ -161,6 +160,7 @@ public class AzureSecurityRealm extends SecurityRealm {
         request.getSession().setAttribute(REFERER_ATTRIBUTE, referer);
         OAuth20Service service = getOAuthService();
         request.getSession().setAttribute(TIMESTAMP_ATTRIBUTE, System.currentTimeMillis());
+        // TODO: Verify the nonce
         return new HttpRedirect(service.getAuthorizationUrl(ImmutableMap.of(
                 "nonce", "random",
                 "response_mode", "form_post")));
@@ -208,17 +208,13 @@ public class AzureSecurityRealm extends SecurityRealm {
 
     @Override
     protected String getPostLogOutUrl(StaplerRequest req, Authentication auth) {
-        // if we just redirect to the root and anonymous does not have Overall read
-        // then we will start a login all over again.
-        // we are actually anonymous here as the security context has been cleared
-
-        // invalidateBelongingGroupsByOid
         if (auth instanceof AzureAuthenticationToken) {
             AzureAuthenticationToken azureToken = (AzureAuthenticationToken) auth;
             String oid = azureToken.getAzureAdUser().getObjectID();
             AzureCachePool.invalidateBelongingGroupsByOid(oid);
             System.out.println("invalidateBelongingGroupsByOid cache entry when sign out");
         }
+        // Ensure single sign-out
         return getOAuthService().getLogoutUrl();
     }
 
@@ -240,23 +236,6 @@ public class AzureSecurityRealm extends SecurityRealm {
             }
         });
     }
-
-//    @Override
-//    public UserDetails loadUserByUsername(String userName) {
-//        UserDetails result = null;
-//        Authentication token = SecurityContextHolder.getContext().getAuthentication();
-//        if (token == null) {
-//            throw new UsernameNotFoundException("AzureAuthenticationToken = null, no known user: " + userName);
-//        }
-//        if (!(token instanceof AzureAuthenticationToken)) {
-//          throw new UserMayOrMayNotExistException("Unexpected authentication type: " + token);
-//        }
-//        result = service.getUserByUsername(userName);
-//        if (result == null) {
-//            throw new UsernameNotFoundException("User does not exist for login: " + userName);
-//        }
-//        return result;
-//    }
 
     @Override
     public GroupDetails loadGroupByGroupname(String groupName) {
