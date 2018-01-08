@@ -93,7 +93,7 @@ public class AzureAdAuthorizationMatrixProperty extends AuthorizationMatrixPrope
 
         @Override
         public boolean isApplicable(Class<? extends Job> jobType) {
-            return Jenkins.getActiveInstance().getAuthorizationStrategy() instanceof AzureAdMatrixAuthorizationStategy;
+            return Jenkins.getActiveInstance().getAuthorizationStrategy() instanceof AzureAdMatrixAuthorizationStrategy;
         }
 
         @Override
@@ -103,7 +103,7 @@ public class AzureAdAuthorizationMatrixProperty extends AuthorizationMatrixPrope
 
         public AutoCompletionCandidates doAutoCompleteUserOrGroup(@QueryParameter String value)
                 throws ExecutionException, IOException, InterruptedException {
-            return AzureAdMatrixAuthorizationStategy.searchAndGenerateCandidates(value);
+            return AzureAdMatrixAuthorizationStrategy.searchAndGenerateCandidates(value);
         }
     }
 
