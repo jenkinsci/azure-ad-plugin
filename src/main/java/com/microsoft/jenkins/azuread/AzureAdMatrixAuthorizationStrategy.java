@@ -12,6 +12,8 @@ import com.microsoft.azure.management.graphrbac.implementation.ADGroupInner;
 import com.microsoft.azure.management.graphrbac.implementation.UserInner;
 import com.thoughtworks.xstream.mapper.Mapper;
 import hudson.Extension;
+import hudson.init.InitMilestone;
+import hudson.init.Initializer;
 import hudson.model.AbstractItem;
 import hudson.model.AutoCompletionCandidates;
 import hudson.model.Descriptor;
@@ -41,7 +43,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ExecutionException;
 
-public class AzureAdMatrixAuthorizationStategy extends GlobalMatrixAuthorizationStrategy {
+public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizationStrategy {
 
     private final transient ObjId2FullSidMap objId2FullSidMap = new ObjId2FullSidMap();
 
@@ -156,7 +158,6 @@ public class AzureAdMatrixAuthorizationStategy extends GlobalMatrixAuthorization
     public static final Descriptor<AuthorizationStrategy> DESCRIPTOR = new DescriptorImpl();
 
 
-
     static AutoCompletionCandidates searchAndGenerateCandidates(String prefix) throws IOException {
         final int maxCandidates = 20;
         if (StringUtils.isEmpty(prefix)) {
@@ -203,7 +204,7 @@ public class AzureAdMatrixAuthorizationStategy extends GlobalMatrixAuthorization
     public static class DescriptorImpl extends GlobalMatrixAuthorizationStrategy.DescriptorImpl {
         @Override
         protected GlobalMatrixAuthorizationStrategy create() {
-            return new AzureAdMatrixAuthorizationStategy();
+            return new AzureAdMatrixAuthorizationStrategy();
         }
 
         @Override
@@ -227,13 +228,21 @@ public class AzureAdMatrixAuthorizationStategy extends GlobalMatrixAuthorization
 
         @Override
         public GlobalMatrixAuthorizationStrategy create() {
-            return new AzureAdMatrixAuthorizationStategy();
+            return new AzureAdMatrixAuthorizationStrategy();
         }
 
         @Override
         @SuppressWarnings("rawtypes")
         public boolean canConvert(Class type) {
-            return type == AzureAdMatrixAuthorizationStategy.class;
+            return type == AzureAdMatrixAuthorizationStrategy.class;
         }
+    }
+
+    @Initializer(before = InitMilestone.PLUGINS_STARTED)
+    public static void fixClassNameTypo() {
+        // before 0.2.0
+        Jenkins.XSTREAM2.addCompatibilityAlias(
+                "com.microsoft.jenkins.azuread.AzureAdMatrixAuthorizationStategy",
+                AzureAdMatrixAuthorizationStrategy.class);
     }
 }

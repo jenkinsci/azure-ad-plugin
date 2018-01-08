@@ -29,7 +29,7 @@ THE SOFTWARE.
       <table style="width:100%">
         <f:optionalBlock field="blocksInheritance"
                          title="${%Block inheritance of global authorization matrix}" />
-        <st:include class="com.microsoft.jenkins.azuread.AzureAdMatrixAuthorizationStategy" page="config.jelly"/>
+        <st:include class="com.microsoft.jenkins.azuread.AzureAdMatrixAuthorizationStrategy" page="config.jelly"/>
       </table>
     </f:nested>
   </f:optionalBlock>

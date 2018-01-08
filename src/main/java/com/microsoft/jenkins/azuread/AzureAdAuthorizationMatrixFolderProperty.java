@@ -86,10 +86,10 @@ public class AzureAdAuthorizationMatrixFolderProperty extends AuthorizationMatri
 
         @Override
         public boolean isApplicable(Class<? extends AbstractFolder> containerType) {
-            // only applicable when AzureAdMatrixAuthorizationStategy is in charge
+            // only applicable when AzureAdMatrixAuthorizationStrategy is in charge
             try {
                 return Jenkins.getActiveInstance().getAuthorizationStrategy()
-                        instanceof AzureAdMatrixAuthorizationStategy;
+                        instanceof AzureAdMatrixAuthorizationStrategy;
             } catch (NoClassDefFoundError x) {
                 return false;
             }
@@ -102,7 +102,7 @@ public class AzureAdAuthorizationMatrixFolderProperty extends AuthorizationMatri
 
         public AutoCompletionCandidates doAutoCompleteUserOrGroup(@QueryParameter String value)
                 throws ExecutionException, IOException, InterruptedException {
-            return AzureAdMatrixAuthorizationStategy.searchAndGenerateCandidates(value);
+            return AzureAdMatrixAuthorizationStrategy.searchAndGenerateCandidates(value);
         }
     }
 
