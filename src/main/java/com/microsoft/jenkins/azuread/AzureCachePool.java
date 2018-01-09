@@ -6,7 +6,6 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import jenkins.model.Jenkins;
 
-import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -22,7 +21,7 @@ public final class AzureCachePool {
     private AzureCachePool() {
     }
 
-    public static Collection<String> getBelongingGroupsByOid(final String oid) throws IOException, ExecutionException {
+    public static Collection<String> getBelongingGroupsByOid(final String oid) {
         try {
             Collection<String> result = belongingGroupsByOid.get(oid, new Callable<Collection<String>>() {
                 @Override
@@ -47,6 +46,7 @@ public final class AzureCachePool {
         } catch (ExecutionException e) {
             e.printStackTrace();
             return null;
+            // TODO: log
         }
 
     }

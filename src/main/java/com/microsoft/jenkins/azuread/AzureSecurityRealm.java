@@ -16,14 +16,11 @@ import com.microsoft.azure.credentials.AzureTokenCredentials;
 import com.microsoft.azure.management.Azure;
 import com.microsoft.jenkins.azuread.scribe.AzureApi;
 import com.microsoft.jenkins.azuread.scribe.AzureOAuthService;
-import com.thoughtworks.xstream.converters.ConversionException;
 import com.thoughtworks.xstream.converters.Converter;
 import com.thoughtworks.xstream.converters.MarshallingContext;
 import com.thoughtworks.xstream.converters.UnmarshallingContext;
 import com.thoughtworks.xstream.io.HierarchicalStreamReader;
 import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
-
-
 import hudson.Extension;
 import hudson.model.Descriptor;
 import hudson.model.User;
@@ -34,16 +31,20 @@ import hudson.security.csrf.CrumbExclusion;
 import hudson.util.FormValidation;
 import hudson.util.Secret;
 import jenkins.model.Jenkins;
+import jenkins.security.SecurityListener;
 import org.acegisecurity.Authentication;
 import org.acegisecurity.AuthenticationException;
 import org.acegisecurity.AuthenticationManager;
 import org.acegisecurity.BadCredentialsException;
-import org.acegisecurity.GrantedAuthority;
 import org.acegisecurity.context.SecurityContextHolder;
 import org.acegisecurity.userdetails.UserDetails;
 import org.acegisecurity.userdetails.UserDetailsService;
 import org.acegisecurity.userdetails.UsernameNotFoundException;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.RandomStringUtils;
+import org.jose4j.jwt.JwtClaims;
+import org.jose4j.jwt.consumer.InvalidJwtException;
+import org.jose4j.jwt.consumer.JwtConsumer;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.Header;
 import org.kohsuke.stapler.HttpRedirect;
@@ -58,7 +59,6 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.Collection;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -67,8 +67,11 @@ public class AzureSecurityRealm extends SecurityRealm {
 
     private static final String REFERER_ATTRIBUTE = AzureSecurityRealm.class.getName() + ".referer";
     private static final String TIMESTAMP_ATTRIBUTE = AzureSecurityRealm.class.getName() + ".beginTime";
+    private static final String NONCE_ATTRIBUTE = AzureSecurityRealm.class.getName() + ".nonce";
     private static final Logger LOGGER = Logger.getLogger(AzureSecurityRealm.class.getName());
+    private static final int NONCE_LENGTH = 10;
     public static final String CALLBACK_URL = "/securityRealm/finishLogin";
+
     private Secret clientId;
     private Secret clientSecret;
     private Secret tenant;
@@ -80,6 +83,12 @@ public class AzureSecurityRealm extends SecurityRealm {
                     getTenant(),
                     getClientSecret(),
                     AzureEnvironment.AZURE));
+        }
+    });
+    private Supplier<JwtConsumer> jwtConsumer = Suppliers.memoize(new Supplier<JwtConsumer>() {
+        @Override
+        public JwtConsumer get() {
+            return Utils.JwtUtil.jwt(getClientId(), getTenant());
         }
     });
 
@@ -119,6 +128,10 @@ public class AzureSecurityRealm extends SecurityRealm {
         this.tenant = Secret.fromString(tenant);
     }
 
+    public JwtConsumer getJwtConsumer() {
+        return jwtConsumer.get();
+    }
+
     AzureOAuthService getOAuthService() {
         AzureOAuthService service = (AzureOAuthService) new ServiceBuilder(clientId.getPlainText())
                 .apiSecret(clientSecret.getPlainText())
@@ -129,7 +142,7 @@ public class AzureSecurityRealm extends SecurityRealm {
         return service;
     }
 
-    Azure.Authenticated getAzureClient() throws IOException {
+    Azure.Authenticated getAzureClient() {
         return cachedAzureClient.get();
     }
 
@@ -154,24 +167,25 @@ public class AzureSecurityRealm extends SecurityRealm {
         LOGGER.log(Level.FINE, "AzureSecurityRealm()");
     }
 
-
     public HttpResponse doCommenceLogin(StaplerRequest request, @Header("Referer") final String referer)
             throws IOException {
         request.getSession().setAttribute(REFERER_ATTRIBUTE, referer);
         OAuth20Service service = getOAuthService();
         request.getSession().setAttribute(TIMESTAMP_ATTRIBUTE, System.currentTimeMillis());
-        // TODO: Verify the nonce
+        String nonce = RandomStringUtils.randomAlphanumeric(NONCE_LENGTH);
+        request.getSession().setAttribute(NONCE_ATTRIBUTE, nonce);
         return new HttpRedirect(service.getAuthorizationUrl(ImmutableMap.of(
-                "nonce", "random",
+                "nonce", nonce,
                 "response_mode", "form_post")));
     }
 
-    public HttpResponse doFinishLogin(StaplerRequest request) throws Exception {
+    public HttpResponse doFinishLogin(StaplerRequest request) throws InvalidJwtException {
         Long beginTime = (Long) request.getSession().getAttribute(TIMESTAMP_ATTRIBUTE);
         if (beginTime != null) {
             long endTime = System.currentTimeMillis();
             System.out.println("Requesting oauth code time = " + (endTime - beginTime) + " ms");
         }
+
         final String idToken = request.getParameter("id_token");
 
         if (StringUtils.isBlank(idToken)) {
@@ -179,15 +193,19 @@ public class AzureSecurityRealm extends SecurityRealm {
             LOGGER.severe(Utils.JsonUtil.toJson(request.getParameterMap()));
             return HttpResponses.redirectTo(this.getRootUrl() + AzureAuthFailAction.POST_LOGOUT_URL);
         } else {
-            final AzureAuthenticationToken auth = new AzureAuthenticationToken(AzureAdUser.createFromJwt(idToken));
-            Collection<String> groups = AzureCachePool.getBelongingGroupsByOid(auth.getAzureAdUser().getObjectID());
-            GrantedAuthority[] authorities = new GrantedAuthority[groups.size()];
-            int i = 0;
-            for (String objectId : groups) {
-                authorities[i++] = new AzureAdGroup(objectId);
+            // validate the nonce to avoid CSRF
+            JwtClaims claims = jwtConsumer.get().processToClaims(idToken);
+            String expectedNonce = (String) request.getSession().getAttribute(NONCE_ATTRIBUTE);
+            String responseNonce = (String) claims.getClaimValue("nonce");
+            if (StringUtils.isAnyEmpty(expectedNonce, responseNonce) || !expectedNonce.equals(responseNonce)) {
+                throw new BadCredentialsException("Invalid nonce in the response");
+            } else {
+                request.getSession().removeAttribute(NONCE_ATTRIBUTE);
             }
-            auth.getAzureAdUser().setAuthorities(authorities);
+            final AzureAdUser userDetails = AzureAdUser.createFromJwt(claims);
+            final AzureAuthenticationToken auth = new AzureAuthenticationToken(userDetails);
 
+            // Enforce updating current identity
             SecurityContextHolder.getContext().setAuthentication(auth);
             User u = User.current();
             if (u != null) {
@@ -195,6 +213,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                 u.setDescription(description);
                 u.setFullName(auth.getAzureAdUser().getUsername());
             }
+            SecurityListener.fireAuthenticated(userDetails);
         }
 
         // redirect to referer
@@ -259,7 +278,6 @@ public class AzureSecurityRealm extends SecurityRealm {
         }
 
         public void marshal(Object source, HierarchicalStreamWriter writer, MarshallingContext context) {
-
             AzureSecurityRealm realm = (AzureSecurityRealm) source;
 
             writer.startNode("clientid");
@@ -276,48 +294,23 @@ public class AzureSecurityRealm extends SecurityRealm {
         }
 
         public Object unmarshal(HierarchicalStreamReader reader, UnmarshallingContext context) {
-            reader.moveDown();
             AzureSecurityRealm realm = new AzureSecurityRealm();
-            String node = reader.getNodeName();
-            String value = reader.getValue();
-            setValue(realm, node, value);
-            reader.moveUp();
-            reader.moveDown();
-            node = reader.getNodeName();
-            value = reader.getValue();
-            setValue(realm, node, value);
-            reader.moveUp();
-            //
-
-            reader.moveDown();
-            node = reader.getNodeName();
-            value = reader.getValue();
-            setValue(realm, node, value);
-            reader.moveUp();
-
-            if (reader.hasMoreChildren()) {
+            while (reader.hasMoreChildren()) {
                 reader.moveDown();
-                node = reader.getNodeName();
-                value = reader.getValue();
-                setValue(realm, node, value);
+                String node = reader.getNodeName();
+                String value = reader.getValue();
+                if (node.equals("clientid")) {
+                    realm.setClientId(value);
+                } else if (node.equals("clientsecret")) {
+                    realm.setClientSecret(value);
+                } else if (node.equals("tenant")) {
+                    realm.setTenant(value);
+                }
                 reader.moveUp();
             }
             return realm;
         }
 
-        private void setValue(AzureSecurityRealm realm, String node, String value) {
-
-            if (node.equalsIgnoreCase("clientid")) {
-                realm.setClientId(value);
-            } else if (node.equalsIgnoreCase("clientsecret")) {
-                realm.setClientSecret(value);
-            } else if (node.equalsIgnoreCase("tenant")) {
-                realm.setTenant(value);
-            } else {
-                throw new ConversionException("invalid node value = " + node);
-            }
-
-        }
     }
 
     @Extension

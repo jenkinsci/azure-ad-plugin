@@ -5,12 +5,13 @@
 
 package com.microsoft.jenkins.azuread;
 
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.interfaces.DecodedJWT;
 import hudson.security.SecurityRealm;
+import org.acegisecurity.BadCredentialsException;
 import org.acegisecurity.GrantedAuthority;
 import org.acegisecurity.userdetails.UserDetails;
-import org.apache.commons.lang.StringUtils;
+import org.jose4j.jwt.JwtClaims;
+
+import java.util.Collection;
 
 public final class AzureAdUser implements UserDetails {
 
@@ -34,23 +35,30 @@ public final class AzureAdUser implements UserDetails {
         authorities = new GrantedAuthority[]{SecurityRealm.AUTHENTICATED_AUTHORITY};
     }
 
-    public static AzureAdUser createFromJwt(String jwt) {
-        if (StringUtils.isEmpty(jwt)) {
+    public static AzureAdUser createFromJwt(JwtClaims claims) {
+        if (claims == null) {
             return null;
         }
 
-        DecodedJWT decoded = JWT.decode(jwt);
         AzureAdUser user = new AzureAdUser();
-        user.userName = decoded.getClaim("name").asString();
-        user.givenName = decoded.getClaim("given_name").asString();
-        user.familyName = decoded.getClaim("family_name").asString();
-        user.uniqueName = decoded.getClaim("unique_name").asString();
-        user.tenantID = decoded.getClaim("tid").asString();
-        user.objectID = decoded.getClaim("oid").asString();
-        user.email = decoded.getClaim("email").asString();
+        user.userName = (String) claims.getClaimValue("name");
+        user.givenName = (String) claims.getClaimValue("given_name");
+        user.familyName = (String) claims.getClaimValue("family_name");
+        user.uniqueName = (String) claims.getClaimValue("unique_name");
+        user.tenantID = (String) claims.getClaimValue("tid");
+        user.objectID = (String) claims.getClaimValue("oid");
+        user.email = (String) claims.getClaimValue("email");
         if (user.objectID == null || user.userName == null) {
-            throw new RuntimeException("Invalid id token: " + decoded.getPayload());
+            throw new BadCredentialsException("Invalid id token: " + claims.toJson());
         }
+
+        Collection<String> groups = AzureCachePool.getBelongingGroupsByOid(user.objectID);
+        GrantedAuthority[] authorities = new GrantedAuthority[groups.size()];
+        int i = 0;
+        for (String objectId : groups) {
+            authorities[i++] = new AzureAdGroup(objectId);
+        }
+        user.authorities = authorities;
         return user;
     }
 
@@ -85,10 +93,6 @@ public final class AzureAdUser implements UserDetails {
     @Override
     public GrantedAuthority[] getAuthorities() {
         return authorities.clone();
-    }
-
-    public void setAuthorities(GrantedAuthority[] authorities) {
-        this.authorities = authorities;
     }
 
     @Override
