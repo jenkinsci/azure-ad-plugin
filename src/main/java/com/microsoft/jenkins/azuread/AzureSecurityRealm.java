@@ -37,7 +37,6 @@ import jenkins.security.SecurityListener;
 import org.acegisecurity.Authentication;
 import org.acegisecurity.AuthenticationException;
 import org.acegisecurity.AuthenticationManager;
-import org.acegisecurity.BadCredentialsException;
 import org.acegisecurity.context.SecurityContextHolder;
 import org.acegisecurity.userdetails.UserDetails;
 import org.acegisecurity.userdetails.UserDetailsService;
@@ -173,8 +172,7 @@ public class AzureSecurityRealm extends SecurityRealm {
         LOGGER.log(Level.FINE, "AzureSecurityRealm()");
     }
 
-    public HttpResponse doCommenceLogin(StaplerRequest request, @Header("Referer") final String referer)
-            throws IOException {
+    public HttpResponse doCommenceLogin(StaplerRequest request, @Header("Referer") final String referer) {
         request.getSession().setAttribute(REFERER_ATTRIBUTE, referer);
         OAuth20Service service = getOAuthService();
         request.getSession().setAttribute(TIMESTAMP_ATTRIBUTE, System.currentTimeMillis());
@@ -196,14 +194,14 @@ public class AzureSecurityRealm extends SecurityRealm {
             final String idToken = request.getParameter("id_token");
 
             if (StringUtils.isBlank(idToken)) {
-                throw new BadCredentialsException("Can't extract id_token");
+                throw new IllegalStateException("Can't extract id_token");
             } else {
                 // validate the nonce to avoid CSRF
                 JwtClaims claims = jwtConsumer.get().processToClaims(idToken);
                 final String expectedNonce = (String) request.getSession().getAttribute(NONCE_ATTRIBUTE);
                 final String responseNonce = (String) claims.getClaimValue("nonce");
                 if (StringUtils.isAnyEmpty(expectedNonce, responseNonce) || !expectedNonce.equals(responseNonce)) {
-                    throw new BadCredentialsException("Invalid nonce in the response");
+                    throw new IllegalStateException("Invalid nonce in the response");
                 } else {
                     request.getSession().removeAttribute(NONCE_ATTRIBUTE);
                 }
@@ -256,7 +254,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                 if (authentication instanceof AzureAuthenticationToken) {
                     return authentication;
                 }
-                throw new BadCredentialsException("Unexpected authentication type: " + authentication);
+                throw new IllegalStateException("Unexpected authentication type: " + authentication);
             }
         }, new UserDetailsService() {
             @Override
