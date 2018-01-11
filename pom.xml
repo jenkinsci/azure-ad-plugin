@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
@@ -36,8 +37,8 @@
         <connection>scm:git:ssh://github.com/jenkinsci/azure-ad-plugin.git</connection>
         <developerConnection>scm:git:ssh://git@github.com/jenkinsci/azure-ad-plugin.git</developerConnection>
         <url>https://github.com/jenkinsci/azure-ad-plugin</url>
-      <tag>HEAD</tag>
-  </scm>
+        <tag>HEAD</tag>
+    </scm>
 
     <repositories>
         <repository>
@@ -144,7 +145,34 @@
                 <groupId>org.jenkins-ci.tools</groupId>
                 <artifactId>maven-hpi-plugin</artifactId>
                 <configuration>
-                    <pluginFirstClassLoader>true</pluginFirstClassLoader>
+                    <maskClasses>
+                        com.microsoft.jenkins.azurecommons.core.
+                        com.fasterxml.jackson.
+                        com.google.common.
+
+                        com.microsoft.azure.AzureAsyncOperation
+                        com.microsoft.azure.AzureClient
+                        com.microsoft.azure.AzureEnvironment
+                        com.microsoft.azure.AzureResponseBuilder
+                        com.microsoft.azure.AzureServiceClient
+                        com.microsoft.azure.AzureServiceFuture
+                        com.microsoft.azure.CloudError
+                        com.microsoft.azure.CloudException
+                        com.microsoft.azure.ListOperationCallback
+                        com.microsoft.azure.Page
+                        com.microsoft.azure.PagedList
+                        com.microsoft.azure.PollingState
+                        com.microsoft.azure.Resource
+                        com.microsoft.azure.SubResource
+                        com.microsoft.aad.
+                        com.microsoft.applicationinsights.
+                        com.microsoft.azure.credentials.
+                        com.microsoft.azure.keyvault.
+                        com.microsoft.azure.management.
+                        com.microsoft.azure.serializer.
+                        com.microsoft.azure.storage.
+                        com.microsoft.rest.
+                    </maskClasses>
                 </configuration>
             </plugin>
             <plugin>
