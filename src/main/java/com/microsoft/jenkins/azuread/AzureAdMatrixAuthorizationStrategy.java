@@ -42,8 +42,11 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ExecutionException;
+import java.util.logging.Logger;
 
 public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizationStrategy {
+
+    private static final Logger LOGGER = Logger.getLogger(AzureAdMatrixAuthorizationStrategy.class.getName());
 
     private final transient ObjId2FullSidMap objId2FullSidMap = new ObjId2FullSidMap();
 
@@ -171,7 +174,7 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
         Azure.Authenticated authenticated = ((AzureSecurityRealm) realm).getAzureClient();
 
         List<AzureObject> candidates = new ArrayList<>();
-        System.out.println("search users with prefix: " + prefix);
+        LOGGER.info("search users with prefix: " + prefix);
         PagedList<UserInner> matchedUsers = authenticated.activeDirectoryUsers().inner()
                 .list(String.format("startswith(displayName,'%s') or startswith(mail, '%s')", prefix, prefix));
         for (UserInner user : matchedUsers.currentPage().items()) {
@@ -182,7 +185,7 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
         }
 
         if (!matchedUsers.hasNextPage()) {
-            System.out.println("search groups with prefix " + prefix);
+            LOGGER.info("search groups with prefix " + prefix);
             PagedList<ADGroupInner> matchedGroups = authenticated.activeDirectoryGroups()
                     .inner().list("startswith(displayName,'" + prefix + "')");
             for (ADGroupInner group : matchedGroups.currentPage().items()) {

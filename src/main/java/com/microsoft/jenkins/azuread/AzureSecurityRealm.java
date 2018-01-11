@@ -183,14 +183,13 @@ public class AzureSecurityRealm extends SecurityRealm {
         Long beginTime = (Long) request.getSession().getAttribute(TIMESTAMP_ATTRIBUTE);
         if (beginTime != null) {
             long endTime = System.currentTimeMillis();
-            System.out.println("Requesting oauth code time = " + (endTime - beginTime) + " ms");
+            LOGGER.info("Requesting oauth code time = " + (endTime - beginTime) + " ms");
         }
 
         final String idToken = request.getParameter("id_token");
 
         if (StringUtils.isBlank(idToken)) {
-            LOGGER.log(Level.SEVERE, "doFinishLogin() idToken = null");
-            LOGGER.severe(Utils.JsonUtil.toJson(request.getParameterMap()));
+            LOGGER.severe("Can't extract id_token!");
             return HttpResponses.redirectTo(this.getRootUrl() + AzureAuthFailAction.POST_LOGOUT_URL);
         } else {
             // validate the nonce to avoid CSRF
@@ -231,7 +230,6 @@ public class AzureSecurityRealm extends SecurityRealm {
             AzureAuthenticationToken azureToken = (AzureAuthenticationToken) auth;
             String oid = azureToken.getAzureAdUser().getObjectID();
             AzureCachePool.invalidateBelongingGroupsByOid(oid);
-            System.out.println("invalidateBelongingGroupsByOid cache entry when sign out");
         }
         // Ensure single sign-out
         return getOAuthService().getLogoutUrl();
