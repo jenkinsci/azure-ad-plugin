@@ -53,11 +53,12 @@ public final class AzureAdUser implements UserDetails {
         }
 
         Collection<String> groups = AzureCachePool.getBelongingGroupsByOid(user.objectID);
-        GrantedAuthority[] authorities = new GrantedAuthority[groups.size()];
+        GrantedAuthority[] authorities = new GrantedAuthority[groups.size() + 1];
         int i = 0;
         for (String objectId : groups) {
             authorities[i++] = new AzureAdGroup(objectId);
         }
+        authorities[i] = SecurityRealm.AUTHENTICATED_AUTHORITY;
         user.authorities = authorities;
         return user;
     }

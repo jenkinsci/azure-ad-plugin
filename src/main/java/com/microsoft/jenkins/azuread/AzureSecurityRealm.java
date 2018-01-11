@@ -16,6 +16,8 @@ import com.microsoft.azure.credentials.AzureTokenCredentials;
 import com.microsoft.azure.management.Azure;
 import com.microsoft.jenkins.azuread.scribe.AzureApi;
 import com.microsoft.jenkins.azuread.scribe.AzureOAuthService;
+import com.microsoft.jenkins.azurecommons.core.AzureClientFactory;
+import com.microsoft.jenkins.azurecommons.telemetry.AppInsightsUtils;
 import com.thoughtworks.xstream.converters.Converter;
 import com.thoughtworks.xstream.converters.MarshallingContext;
 import com.thoughtworks.xstream.converters.UnmarshallingContext;
@@ -78,11 +80,15 @@ public class AzureSecurityRealm extends SecurityRealm {
     private Supplier<Azure.Authenticated> cachedAzureClient = Suppliers.memoize(new Supplier<Azure.Authenticated>() {
         @Override
         public Azure.Authenticated get() {
-            return Azure.authenticate(new ApplicationTokenCredentials(
-                    getClientId(),
-                    getTenant(),
-                    getClientSecret(),
-                    AzureEnvironment.AZURE));
+            return Azure.configure()
+                    .withInterceptor(new AzureAdPlugin.AzureTelemetryInterceptor())
+                    .withUserAgent(AzureClientFactory.getUserAgent(AzureAdPlugin.AI_PLUGIN_NAME,
+                            AzureAdPlugin.class.getPackage().getImplementationVersion()))
+                    .authenticate(new ApplicationTokenCredentials(
+                            getClientId(),
+                            getTenant(),
+                            getClientSecret(),
+                            AzureEnvironment.AZURE));
         }
     });
     private Supplier<JwtConsumer> jwtConsumer = Suppliers.memoize(new Supplier<JwtConsumer>() {
@@ -180,39 +186,46 @@ public class AzureSecurityRealm extends SecurityRealm {
     }
 
     public HttpResponse doFinishLogin(StaplerRequest request) throws InvalidJwtException {
-        Long beginTime = (Long) request.getSession().getAttribute(TIMESTAMP_ATTRIBUTE);
-        if (beginTime != null) {
-            long endTime = System.currentTimeMillis();
-            LOGGER.info("Requesting oauth code time = " + (endTime - beginTime) + " ms");
-        }
+        try {
+            Long beginTime = (Long) request.getSession().getAttribute(TIMESTAMP_ATTRIBUTE);
+            if (beginTime != null) {
+                long endTime = System.currentTimeMillis();
+                LOGGER.info("Requesting oauth code time = " + (endTime - beginTime) + " ms");
+            }
 
-        final String idToken = request.getParameter("id_token");
+            final String idToken = request.getParameter("id_token");
 
-        if (StringUtils.isBlank(idToken)) {
-            LOGGER.severe("Can't extract id_token!");
-            return HttpResponses.redirectTo(this.getRootUrl() + AzureAuthFailAction.POST_LOGOUT_URL);
-        } else {
-            // validate the nonce to avoid CSRF
-            JwtClaims claims = jwtConsumer.get().processToClaims(idToken);
-            String expectedNonce = (String) request.getSession().getAttribute(NONCE_ATTRIBUTE);
-            String responseNonce = (String) claims.getClaimValue("nonce");
-            if (StringUtils.isAnyEmpty(expectedNonce, responseNonce) || !expectedNonce.equals(responseNonce)) {
-                throw new BadCredentialsException("Invalid nonce in the response");
+            if (StringUtils.isBlank(idToken)) {
+                throw new BadCredentialsException("Can't extract id_token");
             } else {
-                request.getSession().removeAttribute(NONCE_ATTRIBUTE);
-            }
-            final AzureAdUser userDetails = AzureAdUser.createFromJwt(claims);
-            final AzureAuthenticationToken auth = new AzureAuthenticationToken(userDetails);
+                // validate the nonce to avoid CSRF
+                JwtClaims claims = jwtConsumer.get().processToClaims(idToken);
+                final String expectedNonce = (String) request.getSession().getAttribute(NONCE_ATTRIBUTE);
+                final String responseNonce = (String) claims.getClaimValue("nonce");
+                if (StringUtils.isAnyEmpty(expectedNonce, responseNonce) || !expectedNonce.equals(responseNonce)) {
+                    throw new BadCredentialsException("Invalid nonce in the response");
+                } else {
+                    request.getSession().removeAttribute(NONCE_ATTRIBUTE);
+                }
+                final AzureAdUser userDetails = AzureAdUser.createFromJwt(claims);
+                final AzureAuthenticationToken auth = new AzureAuthenticationToken(userDetails);
 
-            // Enforce updating current identity
-            SecurityContextHolder.getContext().setAuthentication(auth);
-            User u = User.current();
-            if (u != null) {
-                String description = generateDescription(auth);
-                u.setDescription(description);
-                u.setFullName(auth.getAzureAdUser().getUsername());
+                // Enforce updating current identity
+                SecurityContextHolder.getContext().setAuthentication(auth);
+                User u = User.current();
+                if (u != null) {
+                    String description = generateDescription(auth);
+                    u.setDescription(description);
+                    u.setFullName(auth.getAzureAdUser().getUsername());
+                }
+                SecurityListener.fireAuthenticated(userDetails);
+                AzureAdPlugin.sendLoginEvent(
+                        AppInsightsUtils.hash(userDetails.getObjectID()),
+                        AppInsightsUtils.hash(this.getTenant()));
             }
-            SecurityListener.fireAuthenticated(userDetails);
+        } catch (Exception ex) {
+            AzureAdPlugin.sendLoginFailEvent(this.getTenant(), ex.getMessage());
+            throw ex;
         }
 
         // redirect to referer
