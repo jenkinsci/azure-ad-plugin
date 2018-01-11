@@ -51,16 +51,17 @@ public final class AzureAdUser implements UserDetails {
         if (user.objectID == null || user.userName == null) {
             throw new BadCredentialsException("Invalid id token: " + claims.toJson());
         }
+        return user;
+    }
 
-        Collection<String> groups = AzureCachePool.getBelongingGroupsByOid(user.objectID);
-        GrantedAuthority[] authorities = new GrantedAuthority[groups.size() + 1];
+    public void setAuthorities(Collection<String> groups) {
+        GrantedAuthority[] newAuthorities = new GrantedAuthority[groups.size() + 1];
         int i = 0;
         for (String objectId : groups) {
-            authorities[i++] = new AzureAdGroup(objectId);
+            newAuthorities[i++] = new AzureAdGroup(objectId);
         }
-        authorities[i] = SecurityRealm.AUTHENTICATED_AUTHORITY;
-        user.authorities = authorities;
-        return user;
+        newAuthorities[i] = SecurityRealm.AUTHENTICATED_AUTHORITY;
+        this.authorities = newAuthorities;
     }
 
     @SuppressWarnings({"checkstyle:needbraces"})

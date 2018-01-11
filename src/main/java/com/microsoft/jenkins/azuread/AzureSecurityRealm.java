@@ -60,6 +60,7 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.Collection;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -185,7 +186,8 @@ public class AzureSecurityRealm extends SecurityRealm {
 
     public HttpResponse doFinishLogin(StaplerRequest request) throws InvalidJwtException {
         try {
-            Long beginTime = (Long) request.getSession().getAttribute(TIMESTAMP_ATTRIBUTE);
+            final Long beginTime = (Long) request.getSession().getAttribute(TIMESTAMP_ATTRIBUTE);
+            final String expectedNonce = (String) request.getSession().getAttribute(NONCE_ATTRIBUTE);
             if (beginTime != null) {
                 long endTime = System.currentTimeMillis();
                 LOGGER.info("Requesting oauth code time = " + (endTime - beginTime) + " ms");
@@ -195,35 +197,30 @@ public class AzureSecurityRealm extends SecurityRealm {
 
             if (StringUtils.isBlank(idToken)) {
                 throw new IllegalStateException("Can't extract id_token");
-            } else {
-                // validate the nonce to avoid CSRF
-                JwtClaims claims = jwtConsumer.get().processToClaims(idToken);
-                final String expectedNonce = (String) request.getSession().getAttribute(NONCE_ATTRIBUTE);
-                final String responseNonce = (String) claims.getClaimValue("nonce");
-                if (StringUtils.isAnyEmpty(expectedNonce, responseNonce) || !expectedNonce.equals(responseNonce)) {
-                    throw new IllegalStateException("Invalid nonce in the response");
-                } else {
-                    request.getSession().removeAttribute(NONCE_ATTRIBUTE);
-                }
-                final AzureAdUser userDetails = AzureAdUser.createFromJwt(claims);
-                final AzureAuthenticationToken auth = new AzureAuthenticationToken(userDetails);
-
-                // Enforce updating current identity
-                SecurityContextHolder.getContext().setAuthentication(auth);
-                User u = User.current();
-                if (u != null) {
-                    String description = generateDescription(auth);
-                    u.setDescription(description);
-                    u.setFullName(auth.getAzureAdUser().getUsername());
-                }
-                SecurityListener.fireAuthenticated(userDetails);
-                AzureAdPlugin.sendLoginEvent(
-                        AppInsightsUtils.hash(userDetails.getObjectID()),
-                        AppInsightsUtils.hash(this.getTenant()));
             }
+            // validate the nonce to avoid CSRF
+            final AzureAdUser userDetails = validateAndParseIdToken(expectedNonce, idToken);
+            final AzureAuthenticationToken auth = new AzureAuthenticationToken(userDetails);
+
+            // Enforce updating current identity
+            SecurityContextHolder.getContext().setAuthentication(auth);
+            User u = User.current();
+            if (u != null) {
+                String description = generateDescription(auth);
+                u.setDescription(description);
+                u.setFullName(auth.getAzureAdUser().getUsername());
+            }
+            SecurityListener.fireAuthenticated(userDetails);
+            AzureAdPlugin.sendLoginEvent(
+                    AppInsightsUtils.hash(userDetails.getObjectID()),
+                    AppInsightsUtils.hash(this.getTenant()));
         } catch (Exception ex) {
             AzureAdPlugin.sendLoginFailEvent(this.getTenant(), ex.getMessage());
             throw ex;
+        } finally {
+            if (request.isRequestedSessionIdValid()) {
+                request.getSession().removeAttribute(NONCE_ATTRIBUTE);
+            }
         }
 
         // redirect to referer
@@ -233,6 +230,19 @@ public class AzureSecurityRealm extends SecurityRealm {
         } else {
             return HttpResponses.redirectToContextRoot();
         }
+    }
+
+    AzureAdUser validateAndParseIdToken(String expectedNonce, String idToken) throws InvalidJwtException {
+        JwtClaims claims = getJwtConsumer().processToClaims(idToken);
+        final String responseNonce = (String) claims.getClaimValue("nonce");
+        if (StringUtils.isAnyEmpty(expectedNonce, responseNonce) || !expectedNonce.equals(responseNonce)) {
+            throw new IllegalStateException("Invalid nonce in the response");
+        }
+        final AzureAdUser userDetails = AzureAdUser.createFromJwt(claims);
+        final Collection<String> groups = AzureCachePool.get(getAzureClient())
+                .getBelongingGroupsByOid(userDetails.getObjectID());
+        userDetails.setAuthorities(groups);
+        return userDetails;
     }
 
     @Override
