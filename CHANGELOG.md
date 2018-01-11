@@ -1,5 +1,8 @@
 # Changelog
 
+### 0.2.0 (2018-1-12)
+* Support project-based authorization
+
 ### 0.1.1 (2017-12-7)
 * Fixed the CSRF protection issue.
 
