@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
@@ -10,7 +9,7 @@
     </parent>
 
     <artifactId>azure-ad</artifactId>
-    <version>0.2.0-SNAPSHOT</version>
+    <version>0.2.0</version>
 
     <name>Azure AD Plugin</name>
     <description>A Jenkins authentication &amp; authorization plugin for Azure Active Directory</description>
@@ -37,7 +36,7 @@
         <connection>scm:git:ssh://github.com/jenkinsci/azure-ad-plugin.git</connection>
         <developerConnection>scm:git:ssh://git@github.com/jenkinsci/azure-ad-plugin.git</developerConnection>
         <url>https://github.com/jenkinsci/azure-ad-plugin</url>
-        <tag>HEAD</tag>
+        <tag>azure-ad-0.2.0</tag>
     </scm>
 
     <properties>
