@@ -1,5 +1,9 @@
 # Changelog
 
+### 0.2.1 (2018-02-02)
+**Jenkins under version 2.60 is not supported any more!**
+* Upgrade the dependency of matrix-auth to 2.2
+
 ### 0.2.0 (2018-01-18)
 * Support project-based authorization
 * Improve security

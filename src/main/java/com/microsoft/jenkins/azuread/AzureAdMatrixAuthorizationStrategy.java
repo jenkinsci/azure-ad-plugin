@@ -10,7 +10,6 @@ import com.microsoft.azure.PagedList;
 import com.microsoft.azure.management.Azure;
 import com.microsoft.azure.management.graphrbac.implementation.ADGroupInner;
 import com.microsoft.azure.management.graphrbac.implementation.UserInner;
-import com.thoughtworks.xstream.mapper.Mapper;
 import hudson.Extension;
 import hudson.init.InitMilestone;
 import hudson.init.Initializer;
@@ -21,11 +20,9 @@ import hudson.model.Item;
 import hudson.model.ItemGroup;
 import hudson.model.Job;
 import hudson.security.ACL;
-import hudson.security.AuthorizationMatrixProperty;
 import hudson.security.AuthorizationStrategy;
 import hudson.security.GlobalMatrixAuthorizationStrategy;
 import hudson.security.Permission;
-import hudson.security.ProjectMatrixAuthorizationStrategy;
 import hudson.security.SecurityRealm;
 import hudson.security.SidACL;
 import jenkins.model.Jenkins;
@@ -33,6 +30,7 @@ import org.acegisecurity.Authentication;
 import org.apache.commons.lang.StringUtils;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.DoNotUse;
+import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.kohsuke.stapler.QueryParameter;
 
 import javax.annotation.Nonnull;
@@ -41,7 +39,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
 
 public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizationStrategy {
@@ -56,35 +53,30 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
     // Copy codes instead.
     //
     @Override
-    public ACL getACL(Job<?, ?> project) {
-        AuthorizationMatrixProperty amp = project.getProperty(AuthorizationMatrixProperty.class);
+    @Nonnull
+    public ACL getACL(@Nonnull Job<?, ?> project) {
+        AzureAdAuthorizationMatrixProperty amp = project.getProperty(AzureAdAuthorizationMatrixProperty.class);
         if (amp != null) {
-            SidACL projectAcl = amp.getACL();
-
-            if (!amp.isBlocksInheritance()) {
-                final ACL parentAcl = getACL(project.getParent());
-                return inheritingACL(parentAcl, projectAcl);
-            } else {
-                return projectAcl;
-            }
+            return amp.getInheritanceStrategy().getEffectiveACL(amp.getACL(), project);
         } else {
             return getACL(project.getParent());
         }
     }
 
-    private static ACL inheritingACL(final ACL parent, final ACL child) {
+    @Restricted(NoExternalUse.class)
+    public static ACL inheritingACL(final ACL parent, final ACL child) {
         if (parent instanceof SidACL && child instanceof SidACL) {
             return ((SidACL) child).newInheritingACL((SidACL) parent);
         }
         return new ACL() {
             @Override
-            public boolean hasPermission(Authentication a, Permission permission) {
-                return child.hasPermission(a, permission) || parent.hasPermission(a, permission);
+            public boolean hasPermission(@Nonnull Authentication a, @Nonnull Permission permission) {
+                return a.equals(SYSTEM) || child.hasPermission(a, permission) || parent.hasPermission(a, permission);
             }
         };
     }
 
-    public ACL getACL(ItemGroup g) {
+    public ACL getACL(ItemGroup<?> g) {
         if (g instanceof Item) {
             Item item = (Item) g;
             return item.getACL();
@@ -93,21 +85,14 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
     }
 
     @Override
-    public ACL getACL(AbstractItem item) {
-        if (Jenkins.getActiveInstance().getPlugin("cloudbees-folder") != null) { // optional dependency
+    @Nonnull
+    public ACL getACL(@Nonnull AbstractItem item) {
+        if (Jenkins.getInstance().getPlugin("cloudbees-folder") != null) { // optional dependency
             if (item instanceof AbstractFolder) {
                 AzureAdAuthorizationMatrixFolderProperty p =
-                        (AzureAdAuthorizationMatrixFolderProperty) ((AbstractFolder) item).getProperties()
-                                .get(AzureAdAuthorizationMatrixFolderProperty.class);
+                        ((AbstractFolder<?>) item).getProperties().get(AzureAdAuthorizationMatrixFolderProperty.class);
                 if (p != null) {
-                    SidACL folderAcl = p.getACL();
-
-                    if (!p.isBlocksInheritance()) {
-                        final ACL parentAcl = getACL(item.getParent());
-                        return inheritingACL(parentAcl, folderAcl);
-                    } else {
-                        return folderAcl;
-                    }
+                    return p.getInheritanceStrategy().getEffectiveACL(p.getACL(), item);
                 }
             }
         }
@@ -115,17 +100,27 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
     }
 
     @Override
+    @Nonnull
     public Set<String> getGroups() {
-        Set<String> r = new TreeSet<>();
+        Set<String> r = new TreeSet<>(new IdStrategyComparator());
         r.addAll(super.getGroups());
-        for (Job<?, ?> j : Jenkins.getActiveInstance().getItems(Job.class)) {
-            AuthorizationMatrixProperty amp = j.getProperty(AuthorizationMatrixProperty.class);
-            if (amp != null) {
-                r.addAll(amp.getGroups());
+        for (Job<?, ?> j : Jenkins.getInstance().getAllItems(Job.class)) {
+            AzureAdAuthorizationMatrixProperty jobProperty = j.getProperty(AzureAdAuthorizationMatrixProperty.class);
+            if (jobProperty != null) {
+                r.addAll(jobProperty.getGroups());
+            }
+        }
+        for (AbstractFolder<?> j : Jenkins.getInstance().getAllItems(AbstractFolder.class)) {
+            AzureAdAuthorizationMatrixFolderProperty folderProperty =
+                    j.getProperties().get(AzureAdAuthorizationMatrixFolderProperty.class);
+            if (folderProperty != null) {
+                r.addAll(folderProperty.getGroups());
             }
         }
         return r;
     }
+
+    // Copy ended
 
     @Override
     public void add(Permission p, String sid) {
@@ -167,7 +162,7 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
             return null;
         }
 
-        SecurityRealm realm = Jenkins.getActiveInstance().getSecurityRealm();
+        SecurityRealm realm = Jenkins.getInstance().getSecurityRealm();
         if (!(realm instanceof AzureSecurityRealm)) {
             return null;
         }
@@ -216,19 +211,13 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
             return "Azure Active Directory Matrix-based security";
         }
 
-        public AutoCompletionCandidates doAutoCompleteUserOrGroup(@QueryParameter String value)
-                throws ExecutionException, IOException, InterruptedException {
+        public AutoCompletionCandidates doAutoCompleteUserOrGroup(@QueryParameter String value) throws IOException {
             return searchAndGenerateCandidates(value);
         }
     }
 
     @Restricted(DoNotUse.class)
-    public static class ConverterImpl extends ProjectMatrixAuthorizationStrategy.ConverterImpl {
-
-        public ConverterImpl(Mapper m) {
-            super(m);
-        }
-
+    public static class ConverterImpl extends GlobalMatrixAuthorizationStrategy.ConverterImpl {
         @Override
         public GlobalMatrixAuthorizationStrategy create() {
             return new AzureAdMatrixAuthorizationStrategy();
