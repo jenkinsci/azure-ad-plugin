@@ -12,6 +12,8 @@ import org.acegisecurity.userdetails.UserDetails;
 import org.jose4j.jwt.JwtClaims;
 
 import java.util.Collection;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public final class AzureAdUser implements UserDetails {
 
@@ -48,9 +50,21 @@ public final class AzureAdUser implements UserDetails {
         user.tenantID = (String) claims.getClaimValue("tid");
         user.objectID = (String) claims.getClaimValue("oid");
         user.email = (String) claims.getClaimValue("email");
+
         if (user.objectID == null || user.userName == null) {
             throw new BadCredentialsException("Invalid id token: " + claims.toJson());
         }
+
+        if (user.email == null || user.email.isEmpty()) {
+            String emailRegEx = "^(.*#)?([A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,6})$";
+            Pattern r = Pattern.compile(emailRegEx, Pattern.CASE_INSENSITIVE);
+            Matcher m = r.matcher(user.uniqueName);
+
+            if (m.find()) {
+                user.email = m.group(2);
+            }
+        }
+
         return user;
     }
 
