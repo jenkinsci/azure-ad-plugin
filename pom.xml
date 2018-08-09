@@ -119,7 +119,17 @@
             <groupId>com.microsoft.azure</groupId>
             <artifactId>azure</artifactId>
             <version>${azuresdk.version}</version>
-            <type>jar</type>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.microsoft.azure</groupId>
+                    <artifactId>azure-client-runtime</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.microsoft.azure</groupId>
+            <artifactId>azure-client-runtime</artifactId>
+            <version>1.5.4</version>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
@@ -136,7 +146,7 @@
         <dependency>
             <groupId>commons-codec</groupId>
             <artifactId>commons-codec</artifactId>
-            <version>1.10</version>
+            <version>1.11</version>
         </dependency>
         <dependency>
             <groupId>javax.mail</groupId>
