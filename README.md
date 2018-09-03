@@ -3,19 +3,17 @@ A Jenkins Plugin that supports authentication & authorization via Azure Active D
 
 ## Setup In Azure Active Directory
 
-Open `Azure Active Directory`, in `Properties`, copy Directory ID, it will be used as `tenant` in Jenkins
+1. Open `Azure Active Directory`, in `Properties`, copy Directory ID, it will be used as `tenant` in Jenkins.
 
-Register an application in AAD, copy the `Application ID`, it will be used as `Client ID`
+1. Register an application in AAD, copy the `Application ID`, it will be used as `Client ID`.
 
-In Application setting page, add a new entry [http://{your_jenkins_host}/securityRealm/finishLogin](http://{your-jenkins-domain}/securityRealm/finishLogin)
+1. In Application setting page, add a new Reply URL `http://{your_jenkins_host}/securityRealm/finishLogin`. Make sure variable `jenkinsURL` set as `http://{your_jenkins_host}` for the file `jenkins.model.JenkinsLocationConfiguration.xml` in the `$JENKINS_HOME` folder.
 
-In Application setting page, click `Keys`, generate a new key, copy the `value`, it will be used as `Client Secret` in Jenkins.
+1. In Application setting page, click `Keys`, generate a new key, copy the `value`, it will be used as `Client Secret` in Jenkins.
 
-In Application setting page, click `Required Permissions` and select `Windows Azure Active Directory`, then select `Read directory data` permissions in Application permissions section
+1. In Application setting page, click `Required Permissions` and select `Windows Azure Active Directory`, then select `Read directory data` permissions in Application permissions section
 
-Click `Grant Permissions`. If you are not an admin in your tenant, please contact admin to grant the permissions which declared as `require admin` in `Enable Access` page
-
-Wait for the permissions taking effects.
+1. Click `Grant Permissions`. If you are not an admin in your tenant, please contact admin to grant the permissions which declared as `require admin` in `Enable Access` page. Wait for the permissions taking effects.
 
 
 ## Setup In Jenkins
