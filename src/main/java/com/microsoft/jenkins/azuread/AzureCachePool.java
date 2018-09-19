@@ -3,6 +3,7 @@ package com.microsoft.jenkins.azuread;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.microsoft.azure.management.Azure;
+import com.microsoft.azure.management.graphrbac.implementation.UserGetMemberGroupsParametersInner;
 
 import java.util.Collection;
 import java.util.List;
@@ -31,7 +32,10 @@ public final class AzureCachePool {
             Collection<String> result = belongingGroupsByOid.get(oid, new Callable<Collection<String>>() {
                 @Override
                 public Collection<String> call() throws Exception {
-                    List<String> groups = azure.activeDirectoryUsers().inner().getMemberGroups(oid, false);
+                    UserGetMemberGroupsParametersInner getMemberGroupsParam = new UserGetMemberGroupsParametersInner()
+                            .withSecurityEnabledOnly(false);
+                    List<String> groups = azure.activeDirectoryUsers().inner().getMemberGroups(oid,
+                            getMemberGroupsParam);
                     return groups;
                 }
             });
