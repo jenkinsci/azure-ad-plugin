@@ -55,14 +55,7 @@ public class AzureAuthenticationToken implements Authentication {
 
     @Override
     public String getName() {
-        return (azureAdUser != null ? getShortUpn(azureAdUser.getUsername()) : null);
-    }
-
-    private String getShortUpn(String username) {
-        if (username.contains("@")) {
-            return username.substring(0, username.indexOf('@'));
-        }
-        return username;
+        return (azureAdUser != null ? azureAdUser.getUniqueName() : null);
     }
 
     public AzureAdUser getAzureAdUser() {
