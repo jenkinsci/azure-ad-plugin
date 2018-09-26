@@ -40,7 +40,7 @@ public class AzureAuthenticationToken implements Authentication {
 
     @Override
     public Object getPrincipal() {
-        return azureAdUser.getObjectID();
+        return azureAdUser.getUniqueName();
     }
 
     @Override
