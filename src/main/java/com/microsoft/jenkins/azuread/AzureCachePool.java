@@ -44,7 +44,7 @@ public final class AzureCachePool {
             }
             return result;
         } catch (ExecutionException e) {
-            LOGGER.log(Level.WARNING, "Failed to retrive the belonging group of " + oid, e);
+            LOGGER.log(Level.WARNING, "Failed to retrieve the belonging group of " + oid, e);
             return null;
         }
 
