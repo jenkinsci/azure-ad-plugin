@@ -9,13 +9,13 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
-import hudson.util.TimeUnit2;
 import org.jose4j.jwk.HttpsJwks;
 import org.jose4j.jwt.consumer.JwtConsumer;
 import org.jose4j.jwt.consumer.JwtConsumerBuilder;
 import org.jose4j.keys.resolvers.HttpsJwksVerificationKeyResolver;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 public class Utils {
@@ -55,7 +55,7 @@ public class Utils {
     }
 
     public static class JwtUtil {
-        public static final long DEFAULT_CACHE_DURATION = TimeUnit2.HOURS.toSeconds(24);
+        public static final long DEFAULT_CACHE_DURATION = TimeUnit.HOURS.toSeconds(24);
         public static final String KEYSTORE_URL = "https://login.microsoftonline.com/common/discovery/keys";
 
         public static JwtConsumer jwt(final String clientId, final String tenantId) {
