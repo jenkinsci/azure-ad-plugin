@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.3.2 (2019-01-18)
+* Fix seed authentication issue
+
 ## 0.3.1 (2018-09-19)
 * Upgrade Azure commons to 0.2.7
 * Use UPN as Jenkins user id
