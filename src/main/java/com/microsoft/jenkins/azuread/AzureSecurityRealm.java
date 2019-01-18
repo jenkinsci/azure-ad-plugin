@@ -208,7 +208,7 @@ public class AzureSecurityRealm extends SecurityRealm {
             if (u != null) {
                 String description = generateDescription(auth);
                 u.setDescription(description);
-                u.setFullName(auth.getAzureAdUser().getUsername());
+                u.setFullName(auth.getAzureAdUser().getName());
             }
             SecurityListener.fireAuthenticated(userDetails);
             AzureAdPlugin.sendLoginEvent(

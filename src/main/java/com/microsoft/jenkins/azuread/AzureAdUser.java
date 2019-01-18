@@ -17,7 +17,7 @@ import java.util.regex.Pattern;
 
 public final class AzureAdUser implements UserDetails {
 
-    private String userName;
+    private String name;
 
     private String givenName;
 
@@ -43,7 +43,7 @@ public final class AzureAdUser implements UserDetails {
         }
 
         AzureAdUser user = new AzureAdUser();
-        user.userName = (String) claims.getClaimValue("name");
+        user.name = (String) claims.getClaimValue("name");
         user.givenName = (String) claims.getClaimValue("given_name");
         user.familyName = (String) claims.getClaimValue("family_name");
         user.uniqueName = (String) claims.getClaimValue("unique_name");
@@ -51,7 +51,7 @@ public final class AzureAdUser implements UserDetails {
         user.objectID = (String) claims.getClaimValue("oid");
         user.email = (String) claims.getClaimValue("email");
 
-        if (user.objectID == null || user.userName == null) {
+        if (user.objectID == null || user.name == null) {
             throw new BadCredentialsException("Invalid id token: " + claims.toJson());
         }
 
@@ -86,7 +86,7 @@ public final class AzureAdUser implements UserDetails {
 
         AzureAdUser that = (AzureAdUser) o;
 
-        if (userName != null ? !userName.equals(that.userName) : that.userName != null) return false;
+        if (name != null ? !name.equals(that.name) : that.name != null) return false;
         if (givenName != null ? !givenName.equals(that.givenName) : that.givenName != null) return false;
         if (familyName != null ? !familyName.equals(that.familyName) : that.familyName != null) return false;
         if (uniqueName != null ? !uniqueName.equals(that.uniqueName) : that.uniqueName != null) return false;
@@ -97,7 +97,7 @@ public final class AzureAdUser implements UserDetails {
     @SuppressWarnings({"checkstyle:magicnumber"})
     @Override
     public int hashCode() {
-        int result = userName != null ? userName.hashCode() : 0;
+        int result = name != null ? name.hashCode() : 0;
         result = 31 * result + (givenName != null ? givenName.hashCode() : 0);
         result = 31 * result + (familyName != null ? familyName.hashCode() : 0);
         result = 31 * result + (uniqueName != null ? uniqueName.hashCode() : 0);
@@ -118,7 +118,7 @@ public final class AzureAdUser implements UserDetails {
 
     @Override
     public String getUsername() {
-        return this.userName;
+        return getUniqueName();
     }
 
     @Override
@@ -151,6 +151,10 @@ public final class AzureAdUser implements UserDetails {
 
     public String getUniqueName() {
         return uniqueName;
+    }
+
+    public String getName() {
+        return this.name;
     }
 
     public String getFamilyName() {
