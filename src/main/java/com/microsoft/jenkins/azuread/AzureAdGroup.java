@@ -13,12 +13,17 @@ public class AzureAdGroup implements GrantedAuthority {
 
     private String groupName;
 
-    public AzureAdGroup(String objectId) {
+    public AzureAdGroup(String objectId, String groupName) {
         this.objectId = objectId;
+        this.groupName = groupName;
     }
 
     @Override
     public String getAuthority() {
+        return groupName;
+    }
+
+    public String getObjectId() {
         return objectId;
     }
 
@@ -26,7 +31,11 @@ public class AzureAdGroup implements GrantedAuthority {
         return groupName;
     }
 
-    public void setGroupName(String groupName) {
-        this.groupName = groupName;
+    @Override
+    public String toString() {
+        return "AzureAdGroup{"
+                + "objectId='" + objectId + '\''
+                + ", groupName='" + groupName + '\''
+                + '}';
     }
 }

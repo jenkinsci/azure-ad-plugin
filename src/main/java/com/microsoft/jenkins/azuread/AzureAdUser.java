@@ -5,12 +5,15 @@
 
 package com.microsoft.jenkins.azuread;
 
+import com.microsoft.azure.management.graphrbac.ActiveDirectoryGroup;
 import hudson.security.SecurityRealm;
 import org.acegisecurity.BadCredentialsException;
 import org.acegisecurity.GrantedAuthority;
+import org.acegisecurity.GrantedAuthorityImpl;
 import org.acegisecurity.userdetails.UserDetails;
 import org.jose4j.jwt.JwtClaims;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -68,13 +71,15 @@ public final class AzureAdUser implements UserDetails {
         return user;
     }
 
-    public void setAuthorities(Collection<String> groups) {
-        GrantedAuthority[] newAuthorities = new GrantedAuthority[groups.size() + 1];
+    public void setAuthorities(Collection<ActiveDirectoryGroup> groups) {
+        GrantedAuthority[] newAuthorities = new GrantedAuthority[groups.size() * 2 + 2];
         int i = 0;
-        for (String objectId : groups) {
-            newAuthorities[i++] = new AzureAdGroup(objectId);
+        for (ActiveDirectoryGroup group : groups) {
+            newAuthorities[i++] = new AzureAdGroup(group.id(), group.name());
+            newAuthorities[i++] = new GrantedAuthorityImpl(group.id());
         }
-        newAuthorities[i] = SecurityRealm.AUTHENTICATED_AUTHORITY;
+        newAuthorities[i++] = SecurityRealm.AUTHENTICATED_AUTHORITY;
+        newAuthorities[i] = new GrantedAuthorityImpl(objectID);
         this.authorities = newAuthorities;
     }
 
@@ -167,6 +172,20 @@ public final class AzureAdUser implements UserDetails {
 
     public String getEmail() {
         return email;
+    }
+
+    @Override
+    public String toString() {
+        return "AzureAdUser{"
+                + "name='" + name + '\''
+                + ", givenName='" + givenName + '\''
+                + ", familyName='" + familyName + '\''
+                + ", uniqueName='" + uniqueName + '\''
+                + ", tenantID='" + tenantID + '\''
+                + ", objectID='" + objectID + '\''
+                + ", email='" + email + '\''
+                + ", authorities=" + Arrays.toString(authorities)
+                + '}';
     }
 }
 
