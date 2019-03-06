@@ -14,6 +14,7 @@ import com.microsoft.azure.AzureEnvironment;
 import com.microsoft.azure.credentials.ApplicationTokenCredentials;
 import com.microsoft.azure.credentials.AzureTokenCredentials;
 import com.microsoft.azure.management.Azure;
+import com.microsoft.azure.management.graphrbac.ActiveDirectoryGroup;
 import com.microsoft.jenkins.azuread.scribe.AzureApi;
 import com.microsoft.jenkins.azuread.scribe.AzureOAuthService;
 import com.microsoft.jenkins.azurecommons.core.AzureClientFactory;
@@ -239,7 +240,7 @@ public class AzureSecurityRealm extends SecurityRealm {
             throw new IllegalStateException("Invalid nonce in the response");
         }
         final AzureAdUser userDetails = AzureAdUser.createFromJwt(claims);
-        final Collection<String> groups = AzureCachePool.get(getAzureClient())
+        final Collection<ActiveDirectoryGroup> groups = AzureCachePool.get(getAzureClient())
                 .getBelongingGroupsByOid(userDetails.getObjectID());
         userDetails.setAuthorities(groups);
         return userDetails;
