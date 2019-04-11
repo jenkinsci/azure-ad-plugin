@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.3.3 (2019-04-11)
+* Support named groups and users
+
 ## 0.3.2 (2019-01-18)
 * Fix seed authentication issue
 
