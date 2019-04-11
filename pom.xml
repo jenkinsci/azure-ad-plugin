@@ -48,7 +48,7 @@
         <jenkins.version>2.60.1</jenkins.version>
         <java.level>8</java.level>
         <azuresdk.version>1.15.1</azuresdk.version>
-        <azure-commons.version>0.2.7</azure-commons.version>
+        <azure-commons.version>0.2.10</azure-commons.version>
         <jackson.version>2.9.4</jackson.version>
     </properties>
 
@@ -129,7 +129,7 @@
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpclient</artifactId>
-            <version>4.5.3</version>
+            <version>4.5.7</version>
         </dependency>
 
         <!--fix the requireUpperBounds errors-->
