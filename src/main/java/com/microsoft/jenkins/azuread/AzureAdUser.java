@@ -11,6 +11,7 @@ import org.acegisecurity.BadCredentialsException;
 import org.acegisecurity.GrantedAuthority;
 import org.acegisecurity.GrantedAuthorityImpl;
 import org.acegisecurity.userdetails.UserDetails;
+import org.apache.commons.lang.StringUtils;
 import org.jose4j.jwt.JwtClaims;
 
 import java.util.Arrays;
@@ -49,7 +50,10 @@ public final class AzureAdUser implements UserDetails {
         user.name = (String) claims.getClaimValue("name");
         user.givenName = (String) claims.getClaimValue("given_name");
         user.familyName = (String) claims.getClaimValue("family_name");
-        user.uniqueName = (String) claims.getClaimValue("unique_name");
+        user.uniqueName = (String) claims.getClaimValue("upn");
+        if (StringUtils.isEmpty(user.uniqueName)) {
+            user.uniqueName = (String) claims.getClaimValue("preferred_username");
+        }
         user.tenantID = (String) claims.getClaimValue("tid");
         user.objectID = (String) claims.getClaimValue("oid");
         user.email = (String) claims.getClaimValue("email");

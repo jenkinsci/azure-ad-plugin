@@ -42,8 +42,8 @@ import org.acegisecurity.context.SecurityContextHolder;
 import org.acegisecurity.userdetails.UserDetails;
 import org.acegisecurity.userdetails.UserDetailsService;
 import org.acegisecurity.userdetails.UsernameNotFoundException;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.jose4j.jwt.JwtClaims;
 import org.jose4j.jwt.consumer.InvalidJwtException;
 import org.jose4j.jwt.consumer.JwtConsumer;
@@ -143,7 +143,7 @@ public class AzureSecurityRealm extends SecurityRealm {
         AzureOAuthService service = (AzureOAuthService) new ServiceBuilder(clientId.getPlainText())
                 .apiSecret(clientSecret.getPlainText())
                 .responseType("id_token")
-                .scope("openid")
+                .scope("openid profile email")
                 .callback(getRootUrl() + CALLBACK_URL)
                 .build(AzureApi.instance(Constants.DEFAULT_GRAPH_ENDPOINT, this.getTenant()));
         return service;

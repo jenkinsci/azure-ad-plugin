@@ -48,11 +48,11 @@ public class AzureApi extends DefaultApi20 {
 
     @Override
     public String getAccessTokenEndpoint() {
-        return getBaseEndpoint() + "/token";
+        return getBaseEndpoint() + "/v2.0/token";
     }
     @Override
     protected String getAuthorizationBaseUrl() {
-        return getBaseEndpoint() + "/authorize";
+        return getBaseEndpoint() + "/v2.0/authorize";
     }
 
     @Override
