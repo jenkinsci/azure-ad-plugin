@@ -305,7 +305,7 @@ public class AzureSecurityRealm extends SecurityRealm {
             writer.endNode();
 
             writer.startNode("clientsecret");
-            writer.setValue(realm.getClientSecret());
+            writer.setValue(realm.getClientSecretSecret());
             writer.endNode();
 
             writer.startNode("tenant");
