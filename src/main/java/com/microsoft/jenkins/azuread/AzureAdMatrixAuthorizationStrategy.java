@@ -8,6 +8,7 @@ package com.microsoft.jenkins.azuread;
 import com.cloudbees.hudson.plugins.folder.AbstractFolder;
 import com.microsoft.azure.PagedList;
 import com.microsoft.azure.management.Azure;
+import com.microsoft.azure.management.graphrbac.GraphErrorException;
 import com.microsoft.azure.management.graphrbac.implementation.ADGroupInner;
 import com.microsoft.azure.management.graphrbac.implementation.UserInner;
 import hudson.Extension;
@@ -170,25 +171,29 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
 
         List<AzureObject> candidates = new ArrayList<>();
         LOGGER.info("search users with prefix: " + prefix);
-        PagedList<UserInner> matchedUsers = authenticated.activeDirectoryUsers().inner()
-                .list(String.format("startswith(displayName,'%s') or startswith(mail, '%s')", prefix, prefix));
-        for (UserInner user : matchedUsers.currentPage().items()) {
-            candidates.add(new AzureObject(user.objectId(), user.displayName()));
-            if (candidates.size() > maxCandidates) {
-                break;
-            }
-        }
-
-        if (!matchedUsers.hasNextPage()) {
-            LOGGER.info("search groups with prefix " + prefix);
-            PagedList<ADGroupInner> matchedGroups = authenticated.activeDirectoryGroups()
-                    .inner().list("startswith(displayName,'" + prefix + "')");
-            for (ADGroupInner group : matchedGroups.currentPage().items()) {
-                candidates.add(new AzureObject(group.objectId(), group.displayName()));
+        try {
+            PagedList<UserInner> matchedUsers = authenticated.activeDirectoryUsers().inner()
+                    .list(String.format("startswith(displayName,'%s') or startswith(mail, '%s')", prefix, prefix));
+            for (UserInner user : matchedUsers.currentPage().items()) {
+                candidates.add(new AzureObject(user.objectId(), user.displayName()));
                 if (candidates.size() > maxCandidates) {
                     break;
                 }
             }
+
+            if (!matchedUsers.hasNextPage()) {
+                LOGGER.info("search groups with prefix " + prefix);
+                PagedList<ADGroupInner> matchedGroups = authenticated.activeDirectoryGroups()
+                        .inner().list("startswith(displayName,'" + prefix + "')");
+                for (ADGroupInner group : matchedGroups.currentPage().items()) {
+                    candidates.add(new AzureObject(group.objectId(), group.displayName()));
+                    if (candidates.size() > maxCandidates) {
+                        break;
+                    }
+                }
+            }
+        } catch (GraphErrorException e) {
+            LOGGER.warning("Do not have sufficient privileges to search related users or groups");
         }
 
         AutoCompletionCandidates c = new AutoCompletionCandidates();

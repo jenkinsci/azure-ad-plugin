@@ -4,6 +4,7 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.microsoft.azure.management.Azure;
 import com.microsoft.azure.management.graphrbac.ActiveDirectoryGroup;
+import com.microsoft.azure.management.graphrbac.GraphErrorException;
 import com.microsoft.azure.management.graphrbac.implementation.UserGetMemberGroupsParametersInner;
 
 import java.util.ArrayList;
@@ -37,10 +38,18 @@ public final class AzureCachePool {
                 public Collection<ActiveDirectoryGroup> call() throws Exception {
                     UserGetMemberGroupsParametersInner getMemberGroupsParam = new UserGetMemberGroupsParametersInner()
                             .withSecurityEnabledOnly(false);
-                    List<String> groups = azure.activeDirectoryUsers().inner().getMemberGroups(oid,
-                            getMemberGroupsParam);
-
                     List<ActiveDirectoryGroup> activeDirectoryGroups = new ArrayList<>();
+                    List<String> groups;
+                    try {
+
+                        groups = azure.activeDirectoryUsers().inner().getMemberGroups(oid,
+                                getMemberGroupsParam);
+                    } catch (GraphErrorException e) {
+                        LOGGER.warning("Do not have sufficient privileges to "
+                                + "fetch your belonging groups' authorities.");
+                        return activeDirectoryGroups;
+                    }
+
 
                     for (String group: groups) {
                         activeDirectoryGroups.add(azure.activeDirectoryGroups().getById(group));

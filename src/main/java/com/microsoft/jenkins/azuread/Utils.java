@@ -59,7 +59,7 @@ public class Utils {
         public static final String KEYSTORE_URL = "https://login.microsoftonline.com/common/discovery/keys";
 
         public static JwtConsumer jwt(final String clientId, final String tenantId) {
-            final String expectedIssuer = String.format("https://sts.windows.net/%s/", tenantId);
+            final String expectedIssuer = String.format("https://login.microsoftonline.com/%s/v2.0", tenantId);
             HttpsJwks httpsJkws = new HttpsJwks(KEYSTORE_URL);
             httpsJkws.setDefaultCacheDuration(DEFAULT_CACHE_DURATION);
             HttpsJwksVerificationKeyResolver httpsJwksKeyResolver = new HttpsJwksVerificationKeyResolver(httpsJkws);
