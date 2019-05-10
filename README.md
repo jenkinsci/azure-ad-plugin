@@ -3,6 +3,8 @@ A Jenkins Plugin that supports authentication & authorization via Azure Active D
 
 ## Setup In Azure Active Directory
 
+1. Make sure your Jenkins server has enabled HTTPS. If your Jenkins instance is created by the [Jenkins Solution Template](https://docs.microsoft.com/en-us/azure/jenkins/install-jenkins-solution-template), you can update your NGINX config file at `/etc/nginx/sites-available/default`. More configuration details can be found [here](http://nginx.org/en/docs/http/configuring_https_servers.html).
+
 1. Open `Azure Active Directory`, in `Properties`, copy Directory ID, it will be used as `tenant` in Jenkins.
 
 1. Register an application in AAD, copy the `Application ID`, it will be used as `Client ID`.
@@ -41,7 +43,7 @@ To enable Azure Authentication, check `Azure Active Directory Matrix-based secur
 
 In version 1.0.0, this plugin upgrades from Microsoft identity platform v1.0 to v2.0. Before you upgrade ad plugin to version 1.0.0, please read following items first.
 
-1. Make sure your Jenkins server has enabled HTTPS. Microsoft identity platform v2.0 forces using HTTPS schema in reply uri for its applications. Please update the reply uri for your AAD application. You also need to update the url setting in `jenkins.model.JenkinsLocationConfiguration.xml` file and restart your Jenkins instance.
+1. Make sure your Jenkins server has enabled HTTPS. Microsoft identity platform v2.0 forces using HTTPS schema in reply uri for its applications. Please update the reply uri for your AAD application. You also need to update the url setting in `jenkins.model.JenkinsLocationConfiguration.xml` file and restart your Jenkins instance. If your Jenkins instance is created by the [Jenkins Solution Template](https://docs.microsoft.com/en-us/azure/jenkins/install-jenkins-solution-template), you can update your NGINX config file at `/etc/nginx/sites-available/default`. More configuration details can be found [here](http://nginx.org/en/docs/http/configuring_https_servers.html).
 
 1. Go to your related AAD application, click `Manifest` to open the inline manifest editor. Replace the `optionalClaims` value as below. You can find more information about [this](https://docs.microsoft.com/en-us/azure/active-directory/develop/active-directory-optional-claims#v20-optional-claims).
 
