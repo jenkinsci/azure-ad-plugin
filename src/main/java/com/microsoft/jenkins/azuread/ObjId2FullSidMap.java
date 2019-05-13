@@ -27,7 +27,6 @@ public class ObjId2FullSidMap extends HashMap<String, String> {
     static String extractObjectId(String fullSid) {
         Matcher matcher = FULL_SID_PATTERN.matcher(fullSid);
         if (matcher.matches()) {
-            String displayName = matcher.group(1);
             String objectId = matcher.group(2);
             return objectId;
         } else {
