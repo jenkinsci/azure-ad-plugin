@@ -14,12 +14,15 @@ import org.acegisecurity.userdetails.UserDetails;
 import org.apache.commons.lang.StringUtils;
 import org.jose4j.jwt.JwtClaims;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class AzureAdUser implements UserDetails {
+    private static final long serialVersionUID = 1779209037664572820L;
 
     private String name;
 
@@ -38,6 +41,11 @@ public final class AzureAdUser implements UserDetails {
     private transient volatile GrantedAuthority[] authorities;
 
     private AzureAdUser() {
+        authorities = new GrantedAuthority[]{SecurityRealm.AUTHENTICATED_AUTHORITY};
+    }
+
+    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+        in.defaultReadObject();
         authorities = new GrantedAuthority[]{SecurityRealm.AUTHENTICATED_AUTHORITY};
     }
 
