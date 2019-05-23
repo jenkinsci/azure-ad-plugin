@@ -16,12 +16,10 @@ import org.jenkinsci.plugins.matrixauth.integrations.PermissionFinder;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 
-import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 @Extension(optional = true)
@@ -48,14 +46,10 @@ public class AzureAdMatrixAuthorizationStrategyConfigurator extends
     @Override
     @NonNull
     public Set<Attribute<AzureAdMatrixAuthorizationStrategy, ?>> describe() {
-        return new HashSet<>(Arrays.asList(
+        return new HashSet<>(Collections.singletonList(
                 new MultivaluedAttribute<AzureAdMatrixAuthorizationStrategy, String>("permissions", String.class)
                         .getter(AzureAdMatrixAuthorizationStrategyConfigurator::getPermissions)
-                        .setter(AzureAdMatrixAuthorizationStrategyConfigurator::setPermissions),
-
-                new MultivaluedAttribute<AzureAdMatrixAuthorizationStrategy, String>("grantedPermissions", String.class)
-                        .getter(unused -> null)
-                        .setter(AzureAdMatrixAuthorizationStrategyConfigurator::setPermissionsDeprecated)
+                        .setter(AzureAdMatrixAuthorizationStrategyConfigurator::setPermissions)
         ));
     }
 
@@ -68,7 +62,6 @@ public class AzureAdMatrixAuthorizationStrategyConfigurator extends
     public CNode describe(AzureAdMatrixAuthorizationStrategy instance, ConfigurationContext context) throws Exception {
         return compare(instance, new AzureAdMatrixAuthorizationStrategy(), context);
     }
-
 
     /**
      * Extract container's permissions as a List of "PERMISSION:sid".
@@ -93,14 +86,4 @@ public class AzureAdMatrixAuthorizationStrategyConfigurator extends
             container.add(permission, p.substring(i + 1));
         });
     }
-
-    /**
-     * Like {@link #setPermissions(AuthorizationContainer, Collection)} but logs a deprecation warning.
-     */
-    public static void setPermissionsDeprecated(AuthorizationContainer container, Collection<String> permissions) {
-        LOGGER.log(Level.WARNING, "Loading deprecated attribute 'grantedPermissions' for instance of '"
-                + container.getClass().getName() + "'. Use 'permissions' instead.");
-        setPermissions(container, permissions);
-    }
-
 }
