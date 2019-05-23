@@ -5,19 +5,31 @@ import com.microsoft.jenkins.azuread.AzureSecurityRealm;
 import hudson.model.Item;
 import hudson.security.AuthorizationStrategy;
 import hudson.security.SecurityRealm;
+import io.jenkins.plugins.casc.ConfigurationContext;
+import io.jenkins.plugins.casc.Configurator;
+import io.jenkins.plugins.casc.ConfiguratorRegistry;
 import io.jenkins.plugins.casc.misc.ConfiguredWithCode;
 import io.jenkins.plugins.casc.misc.JenkinsConfiguredWithCodeRule;
+import io.jenkins.plugins.casc.model.CNode;
+import io.jenkins.plugins.casc.model.Mapping;
+import io.jenkins.plugins.casc.model.Scalar;
 import jenkins.model.Jenkins;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.LoggerRule;
+import org.jvnet.hudson.test.recipes.LocalData;
 
+import java.util.List;
 import java.util.logging.Level;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class ConfigAsCodeTest {
+    private static final String TEST_UPN = "abc@jenkins.com";
+
     @Rule
     public JenkinsConfiguredWithCodeRule j = new JenkinsConfiguredWithCodeRule();
 
@@ -40,18 +52,39 @@ public class ConfigAsCodeTest {
         { // global
             assertEquals("one real user sid", 2, azureAdMatrixAuthorizationStrategy.getAllSIDs().size());
             assertTrue("anon can read", azureAdMatrixAuthorizationStrategy.hasExplicitPermission("anonymous", Jenkins.READ));
-            assertTrue("authenticated can read", azureAdMatrixAuthorizationStrategy.hasExplicitPermission("upn", Jenkins.READ));
+            assertTrue("authenticated can read", azureAdMatrixAuthorizationStrategy.hasExplicitPermission(TEST_UPN, Jenkins.READ));
             assertTrue("authenticated can build", azureAdMatrixAuthorizationStrategy.hasExplicitPermission("authenticated", Item.BUILD));
-            assertTrue("authenticated can delete jobs", azureAdMatrixAuthorizationStrategy.hasExplicitPermission("upn", Item.DELETE));
-            assertTrue("authenticated can administer", azureAdMatrixAuthorizationStrategy.hasExplicitPermission("upn", Jenkins.ADMINISTER));
+            assertTrue("authenticated can delete jobs", azureAdMatrixAuthorizationStrategy.hasExplicitPermission(TEST_UPN, Item.DELETE));
+            assertTrue("authenticated can administer", azureAdMatrixAuthorizationStrategy.hasExplicitPermission(TEST_UPN, Jenkins.ADMINISTER));
         }
 
         assertEquals("no warnings", 0, l.getMessages().size());
     }
 
     @Test
-    @ConfiguredWithCode("configuration-as-code.yml")
+    @LocalData
     public void export_configuration() throws Exception {
+        ConfiguratorRegistry registry = ConfiguratorRegistry.get();
+        ConfigurationContext context = new ConfigurationContext(registry);
 
+        SecurityRealm securityRealm = j.jenkins.getSecurityRealm();
+        Configurator realmConfigurator = context.lookupOrFail(AzureSecurityRealm.class);
+        @SuppressWarnings("unchecked")
+        CNode realmNode = realmConfigurator.describe(securityRealm, context);
+        assertNotNull(realmNode);
+        Mapping realMapping = realmNode.asMapping();
+        assertEquals(3, realMapping.size());
+        assertEquals("{clientId}", realMapping.getScalarValue("clientId"));
+
+        AuthorizationStrategy authorizationStrategy = j.jenkins.getAuthorizationStrategy();
+        Configurator c = context.lookupOrFail(AzureAdMatrixAuthorizationStrategy.class);
+
+        @SuppressWarnings("unchecked")
+        CNode node = c.describe(authorizationStrategy, context);
+        assertNotNull(node);
+        Mapping mapping = node.asMapping();
+
+        List<CNode> permissions = mapping.get("permissions").asSequence();
+        assertEquals("list size", 18, permissions.size());
     }
 }
