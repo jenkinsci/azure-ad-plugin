@@ -350,7 +350,6 @@ public class AzureSecurityRealm extends SecurityRealm {
     }
 
     @Extension
-    @Symbol("azureSecurityRealm")
     public static final class DescriptorImpl extends Descriptor<SecurityRealm> {
 
         @Override
