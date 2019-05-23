@@ -50,7 +50,7 @@
         <azuresdk.version>1.15.1</azuresdk.version>
         <azure-commons.version>1.0.2</azure-commons.version>
         <jackson.version>2.9.8</jackson.version>
-        <configuration-as-code.version>1.12</configuration-as-code.version>
+        <configuration-as-code.version>1.16</configuration-as-code.version>
     </properties>
 
     <repositories>
