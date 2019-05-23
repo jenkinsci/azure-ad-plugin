@@ -39,7 +39,6 @@ public class AzureAdMatrixAuthorizationStrategyConfigurator extends
         return AzureAdMatrixAuthorizationStrategy.class;
     }
 
-
     @NonNull
     @Override
     public Class getImplementedAPI() {
@@ -54,7 +53,6 @@ public class AzureAdMatrixAuthorizationStrategyConfigurator extends
                         .getter(AzureAdMatrixAuthorizationStrategyConfigurator::getPermissions)
                         .setter(AzureAdMatrixAuthorizationStrategyConfigurator::setPermissions),
 
-                // support old style configuration options
                 new MultivaluedAttribute<AzureAdMatrixAuthorizationStrategy, String>("grantedPermissions", String.class)
                         .getter(unused -> null)
                         .setter(AzureAdMatrixAuthorizationStrategyConfigurator::setPermissionsDeprecated)
@@ -105,6 +103,4 @@ public class AzureAdMatrixAuthorizationStrategyConfigurator extends
         setPermissions(container, permissions);
     }
 
-    private static final Logger LOGGER = Logger
-            .getLogger(AzureAdMatrixAuthorizationStrategyConfigurator.class.getName());
 }
