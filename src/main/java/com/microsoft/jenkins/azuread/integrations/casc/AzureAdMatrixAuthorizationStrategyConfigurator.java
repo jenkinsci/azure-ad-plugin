@@ -24,7 +24,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-@Extension(optional = true, ordinal = 2)
+@Extension(optional = true)
 @Restricted(NoExternalUse.class)
 public class AzureAdMatrixAuthorizationStrategyConfigurator extends
         BaseConfigurator<AzureAdMatrixAuthorizationStrategy> {
