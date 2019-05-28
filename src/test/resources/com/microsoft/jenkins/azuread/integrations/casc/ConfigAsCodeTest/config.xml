@@ -26,9 +26,9 @@
         <permission>hudson.model.View.Delete:abc (abc@jenkins.com)</permission>
     </authorizationStrategy>
     <securityRealm class="com.microsoft.jenkins.azuread.AzureSecurityRealm">
-        <clientid>{clientId}</clientid>
-        <clientsecret>{clientSecret}</clientsecret>
-        <tenant>{tenantId}</tenant>
+        <clientid>clientId</clientid>
+        <clientsecret>password</clientsecret>
+        <tenant>tenantId</tenant>
     </securityRealm>
     <disableRememberMe>false</disableRememberMe>
     <projectNamingStrategy class="jenkins.model.ProjectNamingStrategy$DefaultProjectNamingStrategy"/>

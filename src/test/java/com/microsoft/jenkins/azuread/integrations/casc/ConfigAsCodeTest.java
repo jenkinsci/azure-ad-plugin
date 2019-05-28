@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.logging.Level;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -40,6 +41,9 @@ public class ConfigAsCodeTest {
         SecurityRealm securityRealm = j.jenkins.getSecurityRealm();
         assertTrue("security realm", securityRealm instanceof AzureSecurityRealm);
         AzureSecurityRealm azureSecurityRealm = (AzureSecurityRealm) securityRealm;
+        assertNotEquals("clientId", azureSecurityRealm.getClientIdSecret());
+        assertNotEquals("clientSecret", azureSecurityRealm.getClientSecretSecret());
+        assertNotEquals("tenantId", azureSecurityRealm.getTenantSecret());
         assertEquals("clientId", azureSecurityRealm.getClientId());
         assertEquals("clientSecret", azureSecurityRealm.getClientSecret());
         assertEquals("tenantId", azureSecurityRealm.getTenant());
@@ -71,7 +75,12 @@ public class ConfigAsCodeTest {
         assertNotNull(realmNode);
         Mapping realMapping = realmNode.asMapping();
         assertEquals(3, realMapping.size());
-        assertEquals("{clientId}", realMapping.getScalarValue("clientId"));
+
+        AzureSecurityRealm azureSecurityRealm = (AzureSecurityRealm) securityRealm;
+        String encryptedClientSecret = azureSecurityRealm.getClientSecretSecret();
+        String clientSecret = realMapping.getScalarValue("clientSecret");
+        assertNotEquals(clientSecret, encryptedClientSecret);
+        assertEquals(clientSecret, azureSecurityRealm.getClientSecret());
 
         AuthorizationStrategy authorizationStrategy = j.jenkins.getAuthorizationStrategy();
         Configurator c = context.lookupOrFail(AzureAdMatrixAuthorizationStrategy.class);
