@@ -51,6 +51,7 @@
         <azuresdk.version>1.15.1</azuresdk.version>
         <azure-commons.version>1.0.2</azure-commons.version>
         <jackson.version>2.9.8</jackson.version>
+        <workflow-cps.version>2.30</workflow-cps.version>
         <configuration-as-code.version>1.16</configuration-as-code.version>
     </properties>
 
@@ -128,6 +129,7 @@
             <version>4.5.7</version>
         </dependency>
 
+        <!-- test dependencies -->
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
@@ -159,6 +161,19 @@
                     <artifactId>groovy-all</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.jenkins-ci.plugins.workflow</groupId>
+            <artifactId>workflow-cps</artifactId>
+            <version>${workflow-cps.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jenkins-ci.plugins.workflow</groupId>
+            <artifactId>workflow-cps</artifactId>
+            <version>${workflow-cps.version}</version>
+            <classifier>tests</classifier>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
