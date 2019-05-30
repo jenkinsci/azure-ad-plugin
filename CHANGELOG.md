@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.0 (2019-05-30)
+**This release includes breaking changes for Azure Identity platform, please follow up wiki to migrate.**
+* Bump Jenkins version to 2.138.3
+* Upgrade Microsoft identity platform from v1.0 to v2.0
+* Add support for configuration as code
+* Admin permission for tenant is no more necessary
+* Jenkins server must enable HTTPS
+
 ## 0.3.3 (2019-04-11)
 * Support named groups and users
 
