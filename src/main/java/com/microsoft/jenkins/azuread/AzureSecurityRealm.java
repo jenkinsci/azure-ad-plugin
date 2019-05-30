@@ -297,6 +297,7 @@ public class AzureSecurityRealm extends SecurityRealm {
             return type == AzureSecurityRealm.class;
         }
 
+        @Override
         public void marshal(Object source, HierarchicalStreamWriter writer, MarshallingContext context) {
             AzureSecurityRealm realm = (AzureSecurityRealm) source;
 
@@ -313,6 +314,7 @@ public class AzureSecurityRealm extends SecurityRealm {
             writer.endNode();
         }
 
+        @Override
         public Object unmarshal(HierarchicalStreamReader reader, UnmarshallingContext context) {
             AzureSecurityRealm realm = new AzureSecurityRealm();
             while (reader.hasMoreChildren()) {
