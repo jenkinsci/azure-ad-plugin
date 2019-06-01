@@ -47,7 +47,7 @@
 
         <jenkins.version>2.138.3</jenkins.version>
         <java.level>8</java.level>
-        <azuresdk.version>1.15.1</azuresdk.version>
+        <azuresdk.version>1.22.0</azuresdk.version>
         <azure-commons.version>1.0.3</azure-commons.version>
         <jackson.version>2.9.8</jackson.version>
         <workflow-cps.version>2.30</workflow-cps.version>
