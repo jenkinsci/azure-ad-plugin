@@ -45,6 +45,7 @@ import org.acegisecurity.userdetails.UsernameNotFoundException;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jose4j.jwt.JwtClaims;
+import org.jose4j.jwt.MalformedClaimException;
 import org.jose4j.jwt.consumer.InvalidJwtException;
 import org.jose4j.jwt.consumer.JwtConsumer;
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -185,7 +186,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                 "response_mode", "form_post")));
     }
 
-    public HttpResponse doFinishLogin(StaplerRequest request) throws InvalidJwtException {
+    public HttpResponse doFinishLogin(StaplerRequest request) throws InvalidJwtException, MalformedClaimException {
         try {
             final Long beginTime = (Long) request.getSession().getAttribute(TIMESTAMP_ATTRIBUTE);
             final String expectedNonce = (String) request.getSession().getAttribute(NONCE_ATTRIBUTE);
@@ -233,7 +234,8 @@ public class AzureSecurityRealm extends SecurityRealm {
         }
     }
 
-    AzureAdUser validateAndParseIdToken(String expectedNonce, String idToken) throws InvalidJwtException {
+    AzureAdUser validateAndParseIdToken(String expectedNonce, String idToken)
+        throws InvalidJwtException, MalformedClaimException {
         JwtClaims claims = getJwtConsumer().processToClaims(idToken);
         final String responseNonce = (String) claims.getClaimValue("nonce");
         if (StringUtils.isAnyEmpty(expectedNonce, responseNonce) || !expectedNonce.equals(responseNonce)) {
@@ -395,7 +397,8 @@ public class AzureSecurityRealm extends SecurityRealm {
                     + "\nUnique Principal Name: " + user.getUniqueName()
                     + "\nEmail: " + user.getEmail()
                     + "\nObject ID: " + user.getObjectID()
-                    + "\nTenant ID: " + user.getTenantID() + "\n";
+                    + "\nTenant ID: " + user.getTenantID()
+                    + "\nGroups: " + user.getGroupOIDs() + "\n";
         }
         return "";
     }

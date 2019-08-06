@@ -13,11 +13,14 @@ import org.acegisecurity.GrantedAuthorityImpl;
 import org.acegisecurity.userdetails.UserDetails;
 import org.apache.commons.lang.StringUtils;
 import org.jose4j.jwt.JwtClaims;
+import org.jose4j.jwt.MalformedClaimException;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -38,6 +41,8 @@ public final class AzureAdUser implements UserDetails {
 
     private String email;
 
+    private List<String> groupOIDs;
+
     private transient volatile GrantedAuthority[] authorities;
 
     private AzureAdUser() {
@@ -49,7 +54,7 @@ public final class AzureAdUser implements UserDetails {
         authorities = new GrantedAuthority[]{SecurityRealm.AUTHENTICATED_AUTHORITY};
     }
 
-    public static AzureAdUser createFromJwt(JwtClaims claims) {
+    public static AzureAdUser createFromJwt(JwtClaims claims) throws MalformedClaimException {
         if (claims == null) {
             return null;
         }
@@ -65,6 +70,10 @@ public final class AzureAdUser implements UserDetails {
         user.tenantID = (String) claims.getClaimValue("tid");
         user.objectID = (String) claims.getClaimValue("oid");
         user.email = (String) claims.getClaimValue("email");
+        user.groupOIDs = claims.getStringListClaimValue("groups");
+        if (user.groupOIDs == null) {
+            user.groupOIDs = new LinkedList<>();
+        }
 
         if (user.objectID == null || user.name == null) {
             throw new BadCredentialsException("Invalid id token: " + claims.toJson());
@@ -84,11 +93,20 @@ public final class AzureAdUser implements UserDetails {
     }
 
     public void setAuthorities(Collection<ActiveDirectoryGroup> groups) {
-        GrantedAuthority[] newAuthorities = new GrantedAuthority[groups.size() * 2 + 2];
+        GrantedAuthority[] newAuthorities;
         int i = 0;
-        for (ActiveDirectoryGroup group : groups) {
-            newAuthorities[i++] = new AzureAdGroup(group.id(), group.name());
-            newAuthorities[i++] = new GrantedAuthorityImpl(group.id());
+        if (!groups.isEmpty()) {
+            newAuthorities = new GrantedAuthority[groups.size() * 2 + 2];
+            for (ActiveDirectoryGroup group : groups) {
+                newAuthorities[i++] = new AzureAdGroup(group.id(), group.name());
+                newAuthorities[i++] = new GrantedAuthorityImpl(group.id());
+            }
+        } else {
+            newAuthorities = new GrantedAuthority[groupOIDs.size() * 2 + 2];
+            for (String groupOID : groupOIDs) {
+                newAuthorities[i++] = new AzureAdGroup(groupOID, groupOID);
+                newAuthorities[i++] = new GrantedAuthorityImpl(groupOID);
+            }
         }
         newAuthorities[i++] = SecurityRealm.AUTHENTICATED_AUTHORITY;
         newAuthorities[i] = new GrantedAuthorityImpl(objectID);
@@ -108,6 +126,7 @@ public final class AzureAdUser implements UserDetails {
         if (familyName != null ? !familyName.equals(that.familyName) : that.familyName != null) return false;
         if (uniqueName != null ? !uniqueName.equals(that.uniqueName) : that.uniqueName != null) return false;
         if (tenantID != null ? !tenantID.equals(that.tenantID) : that.tenantID != null) return false;
+        if (groupOIDs != null ? !groupOIDs.equals(that.groupOIDs) : that.groupOIDs != null) return false;
         return objectID.equals(that.objectID);
     }
 
@@ -119,6 +138,7 @@ public final class AzureAdUser implements UserDetails {
         result = 31 * result + (familyName != null ? familyName.hashCode() : 0);
         result = 31 * result + (uniqueName != null ? uniqueName.hashCode() : 0);
         result = 31 * result + (tenantID != null ? tenantID.hashCode() : 0);
+        result = 31 * result + (groupOIDs != null ? groupOIDs.hashCode() : 0);
         result = 31 * result + objectID.hashCode();
         return result;
     }
@@ -186,6 +206,10 @@ public final class AzureAdUser implements UserDetails {
         return email;
     }
 
+    public List<String> getGroupOIDs() {
+        return groupOIDs;
+    }
+
     @Override
     public String toString() {
         return "AzureAdUser{"
@@ -196,6 +220,7 @@ public final class AzureAdUser implements UserDetails {
                 + ", tenantID='" + tenantID + '\''
                 + ", objectID='" + objectID + '\''
                 + ", email='" + email + '\''
+                + ", groups='" + groupOIDs.toString() + '\''
                 + ", authorities=" + Arrays.toString(authorities)
                 + '}';
     }
