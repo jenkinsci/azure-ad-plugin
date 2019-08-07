@@ -15,14 +15,29 @@ A Jenkins Plugin that supports authentication & authorization via Azure Active D
 
 1. To configure Azure Active Directory Matrix-based security, you have to add your `user/group` value with pattern `userName|groupName (principalName)`. The pattern `userName|groupName (objectId)` still works to make compatible with previous versions.
 
-Below two steps are optional since version 1.0.0. Without these steps:
-- You are not able to have autocompletion when adding user/group in Azure Active Directory Matrix.
-- You do not have the same privileges as the groups you belonged to.
+### Group Support
+
+For group support you have two options:
+
+1. Give Jenkins the right to `Read directory data` in `Azure Active Directory`(Azure admin right required), which in addition to group support also allows to use autocompletion when adding user/group in Azure Active Directory Matrix
+1. Let Azure Active Directory provide the `groups` of an user as part of the id token.
+
+**Option 1:**
+
+Give Jenkins permission to `Read directory data` in `Azure Active Directory` to get autocompletion support in Azure Active Directory Matrix
 
 1. In Application setting page, click `Required Permissions` and select `Windows Azure Active Directory`, then select `Read directory data` permissions in Application permissions section
 
 1. Click `Grant Permissions`. If you are not an admin in your tenant, please contact admin to grant the permissions which declared as `require admin` in `Enable Access` page. Wait for the permissions taking effects.
 
+**Option 2:**
+
+Let Azure Active Directory provide the `groups` of an user as part of the id token.
+
+1. In Azure Application settings, click `Authentication` and mark the `ID tokens` checkbox under `Advanced Settings -> Implicit grant`. Save settings.
+1. In Azure Application settings, click `Manifest` and modify the `"groupMembershipClaims": "None"` value to `"groupMembershipClaims": "SecurityGroup"`. Save manifest.
+1. To setup group based authentication in Jenkins, you should search and take note of the groups `Object Id` and `Name` you want to use for Jenkins authorization.
+1. In Jenkins configure `Azure Active Directory Matrix`-based security and add the noted down groups one-by-one in the following notation: `groupName (objectId)`
 
 ## Setup In Jenkins
 
