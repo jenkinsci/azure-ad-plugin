@@ -11,6 +11,7 @@ import org.acegisecurity.BadCredentialsException;
 import org.acegisecurity.GrantedAuthority;
 import org.acegisecurity.GrantedAuthorityImpl;
 import org.acegisecurity.userdetails.UserDetails;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
 import org.jose4j.jwt.JwtClaims;
 import org.jose4j.jwt.MalformedClaimException;
@@ -126,7 +127,11 @@ public final class AzureAdUser implements UserDetails {
         if (familyName != null ? !familyName.equals(that.familyName) : that.familyName != null) return false;
         if (uniqueName != null ? !uniqueName.equals(that.uniqueName) : that.uniqueName != null) return false;
         if (tenantID != null ? !tenantID.equals(that.tenantID) : that.tenantID != null) return false;
-        if (groupOIDs != null ? !groupOIDs.equals(that.groupOIDs) : that.groupOIDs != null) return false;
+        if (groupOIDs != null && that.groupOIDs != null) {
+                if (!CollectionUtils.isEqualCollection(groupOIDs, that.groupOIDs)) return false;
+        } else if (groupOIDs != null || that.groupOIDs != null) {
+            return false;
+        }
         return objectID.equals(that.objectID);
     }
 
