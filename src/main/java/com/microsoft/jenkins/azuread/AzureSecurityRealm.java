@@ -76,6 +76,10 @@ public class AzureSecurityRealm extends SecurityRealm {
     private static final int NONCE_LENGTH = 10;
     public static final String CALLBACK_URL = "/securityRealm/finishLogin";
 
+    static {
+        SecurityContextHolder.setStrategyName(SecurityContextHolder.MODE_INHERITABLETHREADLOCAL);
+    }
+
     private Secret clientId;
     private Secret clientSecret;
     private Secret tenant;
@@ -202,20 +206,28 @@ public class AzureSecurityRealm extends SecurityRealm {
             }
             // validate the nonce to avoid CSRF
             final AzureAdUser userDetails = validateAndParseIdToken(expectedNonce, idToken);
-            final AzureAuthenticationToken auth = new AzureAuthenticationToken(userDetails);
 
-            // Enforce updating current identity
-            SecurityContextHolder.getContext().setAuthentication(auth);
-            User u = User.current();
-            if (u != null) {
-                String description = generateDescription(auth);
-                u.setDescription(description);
-                u.setFullName(auth.getAzureAdUser().getName());
-            }
-            SecurityListener.fireAuthenticated(userDetails);
+            refreshAuthentication(userDetails);
+
             AzureAdPlugin.sendLoginEvent(
                     AppInsightsUtils.hash(userDetails.getObjectID()),
                     AppInsightsUtils.hash(this.getTenant()));
+
+            Runnable runnable = () -> {
+                final Collection<ActiveDirectoryGroup> groups = AzureCachePool.get(getAzureClient())
+                        .getBelongingGroupsByOid(userDetails.getObjectID());
+                if (groups != null) {
+                    userDetails.setAuthorities(groups);
+                    refreshAuthentication(userDetails);
+                }
+            };
+
+            Thread thread = new Thread(runnable);
+            thread.setUncaughtExceptionHandler((th, ex) -> {
+                LOGGER.severe(String.format("Fail to grant group permission: %s", ex.toString()));
+            });
+            thread.start();
+
         } catch (Exception ex) {
             AzureAdPlugin.sendLoginFailEvent(this.getTenant(), ex.getMessage());
             throw ex;
@@ -234,17 +246,28 @@ public class AzureSecurityRealm extends SecurityRealm {
         }
     }
 
+    void refreshAuthentication(AzureAdUser userDetails) {
+        final AzureAuthenticationToken auth = new AzureAuthenticationToken(userDetails);
+
+        // Enforce updating current identity
+        SecurityContextHolder.getContext().setAuthentication(auth);
+        User u = User.current();
+        if (u != null) {
+            String description = generateDescription(auth);
+            u.setDescription(description);
+            u.setFullName(auth.getAzureAdUser().getName());
+        }
+        SecurityListener.fireAuthenticated(userDetails);
+    }
+
     AzureAdUser validateAndParseIdToken(String expectedNonce, String idToken)
-        throws InvalidJwtException, MalformedClaimException {
+            throws InvalidJwtException, MalformedClaimException {
         JwtClaims claims = getJwtConsumer().processToClaims(idToken);
         final String responseNonce = (String) claims.getClaimValue("nonce");
         if (StringUtils.isAnyEmpty(expectedNonce, responseNonce) || !expectedNonce.equals(responseNonce)) {
             throw new IllegalStateException("Invalid nonce in the response");
         }
         final AzureAdUser userDetails = AzureAdUser.createFromJwt(claims);
-        final Collection<ActiveDirectoryGroup> groups = AzureCachePool.get(getAzureClient())
-                .getBelongingGroupsByOid(userDetails.getObjectID());
-        userDetails.setAuthorities(groups);
         return userDetails;
     }
 
