@@ -87,3 +87,6 @@ A: You can disable the security from the config file (see https://wiki.jenkins.i
 
 #### Q: Why getting a error "insufficient privileges to complete the operation" even having granted the permission?
 A: It takes rather long time for the privileges to take effect, which could be 10-20 minutes. So just wait for a while and try again.
+
+#### Q: Why group users may miss permission at first time?
+A: It takes a little long time to grant permissions to all groups users. So just wait for a while and refresh the page.

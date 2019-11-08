@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0 (2019-11-08)
+* Support group based authorization without 'Read directory data' permission
+* Fix Slowness issue on initial authorization
+
 ## 1.0.0 (2019-05-30)
 **This release includes breaking changes for Azure Identity platform, please follow up wiki to migrate.**
 * Bump Jenkins version to 2.138.3
