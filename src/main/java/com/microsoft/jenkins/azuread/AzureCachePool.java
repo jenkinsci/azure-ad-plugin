@@ -9,6 +9,7 @@ import com.microsoft.azure.management.graphrbac.implementation.UserGetMemberGrou
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -34,37 +35,37 @@ public final class AzureCachePool {
         try {
             Collection<ActiveDirectoryGroup> result = belongingGroupsByOid.get(oid,
                     new Callable<Collection<ActiveDirectoryGroup>>() {
-                @Override
-                public Collection<ActiveDirectoryGroup> call() throws Exception {
-                    UserGetMemberGroupsParametersInner getMemberGroupsParam = new UserGetMemberGroupsParametersInner()
-                            .withSecurityEnabledOnly(false);
-                    List<ActiveDirectoryGroup> activeDirectoryGroups = new ArrayList<>();
-                    List<String> groups;
-                    try {
+                        @Override
+                        public Collection<ActiveDirectoryGroup> call() throws Exception {
+                            UserGetMemberGroupsParametersInner getMemberGroupsParam =
+                                    new UserGetMemberGroupsParametersInner().withSecurityEnabledOnly(false);
+                            List<ActiveDirectoryGroup> activeDirectoryGroups = new ArrayList<>();
+                            List<String> groups;
+                            try {
 
-                        groups = azure.activeDirectoryUsers().inner().getMemberGroups(oid,
-                                getMemberGroupsParam);
-                    } catch (GraphErrorException e) {
-                        LOGGER.warning("Do not have sufficient privileges to "
-                                + "fetch your belonging groups' authorities.");
-                        return activeDirectoryGroups;
-                    }
+                                groups = azure.activeDirectoryUsers().inner().getMemberGroups(oid,
+                                        getMemberGroupsParam);
+                            } catch (GraphErrorException e) {
+                                LOGGER.warning("Do not have sufficient privileges to "
+                                        + "fetch your belonging groups' authorities.");
+                                return activeDirectoryGroups;
+                            }
 
 
-                    for (String group: groups) {
-                        activeDirectoryGroups.add(azure.activeDirectoryGroups().getById(group));
-                    }
+                            for (String group : groups) {
+                                activeDirectoryGroups.add(azure.activeDirectoryGroups().getById(group));
+                            }
 
-                    return activeDirectoryGroups;
-                }
-            });
+                            return activeDirectoryGroups;
+                        }
+                    });
             if (Constants.DEBUG) {
                 belongingGroupsByOid.invalidate(oid);
             }
             return result;
         } catch (ExecutionException e) {
             LOGGER.log(Level.WARNING, "Failed to retrieve the belonging group of " + oid, e);
-            return null;
+            return Collections.emptyList();
         }
 
     }

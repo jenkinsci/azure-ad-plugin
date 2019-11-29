@@ -29,6 +29,7 @@
         <clientid>clientId</clientid>
         <clientsecret>password</clientsecret>
         <tenant>tenantId</tenant>
+        <cacheduration>0</cacheduration>
     </securityRealm>
     <disableRememberMe>false</disableRememberMe>
     <projectNamingStrategy class="jenkins.model.ProjectNamingStrategy$DefaultProjectNamingStrategy"/>

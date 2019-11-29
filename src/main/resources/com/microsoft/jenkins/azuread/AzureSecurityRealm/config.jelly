@@ -18,6 +18,10 @@
             <f:textbox />
         </f:entry>
 
+        <f:entry title="Cache Duration" field="cacheDuration" help="/plugin/azure-ad/help/help-cache-duration.html">
+            <f:textbox />
+        </f:entry>
+
         <f:validateButton title="Verify Application" method="verifyConfiguration" progress="Verifying..." with="clientId,clientSecret,tenant" ></f:validateButton>
     </f:block>
 </j:jelly>
