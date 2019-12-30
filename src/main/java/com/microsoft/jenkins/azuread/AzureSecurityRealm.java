@@ -9,6 +9,8 @@ import com.github.scribejava.core.builder.ServiceBuilder;
 import com.github.scribejava.core.oauth.OAuth20Service;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.ImmutableMap;
 import com.microsoft.azure.AzureEnvironment;
 import com.microsoft.azure.credentials.ApplicationTokenCredentials;
@@ -64,6 +66,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -75,14 +78,18 @@ public class AzureSecurityRealm extends SecurityRealm {
     private static final Logger LOGGER = Logger.getLogger(AzureSecurityRealm.class.getName());
     private static final int NONCE_LENGTH = 10;
     public static final String CALLBACK_URL = "/securityRealm/finishLogin";
+    private static final String CONVERTER_NODE_CLIENT_ID = "clientid";
+    private static final String CONVERTER_NODE_CLIENT_SECRET = "clientsecret";
+    private static final String CONVERTER_NODE_TENANT = "tenant";
+    private static final String CONVERTER_NODE_CACHE_DURATION = "cacheduration";
+    private static final int LOGGED_EMAIL_LENGTH = 3;
 
-    static {
-        SecurityContextHolder.setStrategyName(SecurityContextHolder.MODE_INHERITABLETHREADLOCAL);
-    }
+    private Cache<String, AzureAdUser> caches;
 
     private Secret clientId;
     private Secret clientSecret;
     private Secret tenant;
+    private int cacheDuration;
     private Supplier<Azure.Authenticated> cachedAzureClient = Suppliers.memoize(new Supplier<Azure.Authenticated>() {
         @Override
         public Azure.Authenticated get() {
@@ -140,6 +147,18 @@ public class AzureSecurityRealm extends SecurityRealm {
         this.tenant = Secret.fromString(tenant);
     }
 
+    public int getCacheDuration() {
+        return cacheDuration;
+    }
+
+    public void setCacheDuration(int cacheDuration) {
+        this.cacheDuration = cacheDuration;
+    }
+
+    public void setCaches(Cache<String, AzureAdUser> caches) {
+        this.caches = caches;
+    }
+
     public JwtConsumer getJwtConsumer() {
         return jwtConsumer.get();
     }
@@ -165,12 +184,15 @@ public class AzureSecurityRealm extends SecurityRealm {
     }
 
     @DataBoundConstructor
-    public AzureSecurityRealm(String tenant, String clientId, String clientSecret)
-            throws ExecutionException, IOException, InterruptedException {
+    public AzureSecurityRealm(String tenant, String clientId, String clientSecret, int cacheDuration) {
         super();
         this.clientId = Secret.fromString(clientId);
         this.clientSecret = Secret.fromString(clientSecret);
         this.tenant = Secret.fromString(tenant);
+        this.cacheDuration = cacheDuration;
+        caches = CacheBuilder.newBuilder()
+                .expireAfterWrite(cacheDuration, TimeUnit.SECONDS)
+                .build();
     }
 
 
@@ -190,7 +212,8 @@ public class AzureSecurityRealm extends SecurityRealm {
                 "response_mode", "form_post")));
     }
 
-    public HttpResponse doFinishLogin(StaplerRequest request) throws InvalidJwtException, MalformedClaimException {
+    public HttpResponse doFinishLogin(StaplerRequest request)
+            throws InvalidJwtException, MalformedClaimException, ExecutionException {
         try {
             final Long beginTime = (Long) request.getSession().getAttribute(TIMESTAMP_ATTRIBUTE);
             final String expectedNonce = (String) request.getSession().getAttribute(NONCE_ATTRIBUTE);
@@ -205,30 +228,35 @@ public class AzureSecurityRealm extends SecurityRealm {
                 throw new IllegalStateException("Can't extract id_token");
             }
             // validate the nonce to avoid CSRF
-            final AzureAdUser userDetails = validateAndParseIdToken(expectedNonce, idToken);
+            final JwtClaims claims = validateIdToken(expectedNonce, idToken);
+            String key = (String) claims.getClaimValue("email");
 
-            refreshAuthentication(userDetails);
 
+            AzureAdUser userDetails = caches.get(key, () -> {
+                final AzureAdUser user = AzureAdUser.createFromJwt(claims);
+                final Collection<ActiveDirectoryGroup> groups = AzureCachePool.get(getAzureClient())
+                        .getBelongingGroupsByOid(user.getObjectID());
+                user.setAuthorities(groups);
+                LOGGER.info(String.format("Fetch user details for %s***", key.substring(0, LOGGED_EMAIL_LENGTH)));
+                return user;
+            });
+            final AzureAuthenticationToken auth = new AzureAuthenticationToken(userDetails);
             AzureAdPlugin.sendLoginEvent(
                     AppInsightsUtils.hash(userDetails.getObjectID()),
                     AppInsightsUtils.hash(this.getTenant()));
 
-            Runnable runnable = () -> {
-                final Collection<ActiveDirectoryGroup> groups = AzureCachePool.get(getAzureClient())
-                        .getBelongingGroupsByOid(userDetails.getObjectID());
-                if (groups != null) {
-                    userDetails.setAuthorities(groups);
-                    refreshAuthentication(userDetails);
-                }
-            };
 
-            Thread thread = new Thread(runnable);
-            thread.setUncaughtExceptionHandler((th, ex) -> {
-                LOGGER.severe(String.format("Fail to grant group permission: %s", ex.toString()));
-            });
-            thread.start();
-
+            // Enforce updating current identity
+            SecurityContextHolder.getContext().setAuthentication(auth);
+            User u = User.current();
+            if (u != null) {
+                String description = generateDescription(auth);
+                u.setDescription(description);
+                u.setFullName(auth.getAzureAdUser().getName());
+            }
+            SecurityListener.fireAuthenticated(userDetails);
         } catch (Exception ex) {
+            LOGGER.log(Level.SEVERE, "error", ex);
             AzureAdPlugin.sendLoginFailEvent(this.getTenant(), ex.getMessage());
             throw ex;
         } finally {
@@ -246,29 +274,14 @@ public class AzureSecurityRealm extends SecurityRealm {
         }
     }
 
-    void refreshAuthentication(AzureAdUser userDetails) {
-        final AzureAuthenticationToken auth = new AzureAuthenticationToken(userDetails);
-
-        // Enforce updating current identity
-        SecurityContextHolder.getContext().setAuthentication(auth);
-        User u = User.current();
-        if (u != null) {
-            String description = generateDescription(auth);
-            u.setDescription(description);
-            u.setFullName(auth.getAzureAdUser().getName());
-        }
-        SecurityListener.fireAuthenticated(userDetails);
-    }
-
-    AzureAdUser validateAndParseIdToken(String expectedNonce, String idToken)
+    JwtClaims validateIdToken(String expectedNonce, String idToken)
             throws InvalidJwtException, MalformedClaimException {
         JwtClaims claims = getJwtConsumer().processToClaims(idToken);
         final String responseNonce = (String) claims.getClaimValue("nonce");
         if (StringUtils.isAnyEmpty(expectedNonce, responseNonce) || !expectedNonce.equals(responseNonce)) {
             throw new IllegalStateException("Invalid nonce in the response");
         }
-        final AzureAdUser userDetails = AzureAdUser.createFromJwt(claims);
-        return userDetails;
+        return claims;
     }
 
     @Override
@@ -326,16 +339,20 @@ public class AzureSecurityRealm extends SecurityRealm {
         public void marshal(Object source, HierarchicalStreamWriter writer, MarshallingContext context) {
             AzureSecurityRealm realm = (AzureSecurityRealm) source;
 
-            writer.startNode("clientid");
+            writer.startNode(CONVERTER_NODE_CLIENT_ID);
             writer.setValue(realm.getClientIdSecret());
             writer.endNode();
 
-            writer.startNode("clientsecret");
+            writer.startNode(CONVERTER_NODE_CLIENT_SECRET);
             writer.setValue(realm.getClientSecretSecret());
             writer.endNode();
 
-            writer.startNode("tenant");
+            writer.startNode(CONVERTER_NODE_TENANT);
             writer.setValue(realm.getTenantSecret());
+            writer.endNode();
+
+            writer.startNode(CONVERTER_NODE_CACHE_DURATION);
+            writer.setValue(String.valueOf(realm.getCacheDuration()));
             writer.endNode();
         }
 
@@ -346,15 +363,28 @@ public class AzureSecurityRealm extends SecurityRealm {
                 reader.moveDown();
                 String node = reader.getNodeName();
                 String value = reader.getValue();
-                if (node.equals("clientid")) {
-                    realm.setClientId(value);
-                } else if (node.equals("clientsecret")) {
-                    realm.setClientSecret(value);
-                } else if (node.equals("tenant")) {
-                    realm.setTenant(value);
+                switch (node) {
+                    case CONVERTER_NODE_CLIENT_ID:
+                        realm.setClientId(value);
+                        break;
+                    case CONVERTER_NODE_CLIENT_SECRET:
+                        realm.setClientSecret(value);
+                        break;
+                    case CONVERTER_NODE_TENANT:
+                        realm.setTenant(value);
+                        break;
+                    case CONVERTER_NODE_CACHE_DURATION:
+                        realm.setCacheDuration(Integer.parseInt(value));
+                        break;
+                    default:
+                        break;
                 }
                 reader.moveUp();
             }
+            Cache<String, AzureAdUser> caches = CacheBuilder.newBuilder()
+                    .expireAfterWrite(realm.getCacheDuration(), TimeUnit.SECONDS)
+                    .build();
+            realm.setCaches(caches);
             return realm;
         }
 
