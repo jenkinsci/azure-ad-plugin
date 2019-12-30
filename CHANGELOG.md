@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.1.1 (2019-12-30)
+* Add cache for information of authenticated users
+
 ## 1.1.0 (2019-11-08)
 * Support group based authorization without 'Read directory data' permission
 * Fix Slowness issue on initial authorization
