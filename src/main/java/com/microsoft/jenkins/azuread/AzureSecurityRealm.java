@@ -191,7 +191,7 @@ public class AzureSecurityRealm extends SecurityRealm {
         this.tenant = Secret.fromString(tenant);
         this.cacheDuration = cacheDuration;
         caches = CacheBuilder.newBuilder()
-                .expireAfterWrite(cacheDuration, TimeUnit.HOURS)
+                .expireAfterWrite(cacheDuration, TimeUnit.SECONDS)
                 .build();
     }
 
@@ -382,7 +382,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                 reader.moveUp();
             }
             Cache<String, AzureAdUser> caches = CacheBuilder.newBuilder()
-                    .expireAfterWrite(realm.getCacheDuration(), TimeUnit.HOURS)
+                    .expireAfterWrite(realm.getCacheDuration(), TimeUnit.SECONDS)
                     .build();
             realm.setCaches(caches);
             return realm;
