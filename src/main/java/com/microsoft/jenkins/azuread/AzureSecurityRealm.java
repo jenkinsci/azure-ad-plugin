@@ -229,7 +229,7 @@ public class AzureSecurityRealm extends SecurityRealm {
             }
             // validate the nonce to avoid CSRF
             final JwtClaims claims = validateIdToken(expectedNonce, idToken);
-            String key = (String) claims.getClaimValue("email");
+            String key = (String) claims.getClaimValue("sub");
 
 
             AzureAdUser userDetails = caches.get(key, () -> {
