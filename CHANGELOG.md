@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.1.2 (2020-01-07)
+* Fix cache key missing issue
+
 ## 1.1.1 (2019-12-30)
 * Add cache for information of authenticated users
 
