@@ -82,7 +82,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     private static final String CONVERTER_NODE_CLIENT_SECRET = "clientsecret";
     private static final String CONVERTER_NODE_TENANT = "tenant";
     private static final String CONVERTER_NODE_CACHE_DURATION = "cacheduration";
-    private static final int LOGGED_EMAIL_LENGTH = 3;
+    private static final int CACHE_KEY_LOG_LENGTH = 8;
 
     private Cache<String, AzureAdUser> caches;
 
@@ -237,7 +237,8 @@ public class AzureSecurityRealm extends SecurityRealm {
                 final Collection<ActiveDirectoryGroup> groups = AzureCachePool.get(getAzureClient())
                         .getBelongingGroupsByOid(user.getObjectID());
                 user.setAuthorities(groups);
-                LOGGER.info(String.format("Fetch user details for %s***", key.substring(0, LOGGED_EMAIL_LENGTH)));
+                LOGGER.info(String.format("Fetch user details with sub: %s***",
+                        key.substring(0, CACHE_KEY_LOG_LENGTH)));
                 return user;
             });
             final AzureAuthenticationToken auth = new AzureAuthenticationToken(userDetails);
