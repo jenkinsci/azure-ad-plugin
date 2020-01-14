@@ -51,7 +51,7 @@
         <java.level>8</java.level>
         <azuresdk.version>1.22.0</azuresdk.version>
         <azure-commons.version>1.0.3</azure-commons.version>
-        <jackson.version>2.10.0</jackson.version>
+        <jackson.version>2.10.2</jackson.version>
         <workflow-cps.version>2.30</workflow-cps.version>
         <configuration-as-code.version>1.35</configuration-as-code.version>
     </properties>
