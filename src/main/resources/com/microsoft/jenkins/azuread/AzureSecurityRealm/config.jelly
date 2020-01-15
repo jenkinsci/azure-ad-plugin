@@ -18,6 +18,10 @@
             <f:textbox />
         </f:entry>
 
+        <f:entry title="Callback URL from request" field="fromRequest" help="/plugin/azure-ad/help/help-from-request.html">
+            <f:checkbox />
+        </f:entry>
+
         <f:validateButton title="Verify Application" method="verifyConfiguration" progress="Verifying..." with="clientId,clientSecret,tenant" ></f:validateButton>
     </f:block>
 </j:jelly>

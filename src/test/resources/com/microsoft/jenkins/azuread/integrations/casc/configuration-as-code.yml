@@ -37,3 +37,4 @@ jenkins:
       clientid: "clientId"
       clientsecret: "clientSecret"
       tenant: "tenantId"
+      fromrequest: true

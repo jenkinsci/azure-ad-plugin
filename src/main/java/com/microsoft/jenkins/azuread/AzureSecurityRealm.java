@@ -83,6 +83,8 @@ public class AzureSecurityRealm extends SecurityRealm {
     private Secret clientId;
     private Secret clientSecret;
     private Secret tenant;
+    private boolean fromRequest = false;
+
     private Supplier<Azure.Authenticated> cachedAzureClient = Suppliers.memoize(new Supplier<Azure.Authenticated>() {
         @Override
         public Azure.Authenticated get() {
@@ -140,6 +142,17 @@ public class AzureSecurityRealm extends SecurityRealm {
         this.tenant = Secret.fromString(tenant);
     }
 
+    public boolean isFromRequest() {
+        return fromRequest;
+    }
+
+    public void setFromRequest(boolean fromrequest) {
+        this.fromRequest = fromrequest;
+    }
+
+    public void setFromRequest(String fromrequest) {
+        this.fromRequest = Boolean.parseBoolean(fromrequest);
+    }
     public JwtConsumer getJwtConsumer() {
         return jwtConsumer.get();
     }
@@ -161,16 +174,29 @@ public class AzureSecurityRealm extends SecurityRealm {
 
     private String getRootUrl() {
         Jenkins jenkins = Jenkins.getInstance();
+        if (isFromRequest()) {
+            return StringUtils.stripEnd(jenkins.getRootUrlFromRequest(), "/");
+        }
         return StringUtils.stripEnd(jenkins.getRootUrl(), "/");
     }
 
     @DataBoundConstructor
+    public AzureSecurityRealm(String tenant, String clientId, String clientSecret, boolean fromRequest)
+            throws ExecutionException, IOException, InterruptedException {
+        super();
+        this.clientId = Secret.fromString(clientId);
+        this.clientSecret = Secret.fromString(clientSecret);
+        this.tenant = Secret.fromString(tenant);
+        this.fromRequest = fromRequest;
+    }
+
     public AzureSecurityRealm(String tenant, String clientId, String clientSecret)
             throws ExecutionException, IOException, InterruptedException {
         super();
         this.clientId = Secret.fromString(clientId);
         this.clientSecret = Secret.fromString(clientSecret);
         this.tenant = Secret.fromString(tenant);
+
     }
 
 
@@ -324,6 +350,7 @@ public class AzureSecurityRealm extends SecurityRealm {
 
         @Override
         public void marshal(Object source, HierarchicalStreamWriter writer, MarshallingContext context) {
+
             AzureSecurityRealm realm = (AzureSecurityRealm) source;
 
             writer.startNode("clientid");
@@ -336,6 +363,10 @@ public class AzureSecurityRealm extends SecurityRealm {
 
             writer.startNode("tenant");
             writer.setValue(realm.getTenantSecret());
+            writer.endNode();
+
+            writer.startNode("fromrequest");
+            writer.setValue(Boolean.toString(realm.isFromRequest()));
             writer.endNode();
         }
 
@@ -352,6 +383,8 @@ public class AzureSecurityRealm extends SecurityRealm {
                     realm.setClientSecret(value);
                 } else if (node.equals("tenant")) {
                     realm.setTenant(value);
+                } else if (node.equals("fromrequest")) {
+                    realm.setFromRequest(value);
                 }
                 reader.moveUp();
             }
