@@ -38,3 +38,4 @@ jenkins:
       clientsecret: "clientSecret"
       tenant: "tenantId"
       cacheduration: 0
+      fromrequest: true
