@@ -202,7 +202,6 @@ public class AzureSecurityRealm extends SecurityRealm {
     }
 
     @DataBoundConstructor
-
     public AzureSecurityRealm(String tenant, String clientId, String clientSecret, int cacheDuration,
                               boolean fromRequest)
             throws ExecutionException, IOException, InterruptedException {

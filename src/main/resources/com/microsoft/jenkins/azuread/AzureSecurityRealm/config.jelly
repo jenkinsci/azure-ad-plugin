@@ -18,7 +18,6 @@
             <f:textbox />
         </f:entry>
 
-
         <f:entry title="Cache Duration" field="cacheDuration" help="/plugin/azure-ad/help/help-cache-duration.html">
             <f:textbox />
         </f:entry>
