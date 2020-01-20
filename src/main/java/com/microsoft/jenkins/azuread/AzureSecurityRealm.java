@@ -82,7 +82,6 @@ public class AzureSecurityRealm extends SecurityRealm {
     private static final String CONVERTER_NODE_CLIENT_SECRET = "clientsecret";
     private static final String CONVERTER_NODE_TENANT = "tenant";
     private static final String CONVERTER_NODE_CACHE_DURATION = "cacheduration";
-    private static final String CONVERTER_NODE_FROM_REQUEST = "fromrequest";
     private static final int CACHE_KEY_LOG_LENGTH = 8;
 
     private Cache<String, AzureAdUser> caches;
