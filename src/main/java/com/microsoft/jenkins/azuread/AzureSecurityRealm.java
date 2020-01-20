@@ -4,7 +4,6 @@
  */
 
 package com.microsoft.jenkins.azuread;
-
 import com.github.scribejava.core.builder.ServiceBuilder;
 import com.github.scribejava.core.oauth.OAuth20Service;
 import com.google.common.base.Supplier;
@@ -51,12 +50,13 @@ import org.jose4j.jwt.MalformedClaimException;
 import org.jose4j.jwt.consumer.InvalidJwtException;
 import org.jose4j.jwt.consumer.JwtConsumer;
 import org.kohsuke.stapler.DataBoundConstructor;
-import org.kohsuke.stapler.Header;
-import org.kohsuke.stapler.HttpRedirect;
+import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.HttpResponse;
-import org.kohsuke.stapler.HttpResponses;
-import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
+import org.kohsuke.stapler.HttpRedirect;
+import org.kohsuke.stapler.HttpResponses;
+import org.kohsuke.stapler.Header;
+import org.kohsuke.stapler.QueryParameter;
 import org.springframework.dao.DataAccessException;
 
 import javax.servlet.FilterChain;
@@ -166,12 +166,9 @@ public class AzureSecurityRealm extends SecurityRealm {
         return fromRequest;
     }
 
+    @DataBoundSetter
     public void setFromRequest(boolean fromrequest) {
         this.fromRequest = fromrequest;
-    }
-
-    public void setFromRequest(String fromrequest) {
-        this.fromRequest = Boolean.parseBoolean(fromrequest);
     }
 
     public JwtConsumer getJwtConsumer() {
@@ -195,15 +192,12 @@ public class AzureSecurityRealm extends SecurityRealm {
 
     private String getRootUrl() {
         Jenkins jenkins = Jenkins.getInstance();
-        if (isFromRequest()) {
-            return StringUtils.stripEnd(jenkins.getRootUrlFromRequest(), "/");
-        }
-        return StringUtils.stripEnd(jenkins.getRootUrl(), "/");
+        String url = isFromRequest() ? jenkins.getRootUrlFromRequest() : jenkins.getRootUrl();
+        return StringUtils.stripEnd(url, "/");
     }
 
     @DataBoundConstructor
-    public AzureSecurityRealm(String tenant, String clientId, String clientSecret, int cacheDuration,
-                              boolean fromRequest)
+    public AzureSecurityRealm(String tenant, String clientId, String clientSecret, int cacheDuration)
             throws ExecutionException, IOException, InterruptedException {
         super();
         this.clientId = Secret.fromString(clientId);
@@ -213,7 +207,6 @@ public class AzureSecurityRealm extends SecurityRealm {
         caches = CacheBuilder.newBuilder()
                 .expireAfterWrite(cacheDuration, TimeUnit.SECONDS)
                 .build();
-        this.fromRequest = fromRequest;
     }
 
     public AzureSecurityRealm() {
@@ -376,10 +369,6 @@ public class AzureSecurityRealm extends SecurityRealm {
             writer.startNode(CONVERTER_NODE_CACHE_DURATION);
             writer.setValue(String.valueOf(realm.getCacheDuration()));
             writer.endNode();
-
-            writer.startNode(CONVERTER_NODE_FROM_REQUEST);
-            writer.setValue(Boolean.toString(realm.isFromRequest()));
-            writer.endNode();
         }
 
         @Override
@@ -401,9 +390,6 @@ public class AzureSecurityRealm extends SecurityRealm {
                         break;
                     case CONVERTER_NODE_CACHE_DURATION:
                         realm.setCacheDuration(Integer.parseInt(value));
-                        break;
-                    case CONVERTER_NODE_FROM_REQUEST:
-                        realm.setFromRequest(value);
                         break;
                     default:
                         break;
