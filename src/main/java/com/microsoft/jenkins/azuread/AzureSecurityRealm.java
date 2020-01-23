@@ -82,6 +82,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     private static final String CONVERTER_NODE_CLIENT_SECRET = "clientsecret";
     private static final String CONVERTER_NODE_TENANT = "tenant";
     private static final String CONVERTER_NODE_CACHE_DURATION = "cacheduration";
+    private static final String CONVERTER_NODE_FROM_REQUEST = "fromrequest";
     private static final int CACHE_KEY_LOG_LENGTH = 8;
 
     private Cache<String, AzureAdUser> caches;
@@ -166,8 +167,8 @@ public class AzureSecurityRealm extends SecurityRealm {
     }
 
     @DataBoundSetter
-    public void setFromRequest(boolean fromrequest) {
-        this.fromRequest = fromrequest;
+    public void setFromRequest(boolean fromRequest) {
+        this.fromRequest = fromRequest;
     }
 
     public JwtConsumer getJwtConsumer() {
@@ -367,6 +368,10 @@ public class AzureSecurityRealm extends SecurityRealm {
             writer.startNode(CONVERTER_NODE_CACHE_DURATION);
             writer.setValue(String.valueOf(realm.getCacheDuration()));
             writer.endNode();
+
+            writer.startNode(CONVERTER_NODE_FROM_REQUEST);
+            writer.setValue(String.valueOf(realm.isFromRequest()));
+            writer.endNode();
         }
 
         @Override
@@ -388,6 +393,9 @@ public class AzureSecurityRealm extends SecurityRealm {
                         break;
                     case CONVERTER_NODE_CACHE_DURATION:
                         realm.setCacheDuration(Integer.parseInt(value));
+                        break;
+                    case CONVERTER_NODE_FROM_REQUEST:
+                        realm.setFromRequest(Boolean.parseBoolean(value));
                         break;
                     default:
                         break;

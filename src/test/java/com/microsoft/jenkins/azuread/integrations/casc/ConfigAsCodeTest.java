@@ -76,7 +76,7 @@ public class ConfigAsCodeTest {
         CNode realmNode = realmConfigurator.describe(securityRealm, context);
         assertNotNull(realmNode);
         Mapping realMapping = realmNode.asMapping();
-        assertEquals(4, realMapping.size());
+        assertEquals(5, realMapping.size());
 
         AzureSecurityRealm azureSecurityRealm = (AzureSecurityRealm) securityRealm;
         String encryptedClientSecret = azureSecurityRealm.getClientSecretSecret();
