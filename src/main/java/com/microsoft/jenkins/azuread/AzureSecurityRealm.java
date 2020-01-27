@@ -4,7 +4,6 @@
  */
 
 package com.microsoft.jenkins.azuread;
-
 import com.github.scribejava.core.builder.ServiceBuilder;
 import com.github.scribejava.core.oauth.OAuth20Service;
 import com.google.common.base.Supplier;
@@ -51,12 +50,13 @@ import org.jose4j.jwt.MalformedClaimException;
 import org.jose4j.jwt.consumer.InvalidJwtException;
 import org.jose4j.jwt.consumer.JwtConsumer;
 import org.kohsuke.stapler.DataBoundConstructor;
-import org.kohsuke.stapler.Header;
-import org.kohsuke.stapler.HttpRedirect;
+import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.HttpResponse;
-import org.kohsuke.stapler.HttpResponses;
-import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
+import org.kohsuke.stapler.HttpRedirect;
+import org.kohsuke.stapler.HttpResponses;
+import org.kohsuke.stapler.Header;
+import org.kohsuke.stapler.QueryParameter;
 import org.springframework.dao.DataAccessException;
 
 import javax.servlet.FilterChain;
@@ -82,6 +82,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     private static final String CONVERTER_NODE_CLIENT_SECRET = "clientsecret";
     private static final String CONVERTER_NODE_TENANT = "tenant";
     private static final String CONVERTER_NODE_CACHE_DURATION = "cacheduration";
+    private static final String CONVERTER_NODE_FROM_REQUEST = "fromrequest";
     private static final int CACHE_KEY_LOG_LENGTH = 8;
 
     private Cache<String, AzureAdUser> caches;
@@ -90,6 +91,8 @@ public class AzureSecurityRealm extends SecurityRealm {
     private Secret clientSecret;
     private Secret tenant;
     private int cacheDuration;
+    private boolean fromRequest = false;
+
     private Supplier<Azure.Authenticated> cachedAzureClient = Suppliers.memoize(new Supplier<Azure.Authenticated>() {
         @Override
         public Azure.Authenticated get() {
@@ -159,6 +162,15 @@ public class AzureSecurityRealm extends SecurityRealm {
         this.caches = caches;
     }
 
+    public boolean isFromRequest() {
+        return fromRequest;
+    }
+
+    @DataBoundSetter
+    public void setFromRequest(boolean fromRequest) {
+        this.fromRequest = fromRequest;
+    }
+
     public JwtConsumer getJwtConsumer() {
         return jwtConsumer.get();
     }
@@ -180,7 +192,8 @@ public class AzureSecurityRealm extends SecurityRealm {
 
     private String getRootUrl() {
         Jenkins jenkins = Jenkins.getInstance();
-        return StringUtils.stripEnd(jenkins.getRootUrl(), "/");
+        String url = isFromRequest() ? jenkins.getRootUrlFromRequest() : jenkins.getRootUrl();
+        return StringUtils.stripEnd(url, "/");
     }
 
     @DataBoundConstructor
@@ -194,7 +207,6 @@ public class AzureSecurityRealm extends SecurityRealm {
                 .expireAfterWrite(cacheDuration, TimeUnit.SECONDS)
                 .build();
     }
-
 
     public AzureSecurityRealm() {
         super();
@@ -338,6 +350,7 @@ public class AzureSecurityRealm extends SecurityRealm {
 
         @Override
         public void marshal(Object source, HierarchicalStreamWriter writer, MarshallingContext context) {
+
             AzureSecurityRealm realm = (AzureSecurityRealm) source;
 
             writer.startNode(CONVERTER_NODE_CLIENT_ID);
@@ -354,6 +367,10 @@ public class AzureSecurityRealm extends SecurityRealm {
 
             writer.startNode(CONVERTER_NODE_CACHE_DURATION);
             writer.setValue(String.valueOf(realm.getCacheDuration()));
+            writer.endNode();
+
+            writer.startNode(CONVERTER_NODE_FROM_REQUEST);
+            writer.setValue(String.valueOf(realm.isFromRequest()));
             writer.endNode();
         }
 
@@ -376,6 +393,9 @@ public class AzureSecurityRealm extends SecurityRealm {
                         break;
                     case CONVERTER_NODE_CACHE_DURATION:
                         realm.setCacheDuration(Integer.parseInt(value));
+                        break;
+                    case CONVERTER_NODE_FROM_REQUEST:
+                        realm.setFromRequest(Boolean.parseBoolean(value));
                         break;
                     default:
                         break;
