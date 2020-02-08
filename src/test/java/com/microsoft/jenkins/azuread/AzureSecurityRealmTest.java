@@ -27,6 +27,7 @@ public class AzureSecurityRealmTest {
         BinaryStreamWriter writer = null;
         BinaryStreamReader reader = null;
         try {
+
             AzureSecurityRealm securityRealm = new AzureSecurityRealm("tenant", "clientId", "secret", 0);
             AzureSecurityRealm.ConverterImpl converter = new AzureSecurityRealm.ConverterImpl();
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -40,7 +41,7 @@ public class AzureSecurityRealmTest {
 
             Assert.assertEquals(securityRealm.getTenant(), result.getTenant());
             Assert.assertEquals(securityRealm.getClientId(), result.getClientId());
-            Assert.assertEquals(securityRealm.getClientSecret(), result.getClientSecret());
+            Assert.assertEquals(securityRealm.getClientSecret().getPlainText(), result.getClientSecret().getPlainText());
             Assert.assertEquals(securityRealm.getCacheDuration(), result.getCacheDuration());
         } finally {
             if (writer != null) {
@@ -58,6 +59,7 @@ public class AzureSecurityRealmTest {
         try {
             String secretString = "thisIsSpecialSecret";
             AzureSecurityRealm securityRealm = new AzureSecurityRealm("tenant", "clientId", secretString, 0);
+
             AzureSecurityRealm.ConverterImpl converter = new AzureSecurityRealm.ConverterImpl();
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             writer = new BinaryStreamWriter(outputStream);
