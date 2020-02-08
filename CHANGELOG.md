@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.0 (2020-02-08)
+* Enable setting callbackurl from request
+* Fix some security vulnerability
+
 ## 1.1.2 (2020-01-07)
 * Fix cache key missing issue
 
