@@ -103,7 +103,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                     .authenticate(new ApplicationTokenCredentials(
                             getClientId(),
                             getTenant(),
-                            getClientSecret(),
+                            getClientSecret().getPlainText(),
                             AzureEnvironment.AZURE));
         }
     });
@@ -134,8 +134,8 @@ public class AzureSecurityRealm extends SecurityRealm {
         this.clientId = Secret.fromString(clientId);
     }
 
-    public String getClientSecret() {
-        return clientSecret.getPlainText();
+    public Secret getClientSecret() {
+        return clientSecret;
     }
 
     public void setClientSecret(String clientSecret) {

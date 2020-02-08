@@ -45,7 +45,7 @@ public class ConfigAsCodeTest {
         assertNotEquals("clientSecret", azureSecurityRealm.getClientSecretSecret());
         assertNotEquals("tenantId", azureSecurityRealm.getTenantSecret());
         assertEquals("clientId", azureSecurityRealm.getClientId());
-        assertEquals("clientSecret", azureSecurityRealm.getClientSecret());
+        assertEquals("clientSecret", azureSecurityRealm.getClientSecret().getPlainText());
         assertEquals("tenantId", azureSecurityRealm.getTenant());
         assertEquals(0, azureSecurityRealm.getCacheDuration());
         assertTrue(azureSecurityRealm.isFromRequest());
@@ -81,8 +81,7 @@ public class ConfigAsCodeTest {
         AzureSecurityRealm azureSecurityRealm = (AzureSecurityRealm) securityRealm;
         String encryptedClientSecret = azureSecurityRealm.getClientSecretSecret();
         String clientSecret = realMapping.getScalarValue("clientSecret");
-        assertNotEquals(clientSecret, encryptedClientSecret);
-        assertEquals(clientSecret, azureSecurityRealm.getClientSecret());
+        assertEquals(clientSecret, encryptedClientSecret);
 
         AuthorizationStrategy authorizationStrategy = j.jenkins.getAuthorizationStrategy();
         Configurator c = context.lookupOrFail(AzureAdMatrixAuthorizationStrategy.class);

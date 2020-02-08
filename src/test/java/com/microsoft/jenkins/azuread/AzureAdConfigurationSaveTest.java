@@ -34,7 +34,7 @@ public class AzureAdConfigurationSaveTest {
             assertThat(result.isFromRequest(), is(true));
             assertThat(result.getTenant(), is(TENANT));
             assertThat(result.getClientId(), is(CLIENT_ID));
-            assertThat(result.getClientSecret(), is(CLIENT_SECRET));
+            assertThat(result.getClientSecret().getPlainText(), is(CLIENT_SECRET));
             assertThat(result.getCacheDuration(), is(CACHE_DURATION));
 
         });
@@ -44,7 +44,7 @@ public class AzureAdConfigurationSaveTest {
             assertThat(result.isFromRequest(), is(true));
             assertThat(result.getTenant(), is(TENANT));
             assertThat(result.getClientId(), is(CLIENT_ID));
-            assertThat(result.getClientSecret(), is(CLIENT_SECRET));
+            assertThat(result.getClientSecret().getPlainText(), is(CLIENT_SECRET));
             assertThat(result.getCacheDuration(), is(CACHE_DURATION));
 
         });
