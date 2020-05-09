@@ -415,9 +415,11 @@ public class AzureSecurityRealm extends SecurityRealm {
                         break;
                     case CONVERTER_NODE_UNWANTED_USERNAME_SUFFIXES:
                         realm.setUnwantedUsernameSuffixes(value);
+                        break;
                     default:
                         break;
                 }
+
                 reader.moveUp();
             }
             Cache<String, AzureAdUser> caches = CacheBuilder.newBuilder()
