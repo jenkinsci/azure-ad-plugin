@@ -55,7 +55,8 @@ public final class AzureAdUser implements UserDetails {
         authorities = new GrantedAuthority[]{SecurityRealm.AUTHENTICATED_AUTHORITY};
     }
 
-    public static AzureAdUser createFromJwt(JwtClaims claims) throws MalformedClaimException {
+    public static AzureAdUser createFromJwt(JwtClaims claims, String unwantedUsernameSuffixes)
+            throws MalformedClaimException {
         if (claims == null) {
             return null;
         }
@@ -68,6 +69,14 @@ public final class AzureAdUser implements UserDetails {
         if (StringUtils.isEmpty(user.uniqueName)) {
             user.uniqueName = (String) claims.getClaimValue("preferred_username");
         }
+        for (String suffix : unwantedUsernameSuffixes.split(",")) {
+            if (user.uniqueName.endsWith(suffix)) {
+                int idx = user.uniqueName.lastIndexOf(suffix);
+                user.uniqueName = user.uniqueName.substring(0, idx);
+                break;
+            }
+        }
+
         user.tenantID = (String) claims.getClaimValue("tid");
         user.objectID = (String) claims.getClaimValue("oid");
         user.email = (String) claims.getClaimValue("email");

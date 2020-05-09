@@ -76,7 +76,7 @@ public class ConfigAsCodeTest {
         CNode realmNode = realmConfigurator.describe(securityRealm, context);
         assertNotNull(realmNode);
         Mapping realMapping = realmNode.asMapping();
-        assertEquals(5, realMapping.size());
+        assertEquals(6, realMapping.size());
 
         AzureSecurityRealm azureSecurityRealm = (AzureSecurityRealm) securityRealm;
         String encryptedClientSecret = azureSecurityRealm.getClientSecretSecret();
@@ -90,6 +90,9 @@ public class ConfigAsCodeTest {
         CNode node = c.describe(authorizationStrategy, context);
         assertNotNull(node);
         Mapping mapping = node.asMapping();
+
+        String unwantedUsernameSuffixes = azureSecurityRealm.getUnwantedUsernameSuffixes();
+        assertEquals("suffix", unwantedUsernameSuffixes);
 
         List<CNode> permissions = mapping.get("permissions").asSequence();
         assertEquals("list size", 18, permissions.size());

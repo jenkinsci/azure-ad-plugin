@@ -83,6 +83,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     private static final String CONVERTER_NODE_TENANT = "tenant";
     private static final String CONVERTER_NODE_CACHE_DURATION = "cacheduration";
     private static final String CONVERTER_NODE_FROM_REQUEST = "fromrequest";
+    private static final String CONVERTER_NODE_UNWANTED_USERNAME_SUFFIXES = "unwantedusernamesuffixes";
     private static final int CACHE_KEY_LOG_LENGTH = 8;
 
     private Cache<String, AzureAdUser> caches;
@@ -92,6 +93,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     private Secret tenant;
     private int cacheDuration;
     private boolean fromRequest = false;
+    private String unwantedUsernameSuffixes = "";
 
     private Supplier<Azure.Authenticated> cachedAzureClient = Suppliers.memoize(new Supplier<Azure.Authenticated>() {
         @Override
@@ -175,6 +177,14 @@ public class AzureSecurityRealm extends SecurityRealm {
         return jwtConsumer.get();
     }
 
+    public String getUnwantedUsernameSuffixes() {
+        return unwantedUsernameSuffixes;
+    }
+
+    public void setUnwantedUsernameSuffixes(String unwantedUsernameSuffixes) {
+        this.unwantedUsernameSuffixes = unwantedUsernameSuffixes;
+    }
+
     AzureOAuthService getOAuthService() {
         AzureOAuthService service = (AzureOAuthService) new ServiceBuilder(clientId.getPlainText())
                 .apiSecret(clientSecret.getPlainText())
@@ -197,12 +207,14 @@ public class AzureSecurityRealm extends SecurityRealm {
     }
 
     @DataBoundConstructor
-    public AzureSecurityRealm(String tenant, String clientId, String clientSecret, int cacheDuration) {
+    public AzureSecurityRealm(String tenant, String clientId, String clientSecret, int cacheDuration,
+                              String unwantedUsernameSuffixes) {
         super();
         this.clientId = Secret.fromString(clientId);
         this.clientSecret = Secret.fromString(clientSecret);
         this.tenant = Secret.fromString(tenant);
         this.cacheDuration = cacheDuration;
+        this.unwantedUsernameSuffixes = unwantedUsernameSuffixes;
         caches = CacheBuilder.newBuilder()
                 .expireAfterWrite(cacheDuration, TimeUnit.SECONDS)
                 .build();
@@ -245,7 +257,7 @@ public class AzureSecurityRealm extends SecurityRealm {
 
 
             AzureAdUser userDetails = caches.get(key, () -> {
-                final AzureAdUser user = AzureAdUser.createFromJwt(claims);
+                final AzureAdUser user = AzureAdUser.createFromJwt(claims, unwantedUsernameSuffixes);
                 final Collection<ActiveDirectoryGroup> groups = AzureCachePool.get(getAzureClient())
                         .getBelongingGroupsByOid(user.getObjectID());
                 user.setAuthorities(groups);
@@ -372,6 +384,10 @@ public class AzureSecurityRealm extends SecurityRealm {
             writer.startNode(CONVERTER_NODE_FROM_REQUEST);
             writer.setValue(String.valueOf(realm.isFromRequest()));
             writer.endNode();
+
+            writer.startNode(CONVERTER_NODE_UNWANTED_USERNAME_SUFFIXES);
+            writer.setValue(realm.getUnwantedUsernameSuffixes());
+            writer.endNode();
         }
 
         @Override
@@ -397,6 +413,8 @@ public class AzureSecurityRealm extends SecurityRealm {
                     case CONVERTER_NODE_FROM_REQUEST:
                         realm.setFromRequest(Boolean.parseBoolean(value));
                         break;
+                    case CONVERTER_NODE_UNWANTED_USERNAME_SUFFIXES:
+                        realm.setUnwantedUsernameSuffixes(value);
                     default:
                         break;
                 }

@@ -39,3 +39,4 @@ jenkins:
       tenant: "tenantId"
       cacheduration: 0
       fromrequest: true
+      unwantedusernamesuffixes: "suffix"

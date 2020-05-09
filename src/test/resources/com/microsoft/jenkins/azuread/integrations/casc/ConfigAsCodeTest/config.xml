@@ -31,6 +31,7 @@
         <tenant>tenantId</tenant>
         <cacheduration>0</cacheduration>
         <fromrequest>true</fromrequest>
+        <unwantedusernamesuffixes>suffix</unwantedusernamesuffixes>
     </securityRealm>
     <disableRememberMe>false</disableRememberMe>
     <projectNamingStrategy class="jenkins.model.ProjectNamingStrategy$DefaultProjectNamingStrategy"/>

@@ -28,7 +28,7 @@ public class AzureSecurityRealmTest {
         BinaryStreamReader reader = null;
         try {
 
-            AzureSecurityRealm securityRealm = new AzureSecurityRealm("tenant", "clientId", "secret", 0);
+            AzureSecurityRealm securityRealm = new AzureSecurityRealm("tenant", "clientId", "secret", 0, "suffix");
             AzureSecurityRealm.ConverterImpl converter = new AzureSecurityRealm.ConverterImpl();
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             writer = new BinaryStreamWriter(outputStream);
@@ -58,7 +58,7 @@ public class AzureSecurityRealmTest {
         BinaryStreamWriter writer = null;
         try {
             String secretString = "thisIsSpecialSecret";
-            AzureSecurityRealm securityRealm = new AzureSecurityRealm("tenant", "clientId", secretString, 0);
+            AzureSecurityRealm securityRealm = new AzureSecurityRealm("tenant", "clientId", secretString, 0, "suffix");
 
             AzureSecurityRealm.ConverterImpl converter = new AzureSecurityRealm.ConverterImpl();
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();

@@ -26,6 +26,10 @@
             <f:checkbox />
         </f:entry>
 
+        <f:entry title="Unwanted username suffixes" field="unwantedUsernameSuffixes" help="/plugin/azure-ad/help/help-username-suffixes-remove.html">
+            <f:textbox />
+        </f:entry>
+
         <f:validateButton title="Verify Application" method="verifyConfiguration" progress="Verifying..." with="clientId,clientSecret,tenant" ></f:validateButton>
     </f:block>
 </j:jelly>
