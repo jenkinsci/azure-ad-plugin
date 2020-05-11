@@ -43,6 +43,7 @@ public class AzureSecurityRealmTest {
             Assert.assertEquals(securityRealm.getClientId(), result.getClientId());
             Assert.assertEquals(securityRealm.getClientSecret().getPlainText(), result.getClientSecret().getPlainText());
             Assert.assertEquals(securityRealm.getCacheDuration(), result.getCacheDuration());
+            Assert.assertEquals(securityRealm.getUnwantedUsernameSuffixes(), result.getUnwantedUsernameSuffixes());
         } finally {
             if (writer != null) {
                 writer.close();
