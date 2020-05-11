@@ -71,7 +71,7 @@ public final class AzureAdUser implements UserDetails {
         }
         for (String suffix : unwantedUsernameSuffixes.split(",")) {
             if (user.uniqueName.endsWith(suffix)) {
-                int idx = user.uniqueName.lastIndexOf(suffix);
+                int idx = user.uniqueName.length() - suffix.length();
                 user.uniqueName = user.uniqueName.substring(0, idx);
                 break;
             }
