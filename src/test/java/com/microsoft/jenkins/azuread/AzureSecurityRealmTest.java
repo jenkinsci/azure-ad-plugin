@@ -2,6 +2,7 @@ package com.microsoft.jenkins.azuread;
 
 import com.thoughtworks.xstream.io.binary.BinaryStreamReader;
 import com.thoughtworks.xstream.io.binary.BinaryStreamWriter;
+import hudson.util.Secret;
 import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.junit.Assert;
 import org.junit.Before;
@@ -28,7 +29,7 @@ public class AzureSecurityRealmTest {
         BinaryStreamReader reader = null;
         try {
 
-            AzureSecurityRealm securityRealm = new AzureSecurityRealm("tenant", "clientId", "secret", 0);
+            AzureSecurityRealm securityRealm = new AzureSecurityRealm("tenant", "clientId", Secret.fromString("secret"), 0);
             AzureSecurityRealm.ConverterImpl converter = new AzureSecurityRealm.ConverterImpl();
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             writer = new BinaryStreamWriter(outputStream);
@@ -58,7 +59,7 @@ public class AzureSecurityRealmTest {
         BinaryStreamWriter writer = null;
         try {
             String secretString = "thisIsSpecialSecret";
-            AzureSecurityRealm securityRealm = new AzureSecurityRealm("tenant", "clientId", secretString, 0);
+            AzureSecurityRealm securityRealm = new AzureSecurityRealm("tenant", "clientId", Secret.fromString(secretString), 0);
 
             AzureSecurityRealm.ConverterImpl converter = new AzureSecurityRealm.ConverterImpl();
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();

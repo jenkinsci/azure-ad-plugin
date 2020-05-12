@@ -1,5 +1,6 @@
 package com.microsoft.jenkins.azuread;
 
+import hudson.util.Secret;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.RestartableJenkinsRule;
@@ -24,7 +25,7 @@ public class AzureAdConfigurationSaveTest {
             AzureSecurityRealm realm = new AzureSecurityRealm(
                     TENANT,
                     CLIENT_ID,
-                    CLIENT_SECRET,
+                    Secret.fromString(CLIENT_SECRET),
                     CACHE_DURATION);
             realm.setFromRequest(true);
             r.jenkins.setSecurityRealm(realm);
