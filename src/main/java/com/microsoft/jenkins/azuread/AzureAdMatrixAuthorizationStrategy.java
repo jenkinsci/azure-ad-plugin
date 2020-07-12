@@ -88,7 +88,7 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
     @Override
     @Nonnull
     public ACL getACL(@Nonnull AbstractItem item) {
-        if (Jenkins.getInstance().getPlugin("cloudbees-folder") != null) { // optional dependency
+        if (Jenkins.get().getPlugin("cloudbees-folder") != null) { // optional dependency
             if (item instanceof AbstractFolder) {
                 AzureAdAuthorizationMatrixFolderProperty p =
                         ((AbstractFolder<?>) item).getProperties().get(AzureAdAuthorizationMatrixFolderProperty.class);
@@ -105,13 +105,13 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
     public Set<String> getGroups() {
         Set<String> r = new TreeSet<>(new IdStrategyComparator());
         r.addAll(super.getGroups());
-        for (Job<?, ?> j : Jenkins.getInstance().getAllItems(Job.class)) {
+        for (Job<?, ?> j : Jenkins.get().getAllItems(Job.class)) {
             AzureAdAuthorizationMatrixProperty jobProperty = j.getProperty(AzureAdAuthorizationMatrixProperty.class);
             if (jobProperty != null) {
                 r.addAll(jobProperty.getGroups());
             }
         }
-        for (AbstractFolder<?> j : Jenkins.getInstance().getAllItems(AbstractFolder.class)) {
+        for (AbstractFolder<?> j : Jenkins.get().getAllItems(AbstractFolder.class)) {
             AzureAdAuthorizationMatrixFolderProperty folderProperty =
                     j.getProperties().get(AzureAdAuthorizationMatrixFolderProperty.class);
             if (folderProperty != null) {
@@ -163,7 +163,7 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
             return null;
         }
 
-        SecurityRealm realm = Jenkins.getInstance().getSecurityRealm();
+        SecurityRealm realm = Jenkins.get().getSecurityRealm();
         if (!(realm instanceof AzureSecurityRealm)) {
             return null;
         }

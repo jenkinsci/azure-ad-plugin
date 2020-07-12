@@ -75,7 +75,7 @@ public class AzureAdAuthorizationMatrixProperty extends AuthorizationMatrixPrope
 
         @Override
         public boolean isApplicable() {
-            return Jenkins.getInstance().getAuthorizationStrategy() instanceof AzureAdMatrixAuthorizationStrategy;
+            return Jenkins.get().getAuthorizationStrategy() instanceof AzureAdMatrixAuthorizationStrategy;
         }
 
         @Nonnull

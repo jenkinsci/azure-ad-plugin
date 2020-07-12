@@ -191,7 +191,7 @@ public class AzureSecurityRealm extends SecurityRealm {
 
 
     private String getRootUrl() {
-        Jenkins jenkins = Jenkins.getInstance();
+        Jenkins jenkins = Jenkins.get();
         String url = isFromRequest() ? jenkins.getRootUrlFromRequest() : jenkins.getRootUrl();
         return StringUtils.stripEnd(url, "/");
     }
