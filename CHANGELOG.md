@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.2.1 (2020-10-26)
+* Update maintainer
+
 ## 1.2.0 (2020-02-08)
 * Enable setting callbackurl from request
 * Fix some security vulnerability
