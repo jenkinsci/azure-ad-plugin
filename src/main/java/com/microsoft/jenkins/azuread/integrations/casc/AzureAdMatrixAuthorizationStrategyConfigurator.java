@@ -9,9 +9,11 @@ import io.jenkins.plugins.casc.model.Mapping;
 import org.jenkinsci.plugins.matrixauth.integrations.casc.MatrixAuthorizationStrategyConfigurator;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
+import org.kohsuke.accmod.restrictions.suppressions.SuppressRestrictedWarnings;
 
 @Extension(optional = true)
 @Restricted(NoExternalUse.class)
+@SuppressRestrictedWarnings(MatrixAuthorizationStrategyConfigurator.class)
 public class AzureAdMatrixAuthorizationStrategyConfigurator extends
         MatrixAuthorizationStrategyConfigurator<AzureAdMatrixAuthorizationStrategy> {
     @NonNull
