@@ -7,6 +7,7 @@ import hudson.security.Permission;
 import jenkins.model.Jenkins;
 import org.jenkinsci.plugins.matrixauth.AbstractAuthorizationPropertyConverter;
 import org.jenkinsci.plugins.matrixauth.AuthorizationProperty;
+import org.kohsuke.accmod.restrictions.suppressions.SuppressRestrictedWarnings;
 import org.kohsuke.stapler.QueryParameter;
 
 import javax.annotation.Nonnull;
@@ -89,6 +90,7 @@ public class AzureAdAuthorizationMatrixProperty extends AuthorizationMatrixPrope
         }
     }
 
+    @SuppressRestrictedWarnings(AbstractAuthorizationPropertyConverter.class)
     public static class ConverterImpl extends AbstractAuthorizationPropertyConverter {
 
         @Override
