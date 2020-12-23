@@ -29,9 +29,11 @@ import hudson.security.SidACL;
 import jenkins.model.Jenkins;
 import org.acegisecurity.Authentication;
 import org.apache.commons.lang.StringUtils;
+import org.jenkinsci.plugins.matrixauth.AuthorizationContainer;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.DoNotUse;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
+import org.kohsuke.accmod.restrictions.suppressions.SuppressRestrictedWarnings;
 import org.kohsuke.stapler.QueryParameter;
 
 import javax.annotation.Nonnull;
@@ -102,16 +104,17 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
 
     @Override
     @Nonnull
+    @SuppressRestrictedWarnings(value = {IdStrategyComparator.class, AuthorizationContainer.class})
     public Set<String> getGroups() {
         Set<String> r = new TreeSet<>(new IdStrategyComparator());
         r.addAll(super.getGroups());
-        for (Job<?, ?> j : Jenkins.getInstance().getAllItems(Job.class)) {
+        for (Job<?, ?> j : Jenkins.get().getAllItems(Job.class)) {
             AzureAdAuthorizationMatrixProperty jobProperty = j.getProperty(AzureAdAuthorizationMatrixProperty.class);
             if (jobProperty != null) {
                 r.addAll(jobProperty.getGroups());
             }
         }
-        for (AbstractFolder<?> j : Jenkins.getInstance().getAllItems(AbstractFolder.class)) {
+        for (AbstractFolder<?> j : Jenkins.get().getAllItems(AbstractFolder.class)) {
             AzureAdAuthorizationMatrixFolderProperty folderProperty =
                     j.getProperties().get(AzureAdAuthorizationMatrixFolderProperty.class);
             if (folderProperty != null) {
@@ -222,6 +225,7 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
     }
 
     @Restricted(DoNotUse.class)
+    @SuppressRestrictedWarnings(GlobalMatrixAuthorizationStrategy.ConverterImpl.class)
     public static class ConverterImpl extends GlobalMatrixAuthorizationStrategy.ConverterImpl {
         @Override
         public GlobalMatrixAuthorizationStrategy create() {
