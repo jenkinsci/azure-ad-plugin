@@ -29,6 +29,9 @@ Give Jenkins permission to Read directory data in Azure Active Directory to get 
 1. In Application setting page, click `API permissions` > `Add a permission` and then select following permissions in API permissions section, confirm with **Add permissions** button.
 
 ```
+Azure Active Directory Graph: Directory.Read.All / Delegated
+Azure Active Directory Graph: Directory.Read.All / Application
+Azure Active Directory Graph: User.Read / Delegated
 Microsoft Graph: Directory.Read.All / Delegated
 Microsoft Graph: Directory.Read.All / Application
 Microsoft Graph: User.Read / Delegated
