@@ -24,11 +24,11 @@ For group support you have two options:
 
 **Option 1:**
 
-Give Jenkins permission to `Read directory data` in `Azure Active Directory` to get autocompletion support in Azure Active Directory Matrix
+Give Jenkins permission to Read directory data in Azure Active Directory to get autocompletion support in Azure Active Directory Matrix
 
-1. In Application setting page, click `Required Permissions` and select `Windows Azure Active Directory`, then select `Read directory data` permissions in Application permissions section
+1. In Application setting page, click `API permissions` > `Add a permission` and go to `Microsoft Graph` > `Delegated permissions` > `Directory`, then select `Directory.Read.All` permission in API permissions section, confirm with **Add permissions** button.
 
-1. Click `Grant Permissions`. If you are not an admin in your tenant, please contact admin to grant the permissions which declared as `require admin` in `Enable Access` page. Wait for the permissions taking effects.
+1. Click `Grant admin consent`. If you are not an admin in your tenant, please contact admin to grant the permissions which are declared as `Admin consent required`. Wait for the permissions taking effects.
 
 **Option 2:**
 
