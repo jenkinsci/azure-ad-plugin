@@ -19,14 +19,23 @@ A Jenkins Plugin that supports authentication & authorization via Azure Active D
 
 For group support you have two options:
 
-1. Give Jenkins the right to `Read directory data` in `Azure Active Directory`(Azure admin right required), which in addition to group support also allows to use autocompletion when adding user/group in Azure Active Directory Matrix
+1. Give Jenkins the right to Read directory data in Azure Active Directory (Azure admin right required), which in addition to group support also allows to use autocompletion when adding user/group in Azure Active Directory Matrix
 1. Let Azure Active Directory provide the `groups` of an user as part of the id token.
 
 **Option 1:**
 
 Give Jenkins permission to Read directory data in Azure Active Directory to get autocompletion support in Azure Active Directory Matrix
 
-1. In Application setting page, click `API permissions` > `Add a permission` and go to `Microsoft Graph` > `Delegated permissions` > `Directory`, then select `Directory.Read.All` permission in API permissions section, confirm with **Add permissions** button.
+1. In Application setting page, click `API permissions` > `Add a permission` and then select following permissions in API permissions section, confirm with **Add permissions** button.
+
+```
+Azure Active Directory Graph: Directory.Read.All / Delegated
+Azure Active Directory Graph: Directory.Read.All / Application
+Azure Active Directory Graph: User.Read / Delegated
+Microsoft Graph: Directory.Read.All / Delegated
+Microsoft Graph: Directory.Read.All / Application
+Microsoft Graph: User.Read / Delegated
+```
 
 1. Click `Grant admin consent`. If you are not an admin in your tenant, please contact admin to grant the permissions which are declared as `Admin consent required`. Wait for the permissions taking effects.
 
