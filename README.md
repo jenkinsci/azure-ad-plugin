@@ -82,10 +82,10 @@ In version 1.0.0, this plugin upgrades from Microsoft identity platform v1.0 to 
     ```
 
 ## FAQ
-#### Q: How to recovery if Jenkins keeps failing during the login phase?
+#### Q: How to recover if Jenkins keeps failing during the login phase?
 A: You can disable the security from the config file (see https://wiki.jenkins.io/display/JENKINS/Disable+security)
 
-#### Q: Why getting a error "insufficient privileges to complete the operation" even having granted the permission?
+#### Q: Why am I getting an error "insufficient privileges to complete the operation" even having granted the permission?
 A: It takes rather long time for the privileges to take effect, which could be 10-20 minutes. So just wait for a while and try again.
 
 #### Q: I always get a Login failed error with a stacktrace telling `Unable to find a suitable verification key for JWS w/ header`
