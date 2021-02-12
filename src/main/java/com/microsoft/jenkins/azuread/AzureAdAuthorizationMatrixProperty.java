@@ -93,6 +93,7 @@ public class AzureAdAuthorizationMatrixProperty extends AuthorizationMatrixPrope
 
     @Extension
     @Symbol("azureAdAuthorizationMatrix")
+    @SuppressRestrictedWarnings(AuthorizationPropertyDescriptor.class)
     public static class DescriptorImpl extends JobPropertyDescriptor implements
             AuthorizationPropertyDescriptor<AzureAdAuthorizationMatrixProperty> {
 

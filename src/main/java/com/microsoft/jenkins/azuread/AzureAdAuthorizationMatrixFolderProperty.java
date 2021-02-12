@@ -67,6 +67,7 @@ public class AzureAdAuthorizationMatrixFolderProperty extends AuthorizationMatri
 
     @Extension(optional = true)
     @Symbol("azureAdAuthorizationMatrix")
+    @SuppressRestrictedWarnings(AuthorizationPropertyDescriptor.class)
     public static class DescriptorImpl extends AbstractFolderPropertyDescriptor implements
             AuthorizationPropertyDescriptor<AzureAdAuthorizationMatrixFolderProperty> {
 
