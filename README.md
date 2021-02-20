@@ -1,4 +1,7 @@
 # Azure Active Directory Plugin
+
+> ***Important***: This plugin is being retired and will be out of support as of February 29, 2024.
+
 A Jenkins Plugin that supports authentication & authorization via Azure Active Directory.
 
 ## Setup In Azure Active Directory
@@ -87,7 +90,3 @@ A: You can disable the security from the config file (see https://wiki.jenkins.i
 
 #### Q: Why getting a error "insufficient privileges to complete the operation" even having granted the permission?
 A: It takes rather long time for the privileges to take effect, which could be 10-20 minutes. So just wait for a while and try again.
-
-#### Q: I always get a Login failed error with a stacktrace telling `Unable to find a suitable verification key for JWS w/ header`
-A: If you want a v2.0 app in Azure AD you cannot create it from the Enterprise
-    Applications section, you have to use the App registrations section.

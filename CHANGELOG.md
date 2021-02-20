@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.2.3 (2021-02-20)
+* Document update
+
 ## 1.2.2 (2020-12-23)
 * Fix Azure AD matrix-based security cannot edit
 
