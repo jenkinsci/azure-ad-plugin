@@ -9,7 +9,7 @@
     </parent>
 
     <artifactId>azure-ad</artifactId>
-    <version>${revision}${changelist}</version>
+    <version>1.2.3</version>
 
     <name>Azure AD Plugin</name>
     <description>A Jenkins authentication &amp; authorization plugin for Azure Active Directory</description>
@@ -36,7 +36,7 @@
         <connection>scm:git:ssh://github.com/jenkinsci/azure-ad-plugin.git</connection>
         <developerConnection>scm:git:ssh://git@github.com/jenkinsci/azure-ad-plugin.git</developerConnection>
         <url>https://github.com/jenkinsci/azure-ad-plugin</url>
-        <tag>${scmTag}</tag>
+        <tag>azure-ad-1.2.3</tag>
     </scm>
 
     <properties>
