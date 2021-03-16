@@ -1,6 +1,6 @@
 # Azure Active Directory Plugin
 
-> ***Important***: This plugin is being retired and will be out of support as of February 29, 2024.
+> ***Important***: This plug-in is maintained by the Jenkins community and won’t be supported by Microsoft as of February 29, 2024.
 
 A Jenkins Plugin that supports authentication & authorization via Azure Active Directory.
 
