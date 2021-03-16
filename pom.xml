@@ -23,6 +23,10 @@
             <name>Xu Zhang</name>
             <email>xuzhang3@microsoft.com</email>
         </developer>
+        <developer>
+            <id>timja</id>
+            <name>Tim Jacomb</name>
+        </developer>
     </developers>
 
     <licenses>
@@ -194,7 +198,12 @@
             <dependency>
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
-                <version>20.0</version>
+                <version>24.1.1-jre</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.errorprone</groupId>
+                <artifactId>error_prone_annotations</artifactId>
+                <version>2.3.4</version>
             </dependency>
             <dependency>
                 <groupId>org.ow2.asm</groupId>
