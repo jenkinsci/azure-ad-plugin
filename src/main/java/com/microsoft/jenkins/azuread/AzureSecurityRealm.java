@@ -197,10 +197,10 @@ public class AzureSecurityRealm extends SecurityRealm {
     }
 
     @DataBoundConstructor
-    public AzureSecurityRealm(String tenant, String clientId, String clientSecret, int cacheDuration) {
+    public AzureSecurityRealm(String tenant, String clientId, Secret clientSecret, int cacheDuration) {
         super();
         this.clientId = Secret.fromString(clientId);
-        this.clientSecret = Secret.fromString(clientSecret);
+        this.clientSecret = clientSecret;
         this.tenant = Secret.fromString(tenant);
         this.cacheDuration = cacheDuration;
         caches = CacheBuilder.newBuilder()
@@ -443,14 +443,14 @@ public class AzureSecurityRealm extends SecurityRealm {
         }
 
         public FormValidation doVerifyConfiguration(@QueryParameter final String clientId,
-                                                    @QueryParameter final String clientSecret,
+                                                    @QueryParameter final Secret clientSecret,
                                                     @QueryParameter final String tenant)
                 throws IOException, ExecutionException {
 
 
             AzureTokenCredentials credential = new ApplicationTokenCredentials(clientId,
                     tenant,
-                    clientSecret,
+                    clientSecret.getPlainText(),
                     AzureEnvironment.AZURE);
             try {
                 Azure.authenticate(credential).subscriptions().list();
