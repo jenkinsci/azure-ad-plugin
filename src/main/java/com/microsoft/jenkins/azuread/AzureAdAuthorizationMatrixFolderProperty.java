@@ -52,7 +52,7 @@ public class AzureAdAuthorizationMatrixFolderProperty extends AuthorizationMatri
 
         @Override
         public boolean isApplicable() {
-            return Jenkins.getInstance().getAuthorizationStrategy() instanceof AzureAdMatrixAuthorizationStrategy;
+            return Jenkins.get().getAuthorizationStrategy() instanceof AzureAdMatrixAuthorizationStrategy;
         }
 
         @Override

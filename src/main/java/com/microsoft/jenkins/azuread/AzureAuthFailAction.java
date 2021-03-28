@@ -36,7 +36,7 @@ public class AzureAuthFailAction implements UnprotectedRootAction {
 
     @Restricted(NoExternalUse.class) // jelly only
     public String getAzureURL() {
-        Jenkins j = Jenkins.getInstance();
+        Jenkins j = Jenkins.get();
         assert j != null;
         SecurityRealm r = j.getSecurityRealm();
         if (r instanceof AzureSecurityRealm) {
@@ -47,7 +47,7 @@ public class AzureAuthFailAction implements UnprotectedRootAction {
 
     @Restricted(NoExternalUse.class) // jelly only
     public String getAzureText() {
-        Jenkins j = Jenkins.getInstance();
+        Jenkins j = Jenkins.get();
         assert j != null;
         SecurityRealm r = j.getSecurityRealm();
         if (r instanceof AzureSecurityRealm) {

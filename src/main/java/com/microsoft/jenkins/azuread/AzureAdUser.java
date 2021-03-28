@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -122,11 +123,11 @@ public final class AzureAdUser implements UserDetails {
 
         AzureAdUser that = (AzureAdUser) o;
 
-        if (name != null ? !name.equals(that.name) : that.name != null) return false;
-        if (givenName != null ? !givenName.equals(that.givenName) : that.givenName != null) return false;
-        if (familyName != null ? !familyName.equals(that.familyName) : that.familyName != null) return false;
-        if (uniqueName != null ? !uniqueName.equals(that.uniqueName) : that.uniqueName != null) return false;
-        if (tenantID != null ? !tenantID.equals(that.tenantID) : that.tenantID != null) return false;
+        if (!Objects.equals(name, that.name)) return false;
+        if (!Objects.equals(givenName, that.givenName)) return false;
+        if (!Objects.equals(familyName, that.familyName)) return false;
+        if (!Objects.equals(uniqueName, that.uniqueName)) return false;
+        if (!Objects.equals(tenantID, that.tenantID)) return false;
         if (groupOIDs != null && that.groupOIDs != null) {
                 if (!CollectionUtils.isEqualCollection(groupOIDs, that.groupOIDs)) return false;
         } else if (groupOIDs != null || that.groupOIDs != null) {
