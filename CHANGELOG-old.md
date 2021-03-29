@@ -1,5 +1,7 @@
 # Changelog
 
+See [GitHub releases](https://github.com/jenkinsci/azure-ad-plugin/releases) for all newer versions.
+
 ## 1.2.3 (2021-02-20)
 * Document update
 

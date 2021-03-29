@@ -31,8 +31,8 @@ public class AzureToken extends OAuth2AccessToken {
         this.idToken = idToken;
     }
 
-    @SuppressWarnings({"checkstyle:magicnumber"})
     @Override
+    @SuppressWarnings("checkstyle:magicnumber")
     public int hashCode() {
         int hash = super.hashCode();
         hash = 41 * hash + Objects.hashCode(idToken);

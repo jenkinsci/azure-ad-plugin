@@ -118,26 +118,42 @@ public final class AzureAdUser implements UserDetails {
     @SuppressWarnings({"checkstyle:needbraces"})
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
 
         AzureAdUser that = (AzureAdUser) o;
 
-        if (!Objects.equals(name, that.name)) return false;
-        if (!Objects.equals(givenName, that.givenName)) return false;
-        if (!Objects.equals(familyName, that.familyName)) return false;
-        if (!Objects.equals(uniqueName, that.uniqueName)) return false;
-        if (!Objects.equals(tenantID, that.tenantID)) return false;
+        if (!Objects.equals(name, that.name)) {
+            return false;
+        }
+        if (!Objects.equals(givenName, that.givenName)) {
+            return false;
+        }
+        if (!Objects.equals(familyName, that.familyName)) {
+            return false;
+        }
+        if (!Objects.equals(uniqueName, that.uniqueName)) {
+            return false;
+        }
+        if (!Objects.equals(tenantID, that.tenantID)) {
+            return false;
+        }
         if (groupOIDs != null && that.groupOIDs != null) {
-                if (!CollectionUtils.isEqualCollection(groupOIDs, that.groupOIDs)) return false;
+                if (!CollectionUtils.isEqualCollection(groupOIDs, that.groupOIDs)) {
+                    return false;
+                }
         } else if (groupOIDs != null || that.groupOIDs != null) {
             return false;
         }
         return objectID.equals(that.objectID);
     }
 
-    @SuppressWarnings({"checkstyle:magicnumber"})
     @Override
+    @SuppressWarnings("checkstyle:magicnumber")
     public int hashCode() {
         int result = name != null ? name.hashCode() : 0;
         result = 31 * result + (givenName != null ? givenName.hashCode() : 0);
