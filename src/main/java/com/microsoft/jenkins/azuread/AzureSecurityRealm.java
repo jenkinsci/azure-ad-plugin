@@ -4,9 +4,9 @@
  */
 
 package com.microsoft.jenkins.azuread;
+
 import com.github.scribejava.core.builder.ServiceBuilder;
 import com.github.scribejava.core.oauth.OAuth20Service;
-import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -19,7 +19,6 @@ import com.microsoft.azure.management.graphrbac.ActiveDirectoryGroup;
 import com.microsoft.jenkins.azuread.scribe.AzureApi;
 import com.microsoft.jenkins.azuread.scribe.AzureOAuthService;
 import com.microsoft.jenkins.azurecommons.core.AzureClientFactory;
-import com.microsoft.jenkins.azurecommons.telemetry.AppInsightsUtils;
 import com.thoughtworks.xstream.converters.Converter;
 import com.thoughtworks.xstream.converters.MarshallingContext;
 import com.thoughtworks.xstream.converters.UnmarshallingContext;
@@ -30,19 +29,12 @@ import hudson.model.Descriptor;
 import hudson.model.User;
 import hudson.security.GroupDetails;
 import hudson.security.SecurityRealm;
-import hudson.security.UserMayOrMayNotExistException;
+import hudson.security.UserMayOrMayNotExistException2;
 import hudson.security.csrf.CrumbExclusion;
 import hudson.util.FormValidation;
 import hudson.util.Secret;
 import jenkins.model.Jenkins;
 import jenkins.security.SecurityListener;
-import org.acegisecurity.Authentication;
-import org.acegisecurity.AuthenticationException;
-import org.acegisecurity.AuthenticationManager;
-import org.acegisecurity.context.SecurityContextHolder;
-import org.acegisecurity.userdetails.UserDetails;
-import org.acegisecurity.userdetails.UserDetailsService;
-import org.acegisecurity.userdetails.UsernameNotFoundException;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jose4j.jwt.JwtClaims;
@@ -51,13 +43,16 @@ import org.jose4j.jwt.consumer.InvalidJwtException;
 import org.jose4j.jwt.consumer.JwtConsumer;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
-import org.kohsuke.stapler.HttpResponse;
-import org.kohsuke.stapler.StaplerRequest;
-import org.kohsuke.stapler.HttpRedirect;
-import org.kohsuke.stapler.HttpResponses;
 import org.kohsuke.stapler.Header;
+import org.kohsuke.stapler.HttpRedirect;
+import org.kohsuke.stapler.HttpResponse;
+import org.kohsuke.stapler.HttpResponses;
 import org.kohsuke.stapler.QueryParameter;
-import org.springframework.dao.DataAccessException;
+import org.kohsuke.stapler.StaplerRequest;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
@@ -67,6 +62,7 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -93,26 +89,17 @@ public class AzureSecurityRealm extends SecurityRealm {
     private int cacheDuration;
     private boolean fromRequest = false;
 
-    private Supplier<Azure.Authenticated> cachedAzureClient = Suppliers.memoize(new Supplier<Azure.Authenticated>() {
-        @Override
-        public Azure.Authenticated get() {
-            return Azure.configure()
-                    .withInterceptor(new AzureAdPlugin.AzureTelemetryInterceptor())
-                    .withUserAgent(AzureClientFactory.getUserAgent(AzureAdPlugin.AI_PLUGIN_NAME,
-                            AzureAdPlugin.class.getPackage().getImplementationVersion()))
-                    .authenticate(new ApplicationTokenCredentials(
-                            getClientId(),
-                            getTenant(),
-                            getClientSecret().getPlainText(),
-                            AzureEnvironment.AZURE));
-        }
-    });
-    private Supplier<JwtConsumer> jwtConsumer = Suppliers.memoize(new Supplier<JwtConsumer>() {
-        @Override
-        public JwtConsumer get() {
-            return Utils.JwtUtil.jwt(getClientId(), getTenant());
-        }
-    });
+    private final Supplier<Azure.Authenticated> cachedAzureClient = Suppliers.memoize(() -> Azure.configure()
+            .withUserAgent(AzureClientFactory.getUserAgent("AzureJenkinsAd",
+                    AzureSecurityRealm.class.getPackage().getImplementationVersion()))
+            .authenticate(new ApplicationTokenCredentials(
+                    getClientId(),
+                    getTenant(),
+                    getClientSecret().getPlainText(),
+                    AzureEnvironment.AZURE)));
+
+    private final Supplier<JwtConsumer> jwtConsumer = Suppliers.memoize(() ->
+            Utils.JwtUtil.jwt(getClientId(), getTenant()));
 
     public String getClientIdSecret() {
         return clientId.getEncryptedValue();
@@ -176,13 +163,12 @@ public class AzureSecurityRealm extends SecurityRealm {
     }
 
     AzureOAuthService getOAuthService() {
-        AzureOAuthService service = (AzureOAuthService) new ServiceBuilder(clientId.getPlainText())
+        return (AzureOAuthService) new ServiceBuilder(clientId.getPlainText())
                 .apiSecret(clientSecret.getPlainText())
                 .responseType("id_token")
                 .scope("openid profile email")
                 .callback(getRootUrl() + CALLBACK_URL)
                 .build(AzureApi.instance(Constants.DEFAULT_GRAPH_ENDPOINT, this.getTenant()));
-        return service;
     }
 
     Azure.Authenticated getAzureClient() {
@@ -213,6 +199,7 @@ public class AzureSecurityRealm extends SecurityRealm {
         LOGGER.log(Level.FINE, "AzureSecurityRealm()");
     }
 
+    @SuppressWarnings("unused") // used by stapler
     public HttpResponse doCommenceLogin(StaplerRequest request, @Header("Referer") final String referer) {
         request.getSession().setAttribute(REFERER_ATTRIBUTE, referer);
         OAuth20Service service = getOAuthService();
@@ -254,10 +241,6 @@ public class AzureSecurityRealm extends SecurityRealm {
                 return user;
             });
             final AzureAuthenticationToken auth = new AzureAuthenticationToken(userDetails);
-            AzureAdPlugin.sendLoginEvent(
-                    AppInsightsUtils.hash(userDetails.getObjectID()),
-                    AppInsightsUtils.hash(this.getTenant()));
-
 
             // Enforce updating current identity
             SecurityContextHolder.getContext().setAuthentication(auth);
@@ -267,10 +250,9 @@ public class AzureSecurityRealm extends SecurityRealm {
                 u.setDescription(description);
                 u.setFullName(auth.getAzureAdUser().getName());
             }
-            SecurityListener.fireAuthenticated(userDetails);
+            SecurityListener.fireAuthenticated2(userDetails);
         } catch (Exception ex) {
             LOGGER.log(Level.SEVERE, "error", ex);
-            AzureAdPlugin.sendLoginFailEvent(this.getTenant(), ex.getMessage());
             throw ex;
         } finally {
             if (request.isRequestedSessionIdValid()) {
@@ -287,8 +269,7 @@ public class AzureSecurityRealm extends SecurityRealm {
         }
     }
 
-    JwtClaims validateIdToken(String expectedNonce, String idToken)
-            throws InvalidJwtException, MalformedClaimException {
+    JwtClaims validateIdToken(String expectedNonce, String idToken) throws InvalidJwtException {
         JwtClaims claims = getJwtConsumer().processToClaims(idToken);
         final String responseNonce = (String) claims.getClaimValue("nonce");
         if (StringUtils.isAnyEmpty(expectedNonce, responseNonce) || !expectedNonce.equals(responseNonce)) {
@@ -298,7 +279,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     }
 
     @Override
-    protected String getPostLogOutUrl(StaplerRequest req, Authentication auth) {
+    protected String getPostLogOutUrl2(StaplerRequest req, Authentication auth) {
         if (auth instanceof AzureAuthenticationToken) {
             AzureAuthenticationToken azureToken = (AzureAuthenticationToken) auth;
             String oid = azureToken.getAzureAdUser().getObjectID();
@@ -310,25 +291,21 @@ public class AzureSecurityRealm extends SecurityRealm {
 
     @Override
     public SecurityComponents createSecurityComponents() {
-        return new SecurityComponents(new AuthenticationManager() {
-            @Override
-            public Authentication authenticate(Authentication authentication) throws AuthenticationException {
-                if (authentication instanceof AzureAuthenticationToken) {
-                    return authentication;
-                }
-                throw new IllegalStateException("Unexpected authentication type: " + authentication);
+        return new SecurityComponents((AuthenticationManager) authentication -> {
+            if (authentication instanceof AzureAuthenticationToken) {
+                return authentication;
             }
-        }, new UserDetailsService() {
-            @Override
-            public UserDetails loadUserByUsername(String username)
-                    throws UsernameNotFoundException, DataAccessException {
-                throw new UserMayOrMayNotExistException("Cannot verify users in this context");
-            }
+            throw new IllegalStateException("Unexpected authentication type: " + authentication);
+        }, username -> {
+            throw new UserMayOrMayNotExistException2("Cannot verify users in this context");
         });
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public GroupDetails loadGroupByGroupname(String groupName) {
+    public GroupDetails loadGroupByGroupname2(String groupName, boolean fetchMembers) {
         throw new UsernameNotFoundException("groups not supported");
     }
 

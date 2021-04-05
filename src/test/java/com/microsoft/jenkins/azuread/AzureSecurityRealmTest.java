@@ -12,7 +12,10 @@ import org.jvnet.hudson.test.JenkinsRule;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutionException;
+
+import static org.junit.Assert.assertFalse;
 
 public class AzureSecurityRealmTest {
     @Rule
@@ -65,7 +68,7 @@ public class AzureSecurityRealmTest {
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             writer = new BinaryStreamWriter(outputStream);
             converter.marshal(securityRealm, writer, null);
-            Assert.assertFalse(outputStream.toString().contains(secretString));
+            assertFalse(outputStream.toString(StandardCharsets.UTF_8).contains(secretString));
         } finally {
             if (writer != null) {
                 writer.close();

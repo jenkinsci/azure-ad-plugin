@@ -7,17 +7,18 @@ package com.microsoft.jenkins.azuread;
 
 import com.microsoft.azure.management.graphrbac.ActiveDirectoryGroup;
 import hudson.security.SecurityRealm;
-import org.acegisecurity.BadCredentialsException;
-import org.acegisecurity.GrantedAuthority;
-import org.acegisecurity.GrantedAuthorityImpl;
-import org.acegisecurity.userdetails.UserDetails;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
 import org.jose4j.jwt.JwtClaims;
 import org.jose4j.jwt.MalformedClaimException;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedList;
@@ -45,15 +46,16 @@ public final class AzureAdUser implements UserDetails {
 
     private List<String> groupOIDs;
 
-    private transient volatile GrantedAuthority[] authorities;
+    private transient volatile List<GrantedAuthority> authorities;
 
     private AzureAdUser() {
-        authorities = new GrantedAuthority[]{SecurityRealm.AUTHENTICATED_AUTHORITY};
+        authorities = Arrays.asList(SecurityRealm.AUTHENTICATED_AUTHORITY2);
     }
 
     private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
         in.defaultReadObject();
-        authorities = new GrantedAuthority[]{SecurityRealm.AUTHENTICATED_AUTHORITY};
+
+        authorities = Arrays.asList(SecurityRealm.AUTHENTICATED_AUTHORITY2);
     }
 
     public static AzureAdUser createFromJwt(JwtClaims claims) throws MalformedClaimException {
@@ -95,23 +97,21 @@ public final class AzureAdUser implements UserDetails {
     }
 
     public void setAuthorities(Collection<ActiveDirectoryGroup> groups) {
-        GrantedAuthority[] newAuthorities;
+        List<GrantedAuthority> newAuthorities = new ArrayList<>();
         int i = 0;
         if (!groups.isEmpty()) {
-            newAuthorities = new GrantedAuthority[groups.size() * 2 + 2];
             for (ActiveDirectoryGroup group : groups) {
-                newAuthorities[i++] = new AzureAdGroup(group.id(), group.name());
-                newAuthorities[i++] = new GrantedAuthorityImpl(group.id());
+                newAuthorities.add(new AzureAdGroup(group.id(), group.name()));
+                newAuthorities.add(new SimpleGrantedAuthority(group.id()));
             }
         } else {
-            newAuthorities = new GrantedAuthority[groupOIDs.size() * 2 + 2];
             for (String groupOID : groupOIDs) {
-                newAuthorities[i++] = new AzureAdGroup(groupOID, groupOID);
-                newAuthorities[i++] = new GrantedAuthorityImpl(groupOID);
+                newAuthorities.add(new AzureAdGroup(groupOID, groupOID));
+                newAuthorities.add(new SimpleGrantedAuthority(groupOID));
             }
         }
-        newAuthorities[i++] = SecurityRealm.AUTHENTICATED_AUTHORITY;
-        newAuthorities[i] = new GrantedAuthorityImpl(objectID);
+        newAuthorities.add(SecurityRealm.AUTHENTICATED_AUTHORITY2);
+        newAuthorities.add(new SimpleGrantedAuthority(objectID));
         this.authorities = newAuthorities;
     }
 
@@ -166,8 +166,8 @@ public final class AzureAdUser implements UserDetails {
     }
 
     @Override
-    public GrantedAuthority[] getAuthorities() {
-        return authorities.clone();
+    public List<GrantedAuthority> getAuthorities() {
+        return authorities;
     }
 
     @Override
@@ -243,7 +243,7 @@ public final class AzureAdUser implements UserDetails {
                 + ", objectID='" + objectID + '\''
                 + ", email='" + email + '\''
                 + ", groups='" + groupOIDs.toString() + '\''
-                + ", authorities=" + Arrays.toString(authorities)
+                + ", authorities=" + authorities
                 + '}';
     }
 }

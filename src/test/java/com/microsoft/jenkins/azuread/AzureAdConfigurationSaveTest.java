@@ -5,9 +5,9 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.RestartableJenkinsRule;
 
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.core.Is.is;
-import static org.junit.Assert.assertThat;
 
 public class AzureAdConfigurationSaveTest {
 
@@ -19,7 +19,7 @@ public class AzureAdConfigurationSaveTest {
     public final RestartableJenkinsRule r = new RestartableJenkinsRule();
 
     @Test
-    public void FromRequestSaveTest() throws Exception {
+    public void FromRequestSaveTest() {
 
         r.then(r->{
             AzureSecurityRealm realm = new AzureSecurityRealm(
