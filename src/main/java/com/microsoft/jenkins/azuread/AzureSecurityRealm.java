@@ -40,7 +40,6 @@ import org.acegisecurity.Authentication;
 import org.acegisecurity.AuthenticationException;
 import org.acegisecurity.AuthenticationManager;
 import org.acegisecurity.context.SecurityContextHolder;
-import org.acegisecurity.userdetails.UserDetails;
 import org.acegisecurity.userdetails.UserDetailsService;
 import org.acegisecurity.userdetails.UsernameNotFoundException;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -92,6 +91,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     private Secret tenant;
     private int cacheDuration;
     private boolean fromRequest = false;
+    private AzureAdUsersCache usersCache = AzureAdUsersCache.getinstance();
 
     private Supplier<Azure.Authenticated> cachedAzureClient = Suppliers.memoize(new Supplier<Azure.Authenticated>() {
         @Override
@@ -253,6 +253,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                         key.substring(0, CACHE_KEY_LOG_LENGTH)));
                 return user;
             });
+            usersCache.put(userDetails);
             final AzureAuthenticationToken auth = new AzureAuthenticationToken(userDetails);
             AzureAdPlugin.sendLoginEvent(
                     AppInsightsUtils.hash(userDetails.getObjectID()),
@@ -320,8 +321,12 @@ public class AzureSecurityRealm extends SecurityRealm {
             }
         }, new UserDetailsService() {
             @Override
-            public UserDetails loadUserByUsername(String username)
+            public AzureAdUser loadUserByUsername(String username)
                     throws UsernameNotFoundException, DataAccessException {
+                AzureAdUser userDetails = usersCache.get(username);
+                if (userDetails != null) {
+                    return userDetails;
+                }
                 throw new UserMayOrMayNotExistException("Cannot verify users in this context");
             }
         });
