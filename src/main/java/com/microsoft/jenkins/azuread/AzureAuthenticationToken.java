@@ -5,27 +5,26 @@
 
 package com.microsoft.jenkins.azuread;
 
-import org.acegisecurity.Authentication;
-import org.acegisecurity.GrantedAuthority;
-import org.acegisecurity.providers.AbstractAuthenticationToken;
 import org.apache.commons.lang.StringUtils;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 
-import java.util.logging.Logger;
+import java.util.Collection;
+import java.util.Collections;
 
 public class AzureAuthenticationToken implements Authentication {
 
     private static final long serialVersionUID = 2L;
 
     private final AzureAdUser azureAdUser;
-    private static final Logger LOGGER = Logger.getLogger(AbstractAuthenticationToken.class.getName());
 
     public AzureAuthenticationToken(AzureAdUser user) {
         this.azureAdUser = user;
     }
 
     @Override
-    public GrantedAuthority[] getAuthorities() {
-        return this.azureAdUser != null ? this.azureAdUser.getAuthorities() : new GrantedAuthority[0];
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return this.azureAdUser != null ? this.azureAdUser.getAuthorities() : Collections.emptyList();
     }
 
     @Override

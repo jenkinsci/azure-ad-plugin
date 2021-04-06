@@ -27,7 +27,6 @@ import hudson.security.Permission;
 import hudson.security.SecurityRealm;
 import hudson.security.SidACL;
 import jenkins.model.Jenkins;
-import org.acegisecurity.Authentication;
 import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.matrixauth.AuthorizationContainer;
 import org.kohsuke.accmod.Restricted;
@@ -35,6 +34,7 @@ import org.kohsuke.accmod.restrictions.DoNotUse;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.kohsuke.accmod.restrictions.suppressions.SuppressRestrictedWarnings;
 import org.kohsuke.stapler.QueryParameter;
+import org.springframework.security.core.Authentication;
 
 import javax.annotation.Nonnull;
 import java.io.IOException;
@@ -73,8 +73,8 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
         }
         return new ACL() {
             @Override
-            public boolean hasPermission(@Nonnull Authentication a, @Nonnull Permission permission) {
-                return a.equals(SYSTEM) || child.hasPermission(a, permission) || parent.hasPermission(a, permission);
+            public boolean hasPermission2(@Nonnull Authentication a, @Nonnull Permission permission) {
+                return a.equals(SYSTEM2) || child.hasPermission2(a, permission) || parent.hasPermission2(a, permission);
             }
         };
     }
@@ -133,9 +133,8 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
     }
 
     @Override
-    public boolean hasExplicitPermission(String sid, Permission p) {
+    public boolean hasExplicitPermission(String objectId, Permission p) {
         // Jenkins will pass in the object Id as sid
-        final String objectId = sid;
         if (objectId == null) {
             return false;
         }
@@ -143,9 +142,8 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
     }
 
     @Override
-    public boolean hasPermission(String sid, Permission p) {
+    public boolean hasPermission(String objectId, Permission p) {
         // Jenkins will pass in the object Id as sid
-        final String objectId = sid;
         return super.hasPermission(objId2FullSidMap.getOrOriginal(objectId), p);
     }
 
