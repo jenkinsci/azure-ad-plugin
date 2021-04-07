@@ -300,7 +300,13 @@ public class AzureSecurityRealm extends SecurityRealm {
             try {
                 return caches.get(username, () -> {
                     Azure.Authenticated azureClient = getAzureClient();
-                    ActiveDirectoryUser activeDirectoryUser = azureClient.activeDirectoryUsers().getByName(username);
+                    ActiveDirectoryUser activeDirectoryUser;
+                    final String userId = ObjId2FullSidMap.extractObjectId(username);
+                    if (userId != null) {
+                        activeDirectoryUser = azureClient.activeDirectoryUsers().getById(userId);
+                    } else {
+                        activeDirectoryUser = azureClient.activeDirectoryUsers().getByName(username);
+                    }
 
                     AzureAdUser user = AzureAdUser.createFromActiveDirectoryUser(activeDirectoryUser);
                     if (user == null) {
