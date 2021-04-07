@@ -89,7 +89,6 @@ public class AzureSecurityRealm extends SecurityRealm {
     private Secret tenant;
     private int cacheDuration;
     private boolean fromRequest = false;
-    private final AzureAdUsersCache cacheByUsername = AzureAdUsersCache.getInstance();
 
     private final Supplier<Azure.Authenticated> cachedAzureClient = Suppliers.memoize(() -> Azure.configure()
             .withUserAgent(AzureClientFactory.getUserAgent("AzureJenkinsAd",
@@ -230,8 +229,7 @@ public class AzureSecurityRealm extends SecurityRealm {
             }
             // validate the nonce to avoid CSRF
             final JwtClaims claims = validateIdToken(expectedNonce, idToken);
-            String key = (String) claims.getClaimValue("sub");
-
+            String key = (String) claims.getClaimValue("preferred_username");
 
             AzureAdUser userDetails = caches.get(key, () -> {
                 final AzureAdUser user = AzureAdUser.createFromJwt(claims);
@@ -242,7 +240,6 @@ public class AzureSecurityRealm extends SecurityRealm {
                         key.substring(0, CACHE_KEY_LOG_LENGTH)));
                 return user;
             });
-            cacheByUsername.put(userDetails);
             final AzureAuthenticationToken auth = new AzureAuthenticationToken(userDetails);
 
             // Enforce updating current identity
@@ -287,7 +284,6 @@ public class AzureSecurityRealm extends SecurityRealm {
             AzureAuthenticationToken azureToken = (AzureAuthenticationToken) auth;
             String oid = azureToken.getAzureAdUser().getObjectID();
             AzureCachePool.invalidateBelongingGroupsByOid(oid);
-            cacheByUsername.invalidate(auth.getName());
         }
         // Ensure single sign-out
         return getOAuthService().getLogoutUrl();
@@ -301,25 +297,27 @@ public class AzureSecurityRealm extends SecurityRealm {
             }
             throw new IllegalStateException("Unexpected authentication type: " + authentication);
         }, username -> {
-            AzureAdUser userDetails = cacheByUsername.get(username);
-            if (userDetails != null) {
-                return userDetails;
+            try {
+                return caches.get(username, () -> {
+                    Azure.Authenticated azureClient = getAzureClient();
+                    ActiveDirectoryUser activeDirectoryUser = azureClient.activeDirectoryUsers().getByName(username);
+
+                    AzureAdUser user = AzureAdUser.createFromActiveDirectoryUser(activeDirectoryUser);
+                    if (user == null) {
+                        throw new UserMayOrMayNotExistException2("Cannot find user " + username);
+                    }
+                    Collection<ActiveDirectoryGroup> groups = AzureCachePool.get(azureClient)
+                            .getBelongingGroupsByOid(user.getObjectID());
+
+                    user.setAuthorities(groups);
+                    return user;
+                });
+
+            } catch (ExecutionException e) {
+                LOGGER.log(Level.SEVERE, "error", e);
+                throw new UsernameNotFoundException("Cannot find user " + username, e);
             }
 
-            Azure.Authenticated azureClient = getAzureClient();
-            ActiveDirectoryUser activeDirectoryUser = azureClient.activeDirectoryUsers().getByName(username);
-
-            AzureAdUser user = AzureAdUser.createFromActiveDirectoryUser(activeDirectoryUser);
-            if (user == null) {
-                throw new UserMayOrMayNotExistException2("Cannot find user " + username);
-            }
-            Collection<ActiveDirectoryGroup> groups = AzureCachePool.get(azureClient)
-                    .getBelongingGroupsByOid(user.getObjectID());
-
-            user.setAuthorities(groups);
-
-            cacheByUsername.put(user);
-            return user;
         });
     }
 
