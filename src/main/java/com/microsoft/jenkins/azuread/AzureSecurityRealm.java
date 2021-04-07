@@ -11,6 +11,7 @@ import com.google.common.base.Suppliers;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.microsoft.azure.AzureEnvironment;
 import com.microsoft.azure.credentials.ApplicationTokenCredentials;
 import com.microsoft.azure.credentials.AzureTokenCredentials;
@@ -318,7 +319,11 @@ public class AzureSecurityRealm extends SecurityRealm {
                     user.setAuthorities(groups);
                     return user;
                 });
-
+            } catch (UncheckedExecutionException e) {
+                if (e.getCause() instanceof UserMayOrMayNotExistException2) {
+                    throw (UserMayOrMayNotExistException2) e.getCause();
+                }
+                throw e;
             } catch (ExecutionException e) {
                 LOGGER.log(Level.SEVERE, "error", e);
                 throw new UsernameNotFoundException("Cannot find user " + username, e);
