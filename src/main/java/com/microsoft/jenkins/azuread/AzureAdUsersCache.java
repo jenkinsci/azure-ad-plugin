@@ -10,13 +10,13 @@ public final class AzureAdUsersCache {
     private static AzureAdUsersCache INSTANCE;
 
     @SuppressWarnings({"checkstyle:magicnumber"})
-    private static Cache<String, AzureAdUser> users =
+    private static final Cache<String, AzureAdUser> USERS =
         CacheBuilder.newBuilder().expireAfterAccess(4, TimeUnit.HOURS).build();
 
     private AzureAdUsersCache() {
     }
 
-    public static AzureAdUsersCache getinstance() {
+    public static AzureAdUsersCache getInstance() {
         if (INSTANCE == null) {
             INSTANCE = new AzureAdUsersCache();
         }
@@ -24,10 +24,10 @@ public final class AzureAdUsersCache {
     }
 
     public void put(AzureAdUser user) {
-        users.put(user.getUniqueName(), user);
+        USERS.put(user.getUniqueName(), user);
     }
 
     public AzureAdUser get(String userName) {
-        return users.getIfPresent(userName);
+        return USERS.getIfPresent(userName);
     }
 }

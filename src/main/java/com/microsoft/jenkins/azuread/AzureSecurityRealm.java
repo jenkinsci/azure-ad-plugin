@@ -88,7 +88,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     private Secret tenant;
     private int cacheDuration;
     private boolean fromRequest = false;
-    private AzureAdUsersCache usersCache = AzureAdUsersCache.getinstance();
+    private final AzureAdUsersCache CACHE_BY_USERNAME = AzureAdUsersCache.getInstance();
 
     private final Supplier<Azure.Authenticated> cachedAzureClient = Suppliers.memoize(() -> Azure.configure()
             .withUserAgent(AzureClientFactory.getUserAgent("AzureJenkinsAd",
@@ -241,7 +241,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                         key.substring(0, CACHE_KEY_LOG_LENGTH)));
                 return user;
             });
-            usersCache.put(userDetails);
+            CACHE_BY_USERNAME.put(userDetails);
             final AzureAuthenticationToken auth = new AzureAuthenticationToken(userDetails);
 
             // Enforce updating current identity
@@ -299,7 +299,7 @@ public class AzureSecurityRealm extends SecurityRealm {
             }
             throw new IllegalStateException("Unexpected authentication type: " + authentication);
         }, username -> {
-            AzureAdUser userDetails = usersCache.get(username);
+            AzureAdUser userDetails = CACHE_BY_USERNAME.get(username);
             if (userDetails != null) {
                 return userDetails;
             }
