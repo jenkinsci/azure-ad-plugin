@@ -53,8 +53,6 @@ public final class AzureAdUser implements UserDetails {
         authorities = Arrays.asList(SecurityRealm.AUTHENTICATED_AUTHORITY2);
     }
 
-
-
     private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
         in.defaultReadObject();
 
@@ -267,4 +265,3 @@ public final class AzureAdUser implements UserDetails {
                 + '}';
     }
 }
-
