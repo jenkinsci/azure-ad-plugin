@@ -5,7 +5,7 @@
 
 package com.microsoft.jenkins.azuread;
 
-import org.acegisecurity.GrantedAuthority;
+import org.springframework.security.core.GrantedAuthority;
 
 public class AzureAdGroup implements GrantedAuthority {
 
