@@ -11,11 +11,13 @@ import com.google.common.base.Suppliers;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.microsoft.azure.AzureEnvironment;
 import com.microsoft.azure.credentials.ApplicationTokenCredentials;
 import com.microsoft.azure.credentials.AzureTokenCredentials;
 import com.microsoft.azure.management.Azure;
 import com.microsoft.azure.management.graphrbac.ActiveDirectoryGroup;
+import com.microsoft.azure.management.graphrbac.ActiveDirectoryUser;
 import com.microsoft.jenkins.azuread.scribe.AzureApi;
 import com.microsoft.jenkins.azuread.scribe.AzureOAuthService;
 import com.microsoft.jenkins.azurecommons.core.AzureClientFactory;
@@ -228,8 +230,7 @@ public class AzureSecurityRealm extends SecurityRealm {
             }
             // validate the nonce to avoid CSRF
             final JwtClaims claims = validateIdToken(expectedNonce, idToken);
-            String key = (String) claims.getClaimValue("sub");
-
+            String key = (String) claims.getClaimValue("preferred_username");
 
             AzureAdUser userDetails = caches.get(key, () -> {
                 final AzureAdUser user = AzureAdUser.createFromJwt(claims);
@@ -297,7 +298,37 @@ public class AzureSecurityRealm extends SecurityRealm {
             }
             throw new IllegalStateException("Unexpected authentication type: " + authentication);
         }, username -> {
-            throw new UserMayOrMayNotExistException2("Cannot verify users in this context");
+            try {
+                return caches.get(username, () -> {
+                    Azure.Authenticated azureClient = getAzureClient();
+                    ActiveDirectoryUser activeDirectoryUser;
+                    final String userId = ObjId2FullSidMap.extractObjectId(username);
+                    if (userId != null) {
+                        activeDirectoryUser = azureClient.activeDirectoryUsers().getById(userId);
+                    } else {
+                        activeDirectoryUser = azureClient.activeDirectoryUsers().getByName(username);
+                    }
+
+                    AzureAdUser user = AzureAdUser.createFromActiveDirectoryUser(activeDirectoryUser);
+                    if (user == null) {
+                        throw new UserMayOrMayNotExistException2("Cannot find user " + username);
+                    }
+                    Collection<ActiveDirectoryGroup> groups = AzureCachePool.get(azureClient)
+                            .getBelongingGroupsByOid(user.getObjectID());
+
+                    user.setAuthorities(groups);
+                    return user;
+                });
+            } catch (UncheckedExecutionException e) {
+                if (e.getCause() instanceof UserMayOrMayNotExistException2) {
+                    throw (UserMayOrMayNotExistException2) e.getCause();
+                }
+                throw e;
+            } catch (ExecutionException e) {
+                LOGGER.log(Level.SEVERE, "error", e);
+                throw new UsernameNotFoundException("Cannot find user " + username, e);
+            }
+
         });
     }
 
