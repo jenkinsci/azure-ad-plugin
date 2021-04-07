@@ -30,4 +30,8 @@ public final class AzureAdUsersCache {
     public AzureAdUser get(String userName) {
         return USERS.getIfPresent(userName);
     }
+
+    public void invalidate(String name) {
+        USERS.invalidate(name);
+    }
 }

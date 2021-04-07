@@ -6,6 +6,7 @@
 package com.microsoft.jenkins.azuread;
 
 import com.microsoft.azure.management.graphrbac.ActiveDirectoryGroup;
+import com.microsoft.azure.management.graphrbac.ActiveDirectoryUser;
 import hudson.security.SecurityRealm;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
@@ -52,10 +53,29 @@ public final class AzureAdUser implements UserDetails {
         authorities = Arrays.asList(SecurityRealm.AUTHENTICATED_AUTHORITY2);
     }
 
+
+
     private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
         in.defaultReadObject();
 
         authorities = Arrays.asList(SecurityRealm.AUTHENTICATED_AUTHORITY2);
+    }
+
+    public static AzureAdUser createFromActiveDirectoryUser(ActiveDirectoryUser activeDirectoryUser) {
+        if (activeDirectoryUser == null) {
+            return null;
+        }
+
+        AzureAdUser user = new AzureAdUser();
+        user.name = activeDirectoryUser.name();
+        user.givenName = activeDirectoryUser.inner().givenName();
+        user.familyName = activeDirectoryUser.inner().surname();
+        user.uniqueName = activeDirectoryUser.userPrincipalName();
+        user.objectID = activeDirectoryUser.inner().objectId();
+        user.email = activeDirectoryUser.mail();
+        user.groupOIDs = new LinkedList<>();
+
+        return user;
     }
 
     public static AzureAdUser createFromJwt(JwtClaims claims) throws MalformedClaimException {

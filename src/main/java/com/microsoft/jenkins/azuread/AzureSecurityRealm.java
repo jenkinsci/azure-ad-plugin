@@ -16,6 +16,7 @@ import com.microsoft.azure.credentials.ApplicationTokenCredentials;
 import com.microsoft.azure.credentials.AzureTokenCredentials;
 import com.microsoft.azure.management.Azure;
 import com.microsoft.azure.management.graphrbac.ActiveDirectoryGroup;
+import com.microsoft.azure.management.graphrbac.ActiveDirectoryUser;
 import com.microsoft.jenkins.azuread.scribe.AzureApi;
 import com.microsoft.jenkins.azuread.scribe.AzureOAuthService;
 import com.microsoft.jenkins.azurecommons.core.AzureClientFactory;
@@ -286,6 +287,7 @@ public class AzureSecurityRealm extends SecurityRealm {
             AzureAuthenticationToken azureToken = (AzureAuthenticationToken) auth;
             String oid = azureToken.getAzureAdUser().getObjectID();
             AzureCachePool.invalidateBelongingGroupsByOid(oid);
+            cacheByUsername.invalidate(auth.getName());
         }
         // Ensure single sign-out
         return getOAuthService().getLogoutUrl();
@@ -303,7 +305,21 @@ public class AzureSecurityRealm extends SecurityRealm {
             if (userDetails != null) {
                 return userDetails;
             }
-            throw new UserMayOrMayNotExistException2("Cannot verify users in this context");
+
+            Azure.Authenticated azureClient = getAzureClient();
+            ActiveDirectoryUser activeDirectoryUser = azureClient.activeDirectoryUsers().getByName(username);
+
+            AzureAdUser user = AzureAdUser.createFromActiveDirectoryUser(activeDirectoryUser);
+            if (user == null) {
+                throw new UserMayOrMayNotExistException2("Cannot find user " + username);
+            }
+            Collection<ActiveDirectoryGroup> groups = AzureCachePool.get(azureClient)
+                    .getBelongingGroupsByOid(user.getObjectID());
+
+            user.setAuthorities(groups);
+
+            cacheByUsername.put(user);
+            return user;
         });
     }
 
