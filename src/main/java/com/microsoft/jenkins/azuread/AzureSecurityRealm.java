@@ -216,7 +216,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     }
 
     public HttpResponse doFinishLogin(StaplerRequest request)
-            throws InvalidJwtException, MalformedClaimException, ExecutionException {
+            throws InvalidJwtException, MalformedClaimException, ExecutionException, IOException {
         try {
             final Long beginTime = (Long) request.getSession().getAttribute(TIMESTAMP_ATTRIBUTE);
             final String expectedNonce = (String) request.getSession().getAttribute(NONCE_ATTRIBUTE);
