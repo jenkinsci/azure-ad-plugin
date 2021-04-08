@@ -474,8 +474,6 @@ public class AzureSecurityRealm extends SecurityRealm {
         if (auth instanceof AzureAuthenticationToken) {
             AzureAdUser user = ((AzureAuthenticationToken) auth).getAzureAdUser();
             return "Azure Active Directory User\n"
-                    + "\nGiven Name: " + user.getGivenName()
-                    + "\nFamily Name: " + user.getFamilyName()
                     + "\nUnique Principal Name: " + user.getUniqueName()
                     + "\nEmail: " + user.getEmail()
                     + "\nObject ID: " + user.getObjectID()
