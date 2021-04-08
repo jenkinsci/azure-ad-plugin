@@ -33,6 +33,8 @@ import hudson.security.GroupDetails;
 import hudson.security.SecurityRealm;
 import hudson.security.UserMayOrMayNotExistException2;
 import hudson.security.csrf.CrumbExclusion;
+import hudson.tasks.Mailer;
+import hudson.tasks.Mailer.UserProperty;
 import hudson.util.FormValidation;
 import hudson.util.Secret;
 import jenkins.model.Jenkins;
@@ -214,7 +216,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     }
 
     public HttpResponse doFinishLogin(StaplerRequest request)
-            throws InvalidJwtException, MalformedClaimException, ExecutionException {
+            throws InvalidJwtException, MalformedClaimException, ExecutionException, IOException {
         try {
             final Long beginTime = (Long) request.getSession().getAttribute(TIMESTAMP_ATTRIBUTE);
             final String expectedNonce = (String) request.getSession().getAttribute(NONCE_ATTRIBUTE);
@@ -250,7 +252,15 @@ public class AzureSecurityRealm extends SecurityRealm {
                 String description = generateDescription(auth);
                 u.setDescription(description);
                 u.setFullName(auth.getAzureAdUser().getName());
+                if (StringUtils.isNotBlank(auth.getAzureAdUser().getEmail())) {
+                    UserProperty existing = u.getProperty(UserProperty.class);
+                    if (existing == null || !existing.hasExplicitlyConfiguredAddress()) {
+                        u.addProperty(new Mailer.UserProperty(auth.getAzureAdUser().getEmail()));
+                    }
+                }
             }
+
+
             SecurityListener.fireAuthenticated2(userDetails);
         } catch (Exception ex) {
             LOGGER.log(Level.SEVERE, "error", ex);
