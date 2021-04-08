@@ -33,10 +33,6 @@ public final class AzureAdUser implements UserDetails {
 
     private String name;
 
-    private String givenName;
-
-    private String familyName;
-
     private String uniqueName;
 
     private String tenantID;
@@ -66,11 +62,12 @@ public final class AzureAdUser implements UserDetails {
 
         AzureAdUser user = new AzureAdUser();
         user.name = activeDirectoryUser.name();
-        user.givenName = activeDirectoryUser.inner().givenName();
-        user.familyName = activeDirectoryUser.inner().surname();
         user.uniqueName = activeDirectoryUser.userPrincipalName();
         user.objectID = activeDirectoryUser.inner().objectId();
         user.email = activeDirectoryUser.mail();
+        if (user.email == null && user.uniqueName.contains("@")) {
+            user.email = user.uniqueName;
+        }
         user.groupOIDs = new LinkedList<>();
 
         return user;
@@ -83,8 +80,6 @@ public final class AzureAdUser implements UserDetails {
 
         AzureAdUser user = new AzureAdUser();
         user.name = (String) claims.getClaimValue("name");
-        user.givenName = (String) claims.getClaimValue("given_name");
-        user.familyName = (String) claims.getClaimValue("family_name");
         user.uniqueName = (String) claims.getClaimValue("upn");
         if (StringUtils.isEmpty(user.uniqueName)) {
             user.uniqueName = (String) claims.getClaimValue("preferred_username");
@@ -92,6 +87,9 @@ public final class AzureAdUser implements UserDetails {
         user.tenantID = (String) claims.getClaimValue("tid");
         user.objectID = (String) claims.getClaimValue("oid");
         user.email = (String) claims.getClaimValue("email");
+        if (user.email == null && user.uniqueName.contains("@")) {
+            user.email = user.uniqueName;
+        }
         user.groupOIDs = claims.getStringListClaimValue("groups");
         if (user.groupOIDs == null) {
             user.groupOIDs = new LinkedList<>();
@@ -148,12 +146,6 @@ public final class AzureAdUser implements UserDetails {
         if (!Objects.equals(name, that.name)) {
             return false;
         }
-        if (!Objects.equals(givenName, that.givenName)) {
-            return false;
-        }
-        if (!Objects.equals(familyName, that.familyName)) {
-            return false;
-        }
         if (!Objects.equals(uniqueName, that.uniqueName)) {
             return false;
         }
@@ -174,8 +166,6 @@ public final class AzureAdUser implements UserDetails {
     @SuppressWarnings("checkstyle:magicnumber")
     public int hashCode() {
         int result = name != null ? name.hashCode() : 0;
-        result = 31 * result + (givenName != null ? givenName.hashCode() : 0);
-        result = 31 * result + (familyName != null ? familyName.hashCode() : 0);
         result = 31 * result + (uniqueName != null ? uniqueName.hashCode() : 0);
         result = 31 * result + (tenantID != null ? tenantID.hashCode() : 0);
         result = 31 * result + (groupOIDs != null ? groupOIDs.hashCode() : 0);
@@ -234,14 +224,6 @@ public final class AzureAdUser implements UserDetails {
         return this.name;
     }
 
-    public String getFamilyName() {
-        return familyName;
-    }
-
-    public String getGivenName() {
-        return givenName;
-    }
-
     public String getEmail() {
         return email;
     }
@@ -254,8 +236,6 @@ public final class AzureAdUser implements UserDetails {
     public String toString() {
         return "AzureAdUser{"
                 + "name='" + name + '\''
-                + ", givenName='" + givenName + '\''
-                + ", familyName='" + familyName + '\''
                 + ", uniqueName='" + uniqueName + '\''
                 + ", tenantID='" + tenantID + '\''
                 + ", objectID='" + objectID + '\''
