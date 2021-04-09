@@ -5,8 +5,6 @@
 
 package com.microsoft.jenkins.azuread;
 
-import com.microsoft.azure.management.graphrbac.ActiveDirectoryGroup;
-import com.microsoft.azure.management.graphrbac.ActiveDirectoryUser;
 import hudson.security.SecurityRealm;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
@@ -21,7 +19,6 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
@@ -55,19 +52,23 @@ public final class AzureAdUser implements UserDetails {
         authorities = Arrays.asList(SecurityRealm.AUTHENTICATED_AUTHORITY2);
     }
 
-    public static AzureAdUser createFromActiveDirectoryUser(ActiveDirectoryUser activeDirectoryUser) {
+    public static AzureAdUser createFromActiveDirectoryUser(com.microsoft.graph.models.User activeDirectoryUser) {
         if (activeDirectoryUser == null) {
             return null;
         }
 
         AzureAdUser user = new AzureAdUser();
-        user.name = activeDirectoryUser.name();
-        user.uniqueName = activeDirectoryUser.userPrincipalName();
-        user.objectID = activeDirectoryUser.inner().objectId();
-        user.email = activeDirectoryUser.mail();
-        if (user.email == null && user.uniqueName.contains("@")) {
-            user.email = user.uniqueName;
-        }
+        user.name = activeDirectoryUser.displayName;
+
+        // this may not match what comes in preferred_username in the id_token :(
+        // https://docs.microsoft.com/en-us/azure/active-directory/develop/active-directory-optional-claims
+        // https://docs.microsoft.com/en-us/azure/active-directory/authentication/howto-authentication-use-email-signin
+        // https://stackoverflow.com/questions/67017723/get-preferred-username-with-microsoft-graph-api
+        user.uniqueName = activeDirectoryUser.userPrincipalName;
+        user.objectID = activeDirectoryUser.id;
+        // may not be set if it is not linked as an office365 user
+        // even if it will be set via the id_token
+        user.email = activeDirectoryUser.mail;
         user.groupOIDs = new LinkedList<>();
 
         return user;
@@ -112,13 +113,13 @@ public final class AzureAdUser implements UserDetails {
         return user;
     }
 
-    public void setAuthorities(Collection<ActiveDirectoryGroup> groups) {
+    public void setAuthorities(List<AzureAdGroup> groups) {
         List<GrantedAuthority> newAuthorities = new ArrayList<>();
         int i = 0;
         if (!groups.isEmpty()) {
-            for (ActiveDirectoryGroup group : groups) {
-                newAuthorities.add(new AzureAdGroup(group.id(), group.name()));
-                newAuthorities.add(new SimpleGrantedAuthority(group.id()));
+            for (AzureAdGroup group : groups) {
+                newAuthorities.add(group);
+                newAuthorities.add(new SimpleGrantedAuthority(group.getObjectId()));
             }
         } else {
             for (String groupOID : groupOIDs) {

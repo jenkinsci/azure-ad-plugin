@@ -5,11 +5,11 @@
 
 package com.microsoft.jenkins.azuread.scribe;
 
+import com.azure.identity.AzureAuthorityHosts;
 import com.github.scribejava.core.extractors.TokenExtractor;
 import com.github.scribejava.core.model.OAuth2AccessToken;
 import com.github.scribejava.core.model.OAuthConfig;
 import com.github.scribejava.core.model.ParameterList;
-import com.microsoft.jenkins.azuread.Constants;
 import org.apache.commons.lang.StringUtils;
 import com.github.scribejava.core.builder.api.DefaultApi20;
 
@@ -18,25 +18,27 @@ public class AzureApi extends DefaultApi20 {
     public static final String DEFAULT_TENANT = "common";
 
     private String tenant;
+    private final String loginEndpoint;
 
     private String resource;
 
-    protected AzureApi(String resource, String tenant) {
+    protected AzureApi(String resource, String tenant, String loginEndpoint) {
         this.resource = resource;
         this.tenant = tenant;
+        this.loginEndpoint = loginEndpoint;
     }
 
     public static AzureApi instance(String resource) {
-        return instance(resource, DEFAULT_TENANT);
+        return instance(resource, DEFAULT_TENANT, AzureAuthorityHosts.AZURE_PUBLIC_CLOUD);
     }
 
-    public static AzureApi instance(String resource, String tenant) {
-        return new AzureApi(resource, tenant);
+    public static AzureApi instance(String resource, String tenant, String loginEndpoint) {
+        return new AzureApi(resource, tenant, loginEndpoint);
     }
 
     private String getBaseEndpoint() {
         StringBuilder url = new StringBuilder();
-        url.append(Constants.DEFAULT_AUTHENTICATION_ENDPOINT);
+        url.append(loginEndpoint);
         if (StringUtils.isNotEmpty(tenant)) {
             url.append(tenant);
         } else {

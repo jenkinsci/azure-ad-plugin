@@ -2,62 +2,74 @@ package com.microsoft.jenkins.azuread;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import com.microsoft.azure.management.Azure;
-import com.microsoft.azure.management.graphrbac.ActiveDirectoryGroup;
-import com.microsoft.azure.management.graphrbac.GraphErrorException;
-import com.microsoft.azure.management.graphrbac.implementation.UserGetMemberGroupsParametersInner;
+import com.microsoft.graph.models.DirectoryObject;
+import com.microsoft.graph.models.Group;
+import com.microsoft.graph.requests.DirectoryObjectCollectionWithReferencesPage;
+import com.microsoft.graph.requests.DirectoryObjectCollectionWithReferencesRequestBuilder;
+import com.microsoft.graph.requests.GraphServiceClient;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 public final class AzureCachePool {
     private static final Logger LOGGER = Logger.getLogger(AzureCachePool.class.getName());
-    private static Cache<String, Collection<ActiveDirectoryGroup>> belongingGroupsByOid =
+    private static Cache<String, List<AzureAdGroup>> belongingGroupsByOid =
             CacheBuilder.newBuilder().expireAfterAccess(1, TimeUnit.HOURS).build();
-    private final Azure.Authenticated azure;
+    private final GraphServiceClient azure;
 
-    private AzureCachePool(Azure.Authenticated azure) {
+    private AzureCachePool(GraphServiceClient azure) {
         this.azure = azure;
     }
 
-    public static AzureCachePool get(Azure.Authenticated azure) {
+    public static AzureCachePool get(GraphServiceClient azure) {
         return new AzureCachePool(azure);
     }
 
-    public Collection<ActiveDirectoryGroup> getBelongingGroupsByOid(final String oid) {
+    public List<AzureAdGroup> getBelongingGroupsByOid(final String oid) {
         try {
-            Collection<ActiveDirectoryGroup> result = belongingGroupsByOid.get(oid,
-                    new Callable<Collection<ActiveDirectoryGroup>>() {
-                        @Override
-                        public Collection<ActiveDirectoryGroup> call() throws Exception {
-                            UserGetMemberGroupsParametersInner getMemberGroupsParam =
-                                    new UserGetMemberGroupsParametersInner().withSecurityEnabledOnly(false);
-                            List<ActiveDirectoryGroup> activeDirectoryGroups = new ArrayList<>();
-                            List<String> groups;
-                            try {
+            List<AzureAdGroup> result = belongingGroupsByOid.get(oid,
+                    () -> {
+                        try {
+                        DirectoryObjectCollectionWithReferencesPage collection = azure
+                                .users(oid)
+                                .transitiveMemberOf()
+                                .buildRequest()
+                                .get();
 
-                                groups = azure.activeDirectoryUsers().inner().getMemberGroups(oid,
-                                        getMemberGroupsParam);
-                            } catch (GraphErrorException e) {
-                                LOGGER.warning("Do not have sufficient privileges to "
-                                        + "fetch your belonging groups' authorities.");
-                                return activeDirectoryGroups;
+
+                            List<AzureAdGroup> groups = new ArrayList<>();
+
+                            while (collection != null) {
+                                final List<DirectoryObject> directoryObjects = collection.getCurrentPage();
+
+                                List<AzureAdGroup> groupsFromPage = directoryObjects.stream()
+                                        .filter(group -> group instanceof Group)
+                                        .map(group -> new AzureAdGroup(group.id, ((Group) group).displayName))
+                                        .collect(Collectors.toList());
+                                groups.addAll(groupsFromPage);
+
+                                DirectoryObjectCollectionWithReferencesRequestBuilder nextPage = collection
+                                        .getNextPage();
+                                if (nextPage == null) {
+                                    break;
+                                } else {
+                                    collection = nextPage.buildRequest().get();
+                                }
                             }
 
-
-                            for (String group : groups) {
-                                activeDirectoryGroups.add(azure.activeDirectoryGroups().getById(group));
-                            }
-
-                            return activeDirectoryGroups;
+                            return groups;
+                        } catch (Exception e) {
+                            LOGGER.log(Level.WARNING, "Do not have sufficient privileges to "
+                                    + "fetch your belonging groups' authorities.", e);
+                            return Collections.emptyList();
                         }
+
                     });
             if (Constants.DEBUG) {
                 belongingGroupsByOid.invalidate(oid);

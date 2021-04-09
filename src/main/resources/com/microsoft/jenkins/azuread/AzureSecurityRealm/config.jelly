@@ -18,6 +18,10 @@
             <f:textbox />
         </f:entry>
 
+        <f:entry title="${%Azure Environment}" field="azureEnvironmentName">
+            <f:select/>
+        </f:entry>
+
         <f:entry title="Cache Duration" field="cacheDuration" help="/plugin/azure-ad/help/help-cache-duration.html">
             <f:number default="3600" />
         </f:entry>
@@ -26,6 +30,10 @@
             <f:checkbox />
         </f:entry>
 
-        <f:validateButton title="Verify Application" method="verifyConfiguration" progress="Verifying..." with="clientId,clientSecret,tenant"/>
+        <f:entry title="Test user principal name or object id">
+            <f:textbox name="testObject" />
+        </f:entry>
+
+        <f:validateButton title="Verify Application" method="verifyConfiguration" progress="Verifying..." with="clientId,clientSecret,tenant,testObject,azureEnvironmentName"/>
     </f:block>
 </j:jelly>

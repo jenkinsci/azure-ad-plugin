@@ -5,28 +5,32 @@
 
 package com.microsoft.jenkins.azuread;
 
+import com.azure.core.http.HttpClient;
+import com.azure.core.http.ProxyOptions;
+import com.azure.core.http.okhttp.OkHttpAsyncHttpClientBuilder;
+import com.azure.identity.ClientSecretCredential;
+import com.azure.identity.ClientSecretCredentialBuilder;
 import com.github.scribejava.core.builder.ServiceBuilder;
 import com.github.scribejava.core.oauth.OAuth20Service;
+import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.util.concurrent.UncheckedExecutionException;
-import com.microsoft.azure.AzureEnvironment;
-import com.microsoft.azure.credentials.ApplicationTokenCredentials;
-import com.microsoft.azure.credentials.AzureTokenCredentials;
-import com.microsoft.azure.management.Azure;
-import com.microsoft.azure.management.graphrbac.ActiveDirectoryGroup;
-import com.microsoft.azure.management.graphrbac.ActiveDirectoryUser;
+import com.microsoft.graph.authentication.TokenCredentialAuthProvider;
+import com.microsoft.graph.http.GraphServiceException;
+import com.microsoft.graph.httpcore.HttpClients;
+import com.microsoft.graph.requests.GraphServiceClient;
 import com.microsoft.jenkins.azuread.scribe.AzureApi;
 import com.microsoft.jenkins.azuread.scribe.AzureOAuthService;
-import com.microsoft.jenkins.azurecommons.core.AzureClientFactory;
 import com.thoughtworks.xstream.converters.Converter;
 import com.thoughtworks.xstream.converters.MarshallingContext;
 import com.thoughtworks.xstream.converters.UnmarshallingContext;
 import com.thoughtworks.xstream.io.HierarchicalStreamReader;
 import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
 import hudson.Extension;
+import hudson.ProxyConfiguration;
 import hudson.model.Descriptor;
 import hudson.model.User;
 import hudson.security.GroupDetails;
@@ -36,9 +40,14 @@ import hudson.security.csrf.CrumbExclusion;
 import hudson.tasks.Mailer;
 import hudson.tasks.Mailer.UserProperty;
 import hudson.util.FormValidation;
+import hudson.util.ListBoxModel;
 import hudson.util.Secret;
 import jenkins.model.Jenkins;
 import jenkins.security.SecurityListener;
+import jenkins.util.JenkinsJVM;
+import okhttp3.Credentials;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jose4j.jwt.JwtClaims;
@@ -63,12 +72,22 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.Collection;
+import java.net.InetSocketAddress;
+import java.net.Proxy;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_CHINA;
+import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_GERMANY;
+import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_PUBLIC_CLOUD;
+import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_US_GOVERNMENT_L4;
+import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_US_GOVERNMENT_L5;
+import static com.microsoft.jenkins.azuread.AzureEnvironment.getAuthorityHost;
+import static com.microsoft.jenkins.azuread.AzureEnvironment.getGraphResource;
+import static com.microsoft.jenkins.azuread.AzureEnvironment.getServiceRoot;
 
 public class AzureSecurityRealm extends SecurityRealm {
 
@@ -92,15 +111,83 @@ public class AzureSecurityRealm extends SecurityRealm {
     private Secret tenant;
     private int cacheDuration;
     private boolean fromRequest = false;
+    private String azureEnvironmentName = "Azure";
 
-    private final Supplier<Azure.Authenticated> cachedAzureClient = Suppliers.memoize(() -> Azure.configure()
-            .withUserAgent(AzureClientFactory.getUserAgent("AzureJenkinsAd",
-                    AzureSecurityRealm.class.getPackage().getImplementationVersion()))
-            .authenticate(new ApplicationTokenCredentials(
-                    getClientId(),
-                    getTenant(),
-                    getClientSecret().getPlainText(),
-                    AzureEnvironment.AZURE)));
+    private final Supplier<GraphServiceClient<Request>> cachedAzureClient = Suppliers.memoize(() -> {
+        OkHttpAsyncHttpClientBuilder okHttpClientBuilder = new OkHttpAsyncHttpClientBuilder();
+        okHttpClientBuilder = addProxyToCredentialsHttpClientIfRequired(okHttpClientBuilder);
+
+        HttpClient tokenHttpClient = okHttpClientBuilder.build();
+
+        String azureEnv = getAzureEnvironmentName();
+        final ClientSecretCredential clientSecretCredential = new ClientSecretCredentialBuilder()
+                .clientId(clientId.getPlainText())
+                .clientSecret(clientSecret.getPlainText())
+                .tenantId(tenant.getPlainText())
+                .authorityHost(getAuthorityHost(azureEnv))
+                .httpClient(tokenHttpClient)
+                .build();
+
+        final TokenCredentialAuthProvider authProvider = new TokenCredentialAuthProvider(clientSecretCredential);
+
+        OkHttpClient.Builder builder = HttpClients.createDefault(authProvider)
+                .newBuilder();
+
+        builder = addProxyToHttpClientIfRequired(builder);
+        final OkHttpClient graphHttpClient = builder.build();
+
+        GraphServiceClient<Request> graphServiceClient = GraphServiceClient
+                .builder()
+                .httpClient(graphHttpClient)
+                .buildClient();
+        if (!azureEnv.equals(AZURE_PUBLIC_CLOUD)) {
+            graphServiceClient.setServiceRoot(getServiceRoot(azureEnv));
+        }
+        return graphServiceClient;
+
+    });
+
+    private static OkHttpAsyncHttpClientBuilder addProxyToCredentialsHttpClientIfRequired(
+            OkHttpAsyncHttpClientBuilder okHttpClientBuilder
+    ) {
+        if (JenkinsJVM.isJenkinsJVM()) {
+            ProxyConfiguration proxyConfig = Jenkins.get().getProxy();
+            if (proxyConfig != null && StringUtils.isNotBlank(proxyConfig.getName())) {
+                ProxyOptions    proxyOptions = new ProxyOptions(ProxyOptions.Type.HTTP, new InetSocketAddress(
+                        proxyConfig.getName(),
+                        proxyConfig.getPort()));
+                if (StringUtils.isNotBlank(proxyConfig.getUserName())) {
+                    proxyOptions.setCredentials(proxyConfig.getUserName(), proxyConfig.getSecretPassword()
+                            .getPlainText());
+                }
+                okHttpClientBuilder = okHttpClientBuilder.proxy(proxyOptions);
+            }
+        }
+        return okHttpClientBuilder;
+    }
+
+    private static OkHttpClient.Builder addProxyToHttpClientIfRequired(OkHttpClient.Builder builder) {
+        if (JenkinsJVM.isJenkinsJVM()) {
+            ProxyConfiguration proxyConfiguration = Jenkins.get().getProxy();
+            if (proxyConfiguration != null && StringUtils.isNotBlank(proxyConfiguration.getName())) {
+                Proxy proxy = proxyConfiguration.createProxy("https://graph.microsoft.com");
+
+                builder = builder.proxy(proxy);
+                if (StringUtils.isNotBlank(proxyConfiguration.getUserName())) {
+                    builder = builder.proxyAuthenticator((route, response) -> {
+                        String credential = Credentials.basic(
+                                proxyConfiguration.getUserName(),
+                                proxyConfiguration.getSecretPassword().getPlainText()
+                        );
+                        return response.request().newBuilder().header("Authorization", credential).build();
+                    });
+                }
+            }
+        }
+
+        return builder;
+    }
+
 
     private final Supplier<JwtConsumer> jwtConsumer = Suppliers.memoize(() ->
             Utils.JwtUtil.jwt(getClientId(), getTenant()));
@@ -119,6 +206,19 @@ public class AzureSecurityRealm extends SecurityRealm {
 
     public String getClientId() {
         return clientId.getPlainText();
+    }
+
+    public String getAzureEnvironmentName() {
+        if (StringUtils.isBlank(azureEnvironmentName)) {
+            return AZURE_PUBLIC_CLOUD;
+        }
+
+        return azureEnvironmentName;
+    }
+
+    @DataBoundSetter
+    public void setAzureEnvironmentName(String azureEnvironmentName) {
+        this.azureEnvironmentName = azureEnvironmentName;
     }
 
     public void setClientId(String clientId) {
@@ -172,10 +272,12 @@ public class AzureSecurityRealm extends SecurityRealm {
                 .responseType("id_token")
                 .scope("openid profile email")
                 .callback(getRootUrl() + CALLBACK_URL)
-                .build(AzureApi.instance(Constants.DEFAULT_GRAPH_ENDPOINT, this.getTenant()));
+                .build(AzureApi.instance(getGraphResource(getAzureEnvironmentName()),
+                        this.getTenant(),
+                        getAuthorityHost(getAzureEnvironmentName())));
     }
 
-    Azure.Authenticated getAzureClient() {
+    GraphServiceClient<Request> getAzureClient() {
         return cachedAzureClient.get();
     }
 
@@ -236,7 +338,7 @@ public class AzureSecurityRealm extends SecurityRealm {
 
             AzureAdUser userDetails = caches.get(key, () -> {
                 final AzureAdUser user = AzureAdUser.createFromJwt(claims);
-                final Collection<ActiveDirectoryGroup> groups = AzureCachePool.get(getAzureClient())
+                final List<AzureAdGroup> groups = AzureCachePool.get(getAzureClient())
                         .getBelongingGroupsByOid(user.getObjectID());
                 user.setAuthorities(groups);
                 LOGGER.info(String.format("Fetch user details with sub: %s***",
@@ -309,27 +411,34 @@ public class AzureSecurityRealm extends SecurityRealm {
             throw new IllegalStateException("Unexpected authentication type: " + authentication);
         }, username -> {
             try {
+                if (username == null) {
+                    throw new UserMayOrMayNotExistException2("Can't find a user with no username");
+                }
+
                 return caches.get(username, () -> {
-                    Azure.Authenticated azureClient = getAzureClient();
-                    ActiveDirectoryUser activeDirectoryUser;
-                    final String userId = ObjId2FullSidMap.extractObjectId(username);
-                    if (userId != null) {
-                        activeDirectoryUser = azureClient.activeDirectoryUsers().getById(userId);
-                    } else {
-                        activeDirectoryUser = azureClient.activeDirectoryUsers().getByName(username);
+                    GraphServiceClient<Request> azureClient = getAzureClient();
+                    String userId = ObjId2FullSidMap.extractObjectId(username);
+
+                    if (userId == null) {
+                        userId = username;
                     }
 
+                    // Currently triggers annoying log spam if the user is a group, but there's no way to tell currently
+                    // as we look up by object id we don't know if it's a user or a group :(
+                    com.microsoft.graph.models.User activeDirectoryUser = azureClient.users(userId).buildRequest()
+                            .get();
+
                     AzureAdUser user = AzureAdUser.createFromActiveDirectoryUser(activeDirectoryUser);
-                    if (user == null) {
-                        throw new UserMayOrMayNotExistException2("Cannot find user " + username);
-                    }
-                    Collection<ActiveDirectoryGroup> groups = AzureCachePool.get(azureClient)
+                    List<AzureAdGroup> groups = AzureCachePool.get(azureClient)
                             .getBelongingGroupsByOid(user.getObjectID());
 
                     user.setAuthorities(groups);
                     return user;
                 });
             } catch (UncheckedExecutionException e) {
+                if (e.getCause() instanceof GraphServiceException) {
+                    throw new UserMayOrMayNotExistException2("Cannot find user: " + username, e.getCause());
+                }
                 if (e.getCause() instanceof UserMayOrMayNotExistException2) {
                     throw (UserMayOrMayNotExistException2) e.getCause();
                 }
@@ -460,23 +569,59 @@ public class AzureSecurityRealm extends SecurityRealm {
             super(clazz);
         }
 
+
+        public ListBoxModel doFillAzureEnvironmentNameItems() {
+            ListBoxModel model = new ListBoxModel();
+
+            model.add(AZURE_PUBLIC_CLOUD);
+            model.add(AZURE_CHINA);
+            model.add(AZURE_GERMANY);
+            model.add(AZURE_US_GOVERNMENT_L4);
+            model.add(AZURE_US_GOVERNMENT_L5);
+            return model;
+        }
+
         public FormValidation doVerifyConfiguration(@QueryParameter final String clientId,
                                                     @QueryParameter final Secret clientSecret,
-                                                    @QueryParameter final String tenant)
-                throws IOException, ExecutionException {
-
-
-            AzureTokenCredentials credential = new ApplicationTokenCredentials(clientId,
-                    tenant,
-                    clientSecret.getPlainText(),
-                    AzureEnvironment.AZURE);
-            try {
-                Azure.authenticate(credential).subscriptions().list();
-            } catch (Exception ex) {
-                return FormValidation.error(ex.getMessage());
+                                                    @QueryParameter final String tenant,
+                                                    @QueryParameter final String testObject,
+                                                    @QueryParameter final String azureEnvironmentName) {
+            if (testObject.equals("")) {
+                return FormValidation.error("Please set a test user principal name or object ID");
             }
 
-            return FormValidation.ok("Successfully verified");
+            OkHttpAsyncHttpClientBuilder okHttpClientBuilder = new OkHttpAsyncHttpClientBuilder();
+            okHttpClientBuilder = addProxyToCredentialsHttpClientIfRequired(okHttpClientBuilder);
+
+            HttpClient tokenHttpClient = okHttpClientBuilder.build();
+
+            final ClientSecretCredential clientSecretCredential = new ClientSecretCredentialBuilder()
+                    .clientId(clientId)
+                    .clientSecret(clientSecret.getPlainText())
+                    .tenantId(tenant)
+                    .httpClient(tokenHttpClient)
+                    .authorityHost(getAuthorityHost(azureEnvironmentName))
+                    .build();
+
+            final TokenCredentialAuthProvider authProvider = new TokenCredentialAuthProvider(clientSecretCredential);
+
+            OkHttpClient.Builder builder = HttpClients.createDefault(authProvider)
+                    .newBuilder();
+
+            builder = addProxyToHttpClientIfRequired(builder);
+            OkHttpClient httpClient = builder.build();
+
+            GraphServiceClient<Request> graphServiceClient = GraphServiceClient
+                    .builder()
+                    .httpClient(httpClient)
+                    .buildClient();
+            try {
+                com.microsoft.graph.models.User user = graphServiceClient.users(testObject).buildRequest().get();
+
+                return FormValidation.ok("Successfully verified, found display name: " + user.displayName);
+            } catch (Exception ex) {
+                return FormValidation.error(ex, ex.getMessage());
+            }
         }
     }
 
