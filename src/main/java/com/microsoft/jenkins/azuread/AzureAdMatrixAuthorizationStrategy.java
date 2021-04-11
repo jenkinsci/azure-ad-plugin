@@ -8,7 +8,9 @@ package com.microsoft.jenkins.azuread;
 import com.cloudbees.hudson.plugins.folder.AbstractFolder;
 import com.microsoft.graph.models.Group;
 import com.microsoft.graph.models.User;
+import com.microsoft.graph.options.HeaderOption;
 import com.microsoft.graph.options.Option;
+import com.microsoft.graph.options.QueryOption;
 import com.microsoft.graph.requests.GraphServiceClient;
 import com.microsoft.graph.requests.GroupCollectionPage;
 import com.microsoft.graph.requests.UserCollectionPage;
@@ -177,14 +179,7 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
         List<AzureObject> candidates = new ArrayList<>();
         LOGGER.info("search users with prefix: " + prefix);
         try {
-            // wasn't able to use the more powerful search API:
-            // https://stackoverflow.com/questions/67022404/search-for-users-cant-get-it-to-work-with-ms-graph-java-sdk
-            LinkedList<Option> requestOptions = new LinkedList<>();
-            UserCollectionPage users = graphClient.users()
-                    .buildRequest(requestOptions)
-                    .filter(String.format("startsWith(displayName, '%s')", prefix))
-                    .select("id,displayName")
-                    .get();
+            UserCollectionPage users = lookupUsers(prefix, graphClient);
 
             for (User user : users.getCurrentPage()) {
                 candidates.add(new AzureObject(user.id, user.displayName));
@@ -194,11 +189,7 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
             }
 
             if (candidates.size() < maxCandidates) {
-                GroupCollectionPage groupCollectionPage = graphClient.groups()
-                        .buildRequest()
-                        .filter(String.format("startsWith(displayName,'%s')", prefix))
-                        .select("id,displayName")
-                        .get();
+                GroupCollectionPage groupCollectionPage = lookupGroups(prefix, graphClient);
 
                 for (Group group : groupCollectionPage.getCurrentPage()) {
                     candidates.add(new AzureObject(group.id, group.displayName));
@@ -216,6 +207,31 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
             c.add(candidateText);
         }
         return c;
+    }
+
+    private static GroupCollectionPage lookupGroups(String prefix, GraphServiceClient<Request> graphClient) {
+        LinkedList<Option> requestOptions = new LinkedList<>();
+        String search = String.format("\"displayName:%s\"", prefix);
+        requestOptions.add(new QueryOption("$search", search));
+        requestOptions.add(new HeaderOption("ConsistencyLevel", "eventual"));
+
+        return graphClient.groups()
+                .buildRequest(requestOptions)
+                .orderBy("displayName")
+                .select("id,displayName")
+                .get();
+    }
+
+    private static UserCollectionPage lookupUsers(String prefix, GraphServiceClient<Request> graphClient) {
+        LinkedList<Option> requestOptions = new LinkedList<>();
+        String search = String.format("\"displayName:%s\" OR \"userPrincipalName:%s\"", prefix, prefix);
+        requestOptions.add(new QueryOption("$search", search));
+        requestOptions.add(new HeaderOption("ConsistencyLevel", "eventual"));
+        return graphClient.users()
+                .buildRequest(requestOptions)
+                .select("id,displayName")
+                .orderBy("displayName")
+                .get();
     }
 
     public static class DescriptorImpl extends GlobalMatrixAuthorizationStrategy.DescriptorImpl {
