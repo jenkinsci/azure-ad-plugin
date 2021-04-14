@@ -77,6 +77,62 @@
             <version>1.16</version>
         </dependency>
         <dependency>
+            <groupId>org.jenkins-ci.plugins</groupId>
+            <artifactId>jackson2-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.microsoft.graph</groupId>
+            <artifactId>microsoft-graph</artifactId>
+            <version>3.2.0</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.azure</groupId>
+                    <artifactId>azure-core-http-netty</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>net.java.dev.jna</groupId>
+                    <artifactId>jna-platform</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.12.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-core-http-okhttp</artifactId>
+            <version>1.6.1</version>
+            <exclusions>
+                <!-- loaded via jackson2-api plugin -->
+                <exclusion>
+                    <groupId>com.fasterxml.jackson.datatype</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.fasterxml.jackson.core</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.fasterxml.jackson.dataformat</groupId>
+                    <artifactId>jackson-dataformat-xml</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- should be kept in sync with jackson version in bom, possibly add it to the jackson2-api plugin -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.dataformat</groupId>
+            <artifactId>jackson-dataformat-xml</artifactId>
+            <version>2.12.1</version>
+        </dependency>
+        <dependency>
             <groupId>io.jenkins</groupId>
             <artifactId>configuration-as-code</artifactId>
             <optional>true</optional>
@@ -96,16 +152,6 @@
             <artifactId>matrix-auth</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.jenkins-ci.plugins</groupId>
-            <artifactId>azure-commons-core</artifactId>
-            <version>${azure-commons.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.jenkins-ci.plugins</groupId>
-            <artifactId>azure-commons</artifactId>
-            <version>${azure-commons.version}</version>
-        </dependency>
-        <dependency>
             <groupId>com.github.scribejava</groupId>
             <artifactId>scribejava-apis</artifactId>
             <version>4.2.0</version>
@@ -118,17 +164,6 @@
                 <exclusion>
                     <groupId>org.slf4j</groupId>
                     <artifactId>slf4j-api</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>com.microsoft.azure</groupId>
-            <artifactId>azure</artifactId>
-            <version>${azuresdk.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.apache.httpcomponents</groupId>
-                    <artifactId>httpcore</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -156,15 +191,8 @@
         <dependency>
             <groupId>org.jenkins-ci.plugins</groupId>
             <artifactId>job-dsl</artifactId>
-            <version>1.72</version>
+            <version>1.77</version>
             <scope>test</scope>
-            <exclusions>
-                <!-- needed for -Djenkins.version=2.164.1 -->
-                <exclusion>
-                    <groupId>org.codehaus.groovy</groupId>
-                    <artifactId>groovy-all</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.jenkins-ci.plugins.workflow</groupId>
@@ -189,44 +217,29 @@
                 <type>pom</type>
             </dependency>
 
+
             <dependency>
-                <groupId>joda-time</groupId>
-                <artifactId>joda-time</artifactId>
-                <version>2.10.2</version>
+                <groupId>org.jetbrains.kotlin</groupId>
+                <artifactId>kotlin-stdlib-common</artifactId>
+                <version>1.4.10</version>
             </dependency>
+
             <dependency>
-                <groupId>com.microsoft.azure</groupId>
-                <artifactId>azure-annotations</artifactId>
-                <version>1.8.0</version>
+                <groupId>org.jetbrains</groupId>
+                <artifactId>annotations</artifactId>
+                <version>15.0</version>
             </dependency>
+
             <dependency>
-                <groupId>com.google.guava</groupId>
-                <artifactId>guava</artifactId>
-                <version>24.1.1-jre</version>
+                <groupId>com.nimbusds</groupId>
+                <artifactId>oauth2-oidc-sdk</artifactId>
+                <version>7.4</version>
             </dependency>
-            <dependency>
-                <groupId>com.google.errorprone</groupId>
-                <artifactId>error_prone_annotations</artifactId>
-                <version>2.4.0</version>
-            </dependency>
-            <dependency>
-                <groupId>com.google.code.gson</groupId>
-                <artifactId>gson</artifactId>
-                <version>2.8.5</version>
-            </dependency>
-            <dependency>
-                <groupId>org.jenkins-ci.plugins</groupId>
-                <artifactId>jackson2-api</artifactId>
-            </dependency>
+
             <dependency>
                 <groupId>org.hamcrest</groupId>
                 <artifactId>hamcrest-core</artifactId>
                 <version>2.2</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.commons</groupId>
-                <artifactId>commons-lang3</artifactId>
-                <version>3.11</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -246,45 +259,6 @@
             </resource>
         </resources>
         <plugins>
-            <plugin>
-                <groupId>org.jenkins-ci.tools</groupId>
-                <artifactId>maven-hpi-plugin</artifactId>
-                <configuration>
-                    <minimumJavaVersion>1.8</minimumJavaVersion>
-                    <compatibleSinceVersion>1.0.0</compatibleSinceVersion>
-                    <maskClasses>
-                        com.microsoft.jenkins.azurecommons.core.
-                        com.google.common.
-
-                        com.microsoft.azure.AzureAsyncOperation
-                        com.microsoft.azure.AzureClient
-                        com.microsoft.azure.AzureEnvironment
-                        com.microsoft.azure.AzureResponseBuilder
-                        com.microsoft.azure.AzureServiceClient
-                        com.microsoft.azure.AzureServiceFuture
-                        com.microsoft.azure.CloudError
-                        com.microsoft.azure.CloudException
-                        com.microsoft.azure.ListOperationCallback
-                        com.microsoft.azure.Page
-                        com.microsoft.azure.PagedList
-                        com.microsoft.azure.PollingState
-                        com.microsoft.azure.Resource
-                        com.microsoft.azure.SubResource
-                        com.microsoft.aad.
-                        com.microsoft.applicationinsights.
-                        com.microsoft.azure.credentials.
-                        com.microsoft.azure.keyvault.
-                        com.microsoft.azure.management.
-                        com.microsoft.azure.serializer.
-                        com.microsoft.azure.storage.
-                        com.microsoft.rest.
-                    </maskClasses>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-checkstyle-plugin</artifactId>

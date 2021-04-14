@@ -6,92 +6,83 @@ A Jenkins Plugin that supports authentication & authorization via Azure Active D
 
 ## Setup In Azure Active Directory
 
-1. Make sure your Jenkins server has enabled HTTPS. If your Jenkins instance is created by the [Jenkins Solution Template](https://docs.microsoft.com/en-us/azure/jenkins/install-jenkins-solution-template), you can update your NGINX config file at `/etc/nginx/sites-available/default`. More configuration details can be found [here](http://nginx.org/en/docs/http/configuring_https_servers.html).
+1. Open `Azure Active Directory`, click `App registrations`
 
-1. Open `Azure Active Directory`, in `Properties`, copy Directory ID, it will be used as `tenant` in Jenkins.
+1. Click `New registration`
 
-1. Register an application in AAD, copy the `Application ID`, it will be used as `Client ID`.
+1. Add a new Reply URL `https://{your_jenkins_host}/securityRealm/finishLogin`. Make sure "Jenkins URL" (Manage Jenkins => Configure System) is set to the same value as `https://{your_jenkins_host}`.
 
-1. In Application setting page, add a new Reply URL `https://{your_jenkins_host}/securityRealm/finishLogin`. Make sure variable `jenkinsURL` set as `https://{your_jenkins_host}` for the file `jenkins.model.JenkinsLocationConfiguration.xml` in the `$JENKINS_HOME` folder.
+1. Click `Certificates & secrets`, under Client secrets click `New client secret` to generate a new key, copy the `value`, it will be used as `Client Secret` in Jenkins.
 
-1. In Application setting page, click `Certificates & secrets`, under Client secrets click `New client secret` to generate a new key, copy the `value`, it will be used as `Client Secret` in Jenkins.
+1. Click `Authentication`, under 'Implicit grant', enable `ID tokens`.
 
-1. To configure Azure Active Directory Matrix-based security, you have to add your `user/group` value with pattern `userName|groupName (principalName)`. The pattern `userName|groupName (objectId)` still works to make compatible with previous versions.
+1. (optional) To enable AzureAD group support: Click `Manifest` and modify the `"groupMembershipClaims": "None"` value to `"groupMembershipClaims": "SecurityGroup"` manifest.
 
-### Group Support
+### Setup Azure AD permissions (optional, but recommended)
 
-For group support you have two options:
+In order for Jenkins to be able to lookup data from Azure AD it needs some Graph API permissions.
 
-1. Give Jenkins the right to `Read directory data` in `Azure Active Directory` (Azure admin consent required), which in addition to group support also allows to use autocompletion when adding user/group in Azure Active Directory Matrix
-1. Let Azure Active Directory provide the `groups` of an user as part of the id token.
+This is used for:
 
-**Option 1:**
+* Autocompleting users and groups on the 'Configure Global Security' page
+* Jenkins looking up the user, e.g. when you use the Rest API
+* Group display name support (rather than just object ID)
 
-Give Jenkins permission to `Read directory data` in `Azure Active Directory` to get autocompletion support in Azure Active Directory Matrix
+_Note: You can skip this part and just use the claims returned when authenticating._
 
-1. In Application setting page, click `API permissions` > `Add a permission` and then select the following permissions in API permissions section, confirm with **Add permissions** button.
+1. Click `API permissions`
 
-```text
-Azure Active Directory Graph: Directory.Read.All / Delegated
-Azure Active Directory Graph: Directory.Read.All / Application
-Azure Active Directory Graph: User.Read / Delegated
-Microsoft Graph: Directory.Read.All / Delegated
-Microsoft Graph: Directory.Read.All / Application
-Microsoft Graph: User.Read / Delegated
-```
+1. Add a permission
 
-1. Click `Grant admin consent`. If you are not an admin in your tenant, please contact an admin to grant the permissions which are declared as `Admin consent required`. Wait for the permissions to take effect.
+1. Microsoft Graph
 
-**Option 2:**
+1. Application permissions
 
-Let Azure Active Directory provide the `groups` of an user as part of the id token.
+1. Add 'User.Read.All' and 'Group.Read.All'
 
-1. In Azure Application settings, click `Authentication` and mark the `ID tokens` checkbox under `Advanced Settings -> Implicit grant`. Save settings.
-1. In Azure Application settings, click `Manifest` and modify the `"groupMembershipClaims": "None"` value to `"groupMembershipClaims": "SecurityGroup"`. Save manifest.
-1. To setup group based authentication in Jenkins, you should search and take note of the groups `Object Id` and `Name` you want to use for Jenkins authorization.
-1. In Jenkins configure `Azure Active Directory Matrix`-based security and add the noted down groups one-by-one in the following notation: `groupName (objectId)`
+1. Click `Grant admin consent`. If you are not an admin in your tenant, please contact an admin to grant the permissions.
 
 ## Setup In Jenkins
 
-Click `Manage Jenkins` in the left menu, then click `Configure Global Security`, check `Enable security`
+Click `Manage Jenkins` in the left menu, then click `Configure Global Security`
 
+## Authentication
 
-## Enable Azure Authentication
+1. Check `Azure Active Directory` and fill in the credential.
 
-To enable Azure Authentication, check `Azure Active Directory` and fill in the credential.
+1. Click `Verify Application` to make sure your input is valid.
 
-Click `Verify Application` to make sure your input is valid.
+_Note: if you haven't setup Graph API permissions, verify application will fail, skip over this step_
 
-## Enable Azure Authorization
+## Authorization
 
-To enable Azure Authentication, check `Azure Active Directory Matrix-based security`
+Jenkins will match permissions based on the Object ID of a user or group.
 
-## Version 1.0.0 Migration Instruction
+This plugin extends the traditional [Matrix Authorization Strategy](https://plugins.jenkins.io/matrix-auth/)
+with the ability to search by users / groups by display name when configuring the authorization rules.
+It will also include the display name in the authorization rule.
 
-In version 1.0.0, this plugin upgrades from Microsoft identity platform v1.0 to v2.0. Before you upgrade ad plugin to version 1.0.0, please read following items first.
+To use this feature:
 
-1. Make sure your Jenkins server has enabled HTTPS. Microsoft identity platform v2.0 forces using HTTPS schema in reply uri for its applications. Please update the reply uri for your AAD application. You also need to update the url setting in `jenkins.model.JenkinsLocationConfiguration.xml` file and restart your Jenkins instance. If your Jenkins instance is created by the [Jenkins Solution Template](https://docs.microsoft.com/en-us/azure/jenkins/install-jenkins-solution-template), you can update your NGINX config file at `/etc/nginx/sites-available/default`. More configuration details can be found [here](http://nginx.org/en/docs/http/configuring_https_servers.html).
+1. click `Azure Active Directory Matrix-based security`
+1. search for user in 'Azure User/group to add' and click Add
+1. select the permission(s) in the table
+1. click 'Apply'
 
-1. Go to your related AAD application, click `Manifest` to open the inline manifest editor. Replace the `optionalClaims` value as below. You can find more information about [this](https://docs.microsoft.com/en-us/azure/active-directory/develop/active-directory-optional-claims#v20-optional-claims).
+You can still use other authorization strategies such as:
 
-    ```json
-        "optionalClaims": {
-           "idToken": [
-                 { 
-                       "name": "family_name", 
-                       "essential": false
-                  },
-                 { 
-                       "name": "given_name", 
-                       "essential": false
-                  },
-                               { 
-                       "name": "upn", 
-                       "essential": false
-                  }
-            ]
-        },
-    ```
+* [Matrix Authorization Strategy](https://plugins.jenkins.io/matrix-auth/)
+* [Folder-based Authorization Strategy](https://plugins.jenkins.io/folder-auth/)
+* [Role-based Authorization Strategy](https://plugins.jenkins.io/role-strategy/)
+
+Just keep in mind that the Jenkins ID format will be used and not the `DisplayName (Object ID)` format of this plugin.
+
+The following can normally be used:
+
+* Object ID of group
+* Display name of group (Only if Graph API permissions granted)
+* `preferred_username` claim which is normally the 'User principal name', but not always.
+* User principal name (Rest API authentication only)
 
 ## FAQ
 #### Q: How to recover if Jenkins keeps failing during the login phase?

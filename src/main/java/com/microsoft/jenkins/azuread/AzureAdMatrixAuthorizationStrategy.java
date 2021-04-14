@@ -6,11 +6,14 @@
 package com.microsoft.jenkins.azuread;
 
 import com.cloudbees.hudson.plugins.folder.AbstractFolder;
-import com.microsoft.azure.PagedList;
-import com.microsoft.azure.management.Azure;
-import com.microsoft.azure.management.graphrbac.GraphErrorException;
-import com.microsoft.azure.management.graphrbac.implementation.ADGroupInner;
-import com.microsoft.azure.management.graphrbac.implementation.UserInner;
+import com.microsoft.graph.models.Group;
+import com.microsoft.graph.models.User;
+import com.microsoft.graph.options.HeaderOption;
+import com.microsoft.graph.options.Option;
+import com.microsoft.graph.options.QueryOption;
+import com.microsoft.graph.requests.GraphServiceClient;
+import com.microsoft.graph.requests.GroupCollectionPage;
+import com.microsoft.graph.requests.UserCollectionPage;
 import hudson.Extension;
 import hudson.init.InitMilestone;
 import hudson.init.Initializer;
@@ -27,6 +30,7 @@ import hudson.security.Permission;
 import hudson.security.SecurityRealm;
 import hudson.security.SidACL;
 import jenkins.model.Jenkins;
+import okhttp3.Request;
 import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.matrixauth.AuthorizationContainer;
 import org.kohsuke.accmod.Restricted;
@@ -39,9 +43,11 @@ import org.springframework.security.core.Authentication;
 import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizationStrategy {
@@ -168,41 +174,64 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
         if (!(realm instanceof AzureSecurityRealm)) {
             return null;
         }
-        Azure.Authenticated authenticated = ((AzureSecurityRealm) realm).getAzureClient();
+        GraphServiceClient<Request> graphClient = ((AzureSecurityRealm) realm).getAzureClient();
 
         List<AzureObject> candidates = new ArrayList<>();
         LOGGER.info("search users with prefix: " + prefix);
         try {
-            PagedList<UserInner> matchedUsers = authenticated.activeDirectoryUsers().inner()
-                    .list(String.format("startswith(displayName,'%s') or startswith(mail, '%s')", prefix, prefix));
-            for (UserInner user : matchedUsers.currentPage().items()) {
-                candidates.add(new AzureObject(user.objectId(), user.displayName()));
+            UserCollectionPage users = lookupUsers(prefix, graphClient);
+
+            for (User user : users.getCurrentPage()) {
+                candidates.add(new AzureObject(user.id, user.displayName));
                 if (candidates.size() > maxCandidates) {
                     break;
                 }
             }
 
-            if (!matchedUsers.hasNextPage()) {
-                LOGGER.info("search groups with prefix " + prefix);
-                PagedList<ADGroupInner> matchedGroups = authenticated.activeDirectoryGroups()
-                        .inner().list("startswith(displayName,'" + prefix + "')");
-                for (ADGroupInner group : matchedGroups.currentPage().items()) {
-                    candidates.add(new AzureObject(group.objectId(), group.displayName()));
-                    if (candidates.size() > maxCandidates) {
-                        break;
-                    }
+            if (candidates.size() < maxCandidates) {
+                GroupCollectionPage groupCollectionPage = lookupGroups(prefix, graphClient);
+
+                for (Group group : groupCollectionPage.getCurrentPage()) {
+                    candidates.add(new AzureObject(group.id, group.displayName));
                 }
             }
-        } catch (GraphErrorException e) {
-            LOGGER.warning("Do not have sufficient privileges to search related users or groups");
+
+        } catch (Exception e) {
+            LOGGER.log(Level.WARNING, "Do not have sufficient privileges to search related users or groups", e);
         }
 
         AutoCompletionCandidates c = new AutoCompletionCandidates();
+
         for (AzureObject obj : candidates) {
             String candidateText = ObjId2FullSidMap.generateFullSid(obj.getDisplayName(), obj.getObjectId());
             c.add(candidateText);
         }
         return c;
+    }
+
+    private static GroupCollectionPage lookupGroups(String prefix, GraphServiceClient<Request> graphClient) {
+        LinkedList<Option> requestOptions = new LinkedList<>();
+        String search = String.format("\"displayName:%s\"", prefix);
+        requestOptions.add(new QueryOption("$search", search));
+        requestOptions.add(new HeaderOption("ConsistencyLevel", "eventual"));
+
+        return graphClient.groups()
+                .buildRequest(requestOptions)
+                .orderBy("displayName")
+                .select("id,displayName")
+                .get();
+    }
+
+    private static UserCollectionPage lookupUsers(String prefix, GraphServiceClient<Request> graphClient) {
+        LinkedList<Option> requestOptions = new LinkedList<>();
+        String search = String.format("\"displayName:%s\" OR \"userPrincipalName:%s\"", prefix, prefix);
+        requestOptions.add(new QueryOption("$search", search));
+        requestOptions.add(new HeaderOption("ConsistencyLevel", "eventual"));
+        return graphClient.users()
+                .buildRequest(requestOptions)
+                .select("id,displayName")
+                .orderBy("displayName")
+                .get();
     }
 
     public static class DescriptorImpl extends GlobalMatrixAuthorizationStrategy.DescriptorImpl {
