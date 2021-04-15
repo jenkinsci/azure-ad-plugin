@@ -177,50 +177,50 @@ THE SOFTWARE.
       </table>
       <script>
         //<![CDATA[
-      Behaviour.specify("#${id}button", 'GlobalMatrixAuthorizationStrategy', 0, function(e) {
-        makeButton($$('${id}button'), function (e) {
-          var master = document.getElementById('${id}');
-          var table = master.parentNode;
+    document.getElementById('${id}button').addEventListener('click', function (e) {
+        var master = document.getElementById('${id}');
+        var table = master.parentNode;
 
-          <!-- when 'add' is clicked... -->
-          var name = $$('${id}text').value;
-          if (name == null) {
+        <!-- when 'add' is clicked... -->
+        var name = $$('${id}text').value;
+        if (name == null) {
             return;
-          }
-          if(name=="") {
+        }
+        if (name == "") {
             alert("${%empty}");
             return;
-          }
-          if(findElementsBySelector(table,"TR").find(function(n){return n.getAttribute("name")=='['+name+']';})!=null) {
+        }
+        if (findElementsBySelector(table, "TR").find(function (n) {
+            return n.getAttribute("name") == '[' + name + ']';
+        }) != null) {
             alert("${%error}");
             return;
-          }
+        }
 
-          if(document.importNode!=null)
-            copy = document.importNode(master,true);
-          else
+        if (document.importNode != null)
+            copy = document.importNode(master, true);
+        else
             copy = master.cloneNode(true); <!-- for IE -->
-          copy.removeAttribute("id");
-          copy.removeAttribute("style");
-          copy.firstChild.innerHTML = YAHOO.lang.escapeHTML(name); // TODO consider setting innerText
-          copy.setAttribute("name",'['+name+']');
+        copy.removeAttribute("id");
+        copy.removeAttribute("style");
+        copy.firstChild.innerHTML = YAHOO.lang.escapeHTML(name); // TODO consider setting innerText
+        copy.setAttribute("name", '[' + name + ']');
 
-          for(var child = copy.firstChild; child !== null; child = child.nextSibling) {
+        for (var child = copy.firstChild; child !== null; child = child.nextSibling) {
             if (child.hasAttribute('data-permission-id')) {
-              child.setAttribute("data-tooltip-enabled", child.getAttribute("data-tooltip-enabled").replace("__SID__", name));
-              child.setAttribute("data-tooltip-disabled", child.getAttribute("data-tooltip-disabled").replace("__SID__", name));
+                child.setAttribute("data-tooltip-enabled", child.getAttribute("data-tooltip-enabled").replace("__SID__", name));
+                child.setAttribute("data-tooltip-disabled", child.getAttribute("data-tooltip-disabled").replace("__SID__", name));
             }
-          }
-          findElementsBySelector(copy, ".stop img").each(function(item) {
+        }
+        findElementsBySelector(copy, ".stop img").each(function (item) {
             item.setAttribute("title", item.getAttribute("title").replace("__SID__", name));
-          });
-          findElementsBySelector(copy, "input[type=checkbox]").each(function(item) {
-            item.setAttribute("title", item.getAttribute("title").replace("__SID__", name));
-          });
-          table.appendChild(copy);
-          Behaviour.applySubtree(findAncestor(table,"TABLE"),true);
         });
-      });
+        findElementsBySelector(copy, "input[type=checkbox]").each(function (item) {
+            item.setAttribute("title", item.getAttribute("title").replace("__SID__", name));
+        });
+        table.appendChild(copy);
+        Behaviour.applySubtree(findAncestor(table, "TABLE"), true);
+    })
 
       Behaviour.specify("#${strategyid} TD.stop A.remove", 'GlobalMatrixAuthorizationStrategy', 0, function(e) {
           e.onclick = function() {
