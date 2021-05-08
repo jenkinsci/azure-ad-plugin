@@ -5,19 +5,14 @@
 
 package com.microsoft.jenkins.azuread;
 
-import com.azure.core.http.HttpClient;
-import com.azure.core.http.ProxyOptions;
-import com.azure.core.http.okhttp.OkHttpAsyncHttpClientBuilder;
 import com.azure.identity.ClientSecretCredential;
 import com.azure.identity.ClientSecretCredentialBuilder;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.scribejava.core.builder.ServiceBuilder;
 import com.github.scribejava.core.oauth.OAuth20Service;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.microsoft.graph.authentication.TokenCredentialAuthProvider;
 import com.microsoft.graph.http.GraphServiceException;
 import com.microsoft.graph.httpcore.HttpClients;
@@ -42,6 +37,7 @@ import hudson.tasks.Mailer.UserProperty;
 import hudson.util.FormValidation;
 import hudson.util.ListBoxModel;
 import hudson.util.Secret;
+import io.jenkins.plugins.azuresdk.HttpClientRetriever;
 import jenkins.model.Jenkins;
 import jenkins.security.SecurityListener;
 import jenkins.util.JenkinsJVM;
@@ -51,7 +47,6 @@ import okhttp3.Request;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jose4j.jwt.JwtClaims;
-import org.jose4j.jwt.MalformedClaimException;
 import org.jose4j.jwt.consumer.InvalidJwtException;
 import org.jose4j.jwt.consumer.JwtConsumer;
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -63,6 +58,7 @@ import org.kohsuke.stapler.HttpResponses;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -72,10 +68,10 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.net.Proxy;
+import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -88,6 +84,7 @@ import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_US_GOVERNMENT
 import static com.microsoft.jenkins.azuread.AzureEnvironment.getAuthorityHost;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.getGraphResource;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.getServiceRoot;
+import static java.util.Objects.requireNonNull;
 
 public class AzureSecurityRealm extends SecurityRealm {
 
@@ -103,6 +100,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     private static final String CONVERTER_NODE_CACHE_DURATION = "cacheduration";
     private static final String CONVERTER_NODE_FROM_REQUEST = "fromrequest";
     private static final int CACHE_KEY_LOG_LENGTH = 8;
+    private static final int NOT_FOUND = 404;
 
     private Cache<String, AzureAdUser> caches;
 
@@ -114,10 +112,6 @@ public class AzureSecurityRealm extends SecurityRealm {
     private String azureEnvironmentName = "Azure";
 
     private final Supplier<GraphServiceClient<Request>> cachedAzureClient = Suppliers.memoize(() -> {
-        OkHttpAsyncHttpClientBuilder okHttpClientBuilder = new OkHttpAsyncHttpClientBuilder();
-        okHttpClientBuilder = addProxyToCredentialsHttpClientIfRequired(okHttpClientBuilder);
-
-        HttpClient tokenHttpClient = okHttpClientBuilder.build();
 
         String azureEnv = getAzureEnvironmentName();
         final ClientSecretCredential clientSecretCredential = new ClientSecretCredentialBuilder()
@@ -125,7 +119,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                 .clientSecret(clientSecret.getPlainText())
                 .tenantId(tenant.getPlainText())
                 .authorityHost(getAuthorityHost(azureEnv))
-                .httpClient(tokenHttpClient)
+                .httpClient(HttpClientRetriever.get())
                 .build();
 
         final TokenCredentialAuthProvider authProvider = new TokenCredentialAuthProvider(clientSecretCredential);
@@ -146,25 +140,6 @@ public class AzureSecurityRealm extends SecurityRealm {
         return graphServiceClient;
 
     });
-
-    private static OkHttpAsyncHttpClientBuilder addProxyToCredentialsHttpClientIfRequired(
-            OkHttpAsyncHttpClientBuilder okHttpClientBuilder
-    ) {
-        if (JenkinsJVM.isJenkinsJVM()) {
-            ProxyConfiguration proxyConfig = Jenkins.get().getProxy();
-            if (proxyConfig != null && StringUtils.isNotBlank(proxyConfig.getName())) {
-                ProxyOptions    proxyOptions = new ProxyOptions(ProxyOptions.Type.HTTP, new InetSocketAddress(
-                        proxyConfig.getName(),
-                        proxyConfig.getPort()));
-                if (StringUtils.isNotBlank(proxyConfig.getUserName())) {
-                    proxyOptions.setCredentials(proxyConfig.getUserName(), proxyConfig.getSecretPassword()
-                            .getPlainText());
-                }
-                okHttpClientBuilder = okHttpClientBuilder.proxy(proxyOptions);
-            }
-        }
-        return okHttpClientBuilder;
-    }
 
     private static OkHttpClient.Builder addProxyToHttpClientIfRequired(OkHttpClient.Builder builder) {
         if (JenkinsJVM.isJenkinsJVM()) {
@@ -295,7 +270,7 @@ public class AzureSecurityRealm extends SecurityRealm {
         this.clientSecret = clientSecret;
         this.tenant = Secret.fromString(tenant);
         this.cacheDuration = cacheDuration;
-        caches = CacheBuilder.newBuilder()
+        caches = Caffeine.newBuilder()
                 .expireAfterWrite(cacheDuration, TimeUnit.SECONDS)
                 .build();
     }
@@ -312,13 +287,16 @@ public class AzureSecurityRealm extends SecurityRealm {
         request.getSession().setAttribute(TIMESTAMP_ATTRIBUTE, System.currentTimeMillis());
         String nonce = RandomStringUtils.randomAlphanumeric(NONCE_LENGTH);
         request.getSession().setAttribute(NONCE_ATTRIBUTE, nonce);
-        return new HttpRedirect(service.getAuthorizationUrl(ImmutableMap.of(
-                "nonce", nonce,
-                "response_mode", "form_post")));
+
+        Map<String, String> additionalParams = new HashMap<>();
+        additionalParams.put("nonce", nonce);
+        additionalParams.put("response_mode", "form_post");
+
+        return new HttpRedirect(service.getAuthorizationUrl(additionalParams));
     }
 
     public HttpResponse doFinishLogin(StaplerRequest request)
-            throws InvalidJwtException, MalformedClaimException, ExecutionException, IOException {
+            throws InvalidJwtException, IOException {
         try {
             final Long beginTime = (Long) request.getSession().getAttribute(TIMESTAMP_ATTRIBUTE);
             final String expectedNonce = (String) request.getSession().getAttribute(NONCE_ATTRIBUTE);
@@ -336,8 +314,9 @@ public class AzureSecurityRealm extends SecurityRealm {
             final JwtClaims claims = validateIdToken(expectedNonce, idToken);
             String key = (String) claims.getClaimValue("preferred_username");
 
-            AzureAdUser userDetails = caches.get(key, () -> {
-                final AzureAdUser user = AzureAdUser.createFromJwt(claims);
+            AzureAdUser userDetails = caches.get(key, (cacheKey) -> {
+                final AzureAdUser user;
+                user = AzureAdUser.createFromJwt(claims);
                 final List<AzureAdGroup> groups = AzureCachePool.get(getAzureClient())
                         .getBelongingGroupsByOid(user.getObjectID());
                 user.setAuthorities(groups);
@@ -345,6 +324,11 @@ public class AzureSecurityRealm extends SecurityRealm {
                         key.substring(0, CACHE_KEY_LOG_LENGTH)));
                 return user;
             });
+
+            if (userDetails == null) {
+                throw new IllegalStateException("Should not be possible");
+            }
+
             final AzureAuthenticationToken auth = new AzureAuthenticationToken(userDetails);
 
             // Enforce updating current identity
@@ -408,46 +392,45 @@ public class AzureSecurityRealm extends SecurityRealm {
             if (authentication instanceof AzureAuthenticationToken) {
                 return authentication;
             }
-            throw new IllegalStateException("Unexpected authentication type: " + authentication);
+            throw new BadCredentialsException("Unexpected authentication type: " + authentication);
         }, username -> {
-            try {
-                if (username == null) {
-                    throw new UserMayOrMayNotExistException2("Can't find a user with no username");
+            if (username == null) {
+                throw new UserMayOrMayNotExistException2("Can't find a user with no username");
+            }
+
+            AzureAdUser azureAdUser = caches.get(username, (cacheKey) -> {
+                GraphServiceClient<Request> azureClient = getAzureClient();
+                String userId = ObjId2FullSidMap.extractObjectId(username);
+
+                if (userId == null) {
+                    userId = username;
                 }
 
-                return caches.get(username, () -> {
-                    GraphServiceClient<Request> azureClient = getAzureClient();
-                    String userId = ObjId2FullSidMap.extractObjectId(username);
-
-                    if (userId == null) {
-                        userId = username;
-                    }
-
-                    // Currently triggers annoying log spam if the user is a group, but there's no way to tell currently
-                    // as we look up by object id we don't know if it's a user or a group :(
+                // Currently triggers annoying log spam if the user is a group, but there's no way to tell currently
+                // as we look up by object id we don't know if it's a user or a group :(
+                try {
                     com.microsoft.graph.models.User activeDirectoryUser = azureClient.users(userId).buildRequest()
                             .get();
 
-                    AzureAdUser user = AzureAdUser.createFromActiveDirectoryUser(activeDirectoryUser);
+                    AzureAdUser user = requireNonNull(AzureAdUser.createFromActiveDirectoryUser(activeDirectoryUser));
                     List<AzureAdGroup> groups = AzureCachePool.get(azureClient)
                             .getBelongingGroupsByOid(user.getObjectID());
 
                     user.setAuthorities(groups);
                     return user;
-                });
-            } catch (UncheckedExecutionException e) {
-                if (e.getCause() instanceof GraphServiceException) {
-                    throw new UserMayOrMayNotExistException2("Cannot find user: " + username, e.getCause());
+                } catch (GraphServiceException e) {
+                    if (e.getResponseCode() == NOT_FOUND) {
+                        return null;
+                    }
+                    throw e;
                 }
-                if (e.getCause() instanceof UserMayOrMayNotExistException2) {
-                    throw (UserMayOrMayNotExistException2) e.getCause();
-                }
-                throw e;
-            } catch (ExecutionException e) {
-                LOGGER.log(Level.SEVERE, "error", e);
-                throw new UsernameNotFoundException("Cannot find user " + username, e);
+            });
+
+            if (azureAdUser == null) {
+                throw new UserMayOrMayNotExistException2("Cannot find user: " + username);
             }
 
+            return azureAdUser;
         });
     }
 
@@ -529,7 +512,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                 }
                 reader.moveUp();
             }
-            Cache<String, AzureAdUser> caches = CacheBuilder.newBuilder()
+            Cache<String, AzureAdUser> caches = Caffeine.newBuilder()
                     .expireAfterWrite(realm.getCacheDuration(), TimeUnit.SECONDS)
                     .build();
             realm.setCaches(caches);
@@ -590,16 +573,11 @@ public class AzureSecurityRealm extends SecurityRealm {
                 return FormValidation.error("Please set a test user principal name or object ID");
             }
 
-            OkHttpAsyncHttpClientBuilder okHttpClientBuilder = new OkHttpAsyncHttpClientBuilder();
-            okHttpClientBuilder = addProxyToCredentialsHttpClientIfRequired(okHttpClientBuilder);
-
-            HttpClient tokenHttpClient = okHttpClientBuilder.build();
-
             final ClientSecretCredential clientSecretCredential = new ClientSecretCredentialBuilder()
                     .clientId(clientId)
                     .clientSecret(clientSecret.getPlainText())
                     .tenantId(tenant)
-                    .httpClient(tokenHttpClient)
+                    .httpClient(HttpClientRetriever.get())
                     .authorityHost(getAuthorityHost(azureEnvironmentName))
                     .build();
 

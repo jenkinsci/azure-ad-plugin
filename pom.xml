@@ -49,7 +49,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
-        <jenkins.version>2.277.1</jenkins.version>
+        <jenkins.version>2.277.2</jenkins.version>
         <java.level>8</java.level>
         <azuresdk.version>1.22.0</azuresdk.version>
         <azure-commons.version>1.1.2</azure-commons.version>
@@ -77,13 +77,14 @@
             <version>1.16</version>
         </dependency>
         <dependency>
-            <groupId>org.jenkins-ci.plugins</groupId>
-            <artifactId>jackson2-api</artifactId>
+            <groupId>io.jenkins.plugins</groupId>
+            <artifactId>azure-sdk</artifactId>
+            <version>7.va79ea0a60157</version>
         </dependency>
         <dependency>
             <groupId>com.microsoft.graph</groupId>
             <artifactId>microsoft-graph</artifactId>
-            <version>3.2.0</version>
+            <version>3.4.0</version>
             <exclusions>
                 <exclusion>
                     <groupId>com.azure</groupId>
@@ -96,6 +97,10 @@
                 <exclusion>
                     <groupId>net.java.dev.jna</groupId>
                     <artifactId>jna-platform</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.azure</groupId>
+                    <artifactId>azure-identity</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -123,14 +128,11 @@
                     <groupId>com.fasterxml.jackson.dataformat</groupId>
                     <artifactId>jackson-dataformat-xml</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-api</artifactId>
+                </exclusion>
             </exclusions>
-        </dependency>
-
-        <!-- should be kept in sync with jackson version in bom, possibly add it to the jackson2-api plugin -->
-        <dependency>
-            <groupId>com.fasterxml.jackson.dataformat</groupId>
-            <artifactId>jackson-dataformat-xml</artifactId>
-            <version>2.12.1</version>
         </dependency>
         <dependency>
             <groupId>io.jenkins</groupId>
@@ -169,11 +171,11 @@
         </dependency>
         <dependency>
             <groupId>org.jenkins-ci.plugins</groupId>
-            <artifactId>apache-httpcomponents-client-4-api</artifactId>
+            <artifactId>mailer</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.jenkins-ci.plugins</groupId>
-            <artifactId>mailer</artifactId>
+            <groupId>io.jenkins.plugins</groupId>
+            <artifactId>caffeine-api</artifactId>
         </dependency>
 
         <!-- test dependencies -->
@@ -211,8 +213,8 @@
         <dependencies>
             <dependency>
                 <groupId>io.jenkins.tools.bom</groupId>
-                <artifactId>bom-2.263.x</artifactId>
-                <version>27</version>
+                <artifactId>bom-2.277.x</artifactId>
+                <version>807.v6d348e44c987</version>
                 <scope>import</scope>
                 <type>pom</type>
             </dependency>
@@ -230,17 +232,6 @@
                 <version>15.0</version>
             </dependency>
 
-            <dependency>
-                <groupId>com.nimbusds</groupId>
-                <artifactId>oauth2-oidc-sdk</artifactId>
-                <version>7.4</version>
-            </dependency>
-
-            <dependency>
-                <groupId>org.hamcrest</groupId>
-                <artifactId>hamcrest-core</artifactId>
-                <version>2.2</version>
-            </dependency>
         </dependencies>
     </dependencyManagement>
 
