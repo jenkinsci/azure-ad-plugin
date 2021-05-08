@@ -314,7 +314,7 @@ public class AzureSecurityRealm extends SecurityRealm {
             final JwtClaims claims = validateIdToken(expectedNonce, idToken);
             String key = (String) claims.getClaimValue("preferred_username");
 
-            AzureAdUser userDetails = requireNonNull(caches.get(key, (cacheKey) -> {
+            AzureAdUser userDetails = caches.get(key, (cacheKey) -> {
                 final AzureAdUser user;
                 user = AzureAdUser.createFromJwt(claims);
                 final List<AzureAdGroup> groups = AzureCachePool.get(getAzureClient())
@@ -323,7 +323,11 @@ public class AzureSecurityRealm extends SecurityRealm {
                 LOGGER.info(String.format("Fetch user details with sub: %s***",
                         key.substring(0, CACHE_KEY_LOG_LENGTH)));
                 return user;
-            }));
+            });
+
+            if (userDetails == null) {
+                throw new IllegalStateException("Should not be possible");
+            }
 
             final AzureAuthenticationToken auth = new AzureAuthenticationToken(userDetails);
 
