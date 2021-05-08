@@ -74,7 +74,7 @@ public final class AzureAdUser implements UserDetails {
         return user;
     }
 
-    public static AzureAdUser createFromJwt(JwtClaims claims) throws MalformedClaimException {
+    public static AzureAdUser createFromJwt(JwtClaims claims) {
         if (claims == null) {
             return null;
         }
@@ -91,7 +91,11 @@ public final class AzureAdUser implements UserDetails {
         if (user.email == null && user.uniqueName.contains("@")) {
             user.email = user.uniqueName;
         }
-        user.groupOIDs = claims.getStringListClaimValue("groups");
+        try {
+            user.groupOIDs = claims.getStringListClaimValue("groups");
+        } catch (MalformedClaimException e) {
+            throw new RuntimeException(e);
+        }
         if (user.groupOIDs == null) {
             user.groupOIDs = new LinkedList<>();
         }
