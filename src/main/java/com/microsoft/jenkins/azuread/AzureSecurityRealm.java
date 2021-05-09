@@ -109,6 +109,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     private Secret tenant;
     private int cacheDuration;
     private boolean fromRequest = false;
+    private boolean singleLogout;
     private String azureEnvironmentName = "Azure";
 
     private final Supplier<GraphServiceClient<Request>> cachedAzureClient = Suppliers.memoize(() -> {
@@ -163,6 +164,15 @@ public class AzureSecurityRealm extends SecurityRealm {
         return builder;
     }
 
+
+    public boolean isSingleLogout() {
+        return singleLogout;
+    }
+
+    @DataBoundSetter
+    public void setSingleLogout(boolean singleLogout) {
+        this.singleLogout = singleLogout;
+    }
 
     private final Supplier<JwtConsumer> jwtConsumer = Suppliers.memoize(() ->
             Utils.JwtUtil.jwt(getClientId(), getTenant()));
@@ -383,7 +393,11 @@ public class AzureSecurityRealm extends SecurityRealm {
             AzureCachePool.invalidateBelongingGroupsByOid(oid);
         }
         // Ensure single sign-out
-        return getOAuthService().getLogoutUrl();
+
+        if (singleLogout) {
+            return getOAuthService().getLogoutUrl();
+        }
+        return req.getContextPath() + "/";
     }
 
     @Override
