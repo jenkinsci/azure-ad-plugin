@@ -1,0 +1,11 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout" xmlns:st="jelly:stapler">
+    <l:layout title="${%Logged out}">
+        <st:include page="sidepanel.jelly" />
+        <l:main-panel>
+            <h1>${%Logged out}</h1>
+            <p>${%You are now logged out of Jenkins}.</p>
+            <p>${%Have a nice day}.</p>
+        </l:main-panel>
+    </l:layout>
+</j:jelly>

@@ -380,7 +380,8 @@ public class AzureSecurityRealm extends SecurityRealm {
         JwtClaims claims = getJwtConsumer().processToClaims(idToken);
         final String responseNonce = (String) claims.getClaimValue("nonce");
         if (StringUtils.isAnyEmpty(expectedNonce, responseNonce) || !expectedNonce.equals(responseNonce)) {
-            throw new IllegalStateException("Invalid nonce in the response");
+            throw new IllegalStateException(String.format("Invalid nonce in the response, "
+                    + "expected: %s actual: %s", expectedNonce, responseNonce));
         }
         return claims;
     }
@@ -397,7 +398,7 @@ public class AzureSecurityRealm extends SecurityRealm {
         if (singleLogout) {
             return getOAuthService().getLogoutUrl();
         }
-        return req.getContextPath() + "/";
+        return req.getContextPath() + "/" + AzureAdLogoutAction.POST_LOGOUT_URL;
     }
 
     @Override
