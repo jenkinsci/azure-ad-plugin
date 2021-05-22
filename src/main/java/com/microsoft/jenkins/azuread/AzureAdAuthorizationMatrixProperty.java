@@ -137,7 +137,6 @@ public class AzureAdAuthorizationMatrixProperty extends AuthorizationMatrixPrope
     public static class ConverterImpl extends AbstractAuthorizationPropertyConverter {
 
         @Override
-        @SuppressWarnings("rawtypes")
         public boolean canConvert(Class type) {
             return type == AzureAdAuthorizationMatrixProperty.class;
         }
