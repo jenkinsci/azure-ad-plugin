@@ -14,6 +14,7 @@ import com.microsoft.graph.options.QueryOption;
 import com.microsoft.graph.requests.GraphServiceClient;
 import com.microsoft.graph.requests.GroupCollectionPage;
 import com.microsoft.graph.requests.UserCollectionPage;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.init.InitMilestone;
 import hudson.init.Initializer;
@@ -40,7 +41,6 @@ import org.kohsuke.accmod.restrictions.suppressions.SuppressRestrictedWarnings;
 import org.kohsuke.stapler.QueryParameter;
 import org.springframework.security.core.Authentication;
 
-import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -62,8 +62,8 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
     // Copy codes instead.
     //
     @Override
-    @Nonnull
-    public ACL getACL(@Nonnull Job<?, ?> project) {
+    @NonNull
+    public ACL getACL(@NonNull Job<?, ?> project) {
         AzureAdAuthorizationMatrixProperty amp = project.getProperty(AzureAdAuthorizationMatrixProperty.class);
         if (amp != null) {
             return amp.getInheritanceStrategy().getEffectiveACL(amp.getACL(), project);
@@ -79,7 +79,7 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
         }
         return new ACL() {
             @Override
-            public boolean hasPermission2(@Nonnull Authentication a, @Nonnull Permission permission) {
+            public boolean hasPermission2(@NonNull Authentication a, @NonNull Permission permission) {
                 return a.equals(SYSTEM2) || child.hasPermission2(a, permission) || parent.hasPermission2(a, permission);
             }
         };
@@ -94,8 +94,8 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
     }
 
     @Override
-    @Nonnull
-    public ACL getACL(@Nonnull AbstractItem item) {
+    @NonNull
+    public ACL getACL(@NonNull AbstractItem item) {
         if (Jenkins.get().getPlugin("cloudbees-folder") != null) { // optional dependency
             if (item instanceof AbstractFolder) {
                 AzureAdAuthorizationMatrixFolderProperty p =
@@ -109,7 +109,7 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
     }
 
     @Override
-    @Nonnull
+    @NonNull
     @SuppressRestrictedWarnings(value = {IdStrategyComparator.class, AuthorizationContainer.class})
     public Set<String> getGroups() {
         Set<String> r = new TreeSet<>(new IdStrategyComparator());
@@ -241,7 +241,7 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
         }
 
         @Override
-        @Nonnull
+        @NonNull
         public String getDisplayName() {
             return "Azure Active Directory Matrix-based security";
         }
