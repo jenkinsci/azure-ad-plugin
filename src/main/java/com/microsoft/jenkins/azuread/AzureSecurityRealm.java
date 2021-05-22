@@ -24,6 +24,7 @@ import com.thoughtworks.xstream.converters.MarshallingContext;
 import com.thoughtworks.xstream.converters.UnmarshallingContext;
 import com.thoughtworks.xstream.io.HierarchicalStreamReader;
 import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.ProxyConfiguration;
 import hudson.model.Descriptor;
@@ -555,6 +556,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     public static final class DescriptorImpl extends Descriptor<SecurityRealm> {
 
         @Override
+        @NonNull
         public String getDisplayName() {
             return "Azure Active Directory";
         }
