@@ -1,5 +1,6 @@
 package com.microsoft.jenkins.azuread;
 
+import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.model.AutoCompletionCandidates;
 import hudson.model.Item;
@@ -25,7 +26,6 @@ import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.verb.GET;
 
-import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
@@ -122,7 +122,7 @@ public class AzureAdAuthorizationMatrixProperty extends AuthorizationMatrixPrope
             return doCheckName_(value, project, Item.CONFIGURE);
         }
 
-        @Nonnull
+        @NonNull
         @Override
         public String getDisplayName() {
             return "Azure Active Directory Authorization Matrix";

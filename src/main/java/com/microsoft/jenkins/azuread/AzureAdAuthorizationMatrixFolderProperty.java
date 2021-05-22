@@ -3,6 +3,7 @@ package com.microsoft.jenkins.azuread;
 import com.cloudbees.hudson.plugins.folder.AbstractFolder;
 import com.cloudbees.hudson.plugins.folder.AbstractFolderPropertyDescriptor;
 import com.cloudbees.hudson.plugins.folder.properties.AuthorizationMatrixProperty;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.model.AutoCompletionCandidates;
 import hudson.model.Item;
@@ -23,7 +24,6 @@ import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.verb.GET;
 
-import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.util.List;
 
@@ -97,7 +97,7 @@ public class AzureAdAuthorizationMatrixFolderProperty extends AuthorizationMatri
         }
 
         @Override
-        @Nonnull
+        @NonNull
         public String getDisplayName() {
             return "Azure Active Directory Authorization Matrix";
         }
