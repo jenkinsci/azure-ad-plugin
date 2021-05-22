@@ -164,7 +164,7 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
     public static final Descriptor<AuthorizationStrategy> DESCRIPTOR = new DescriptorImpl();
 
 
-    static AutoCompletionCandidates searchAndGenerateCandidates(String prefix) throws IOException {
+    static AutoCompletionCandidates searchAndGenerateCandidates(String prefix) {
         final int maxCandidates = 20;
         if (StringUtils.isEmpty(prefix)) {
             return null;
@@ -260,7 +260,6 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
         }
 
         @Override
-        @SuppressWarnings("rawtypes")
         public boolean canConvert(Class type) {
             return type == AzureAdMatrixAuthorizationStrategy.class;
         }
