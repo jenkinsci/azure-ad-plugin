@@ -20,13 +20,11 @@ import hudson.init.InitMilestone;
 import hudson.init.Initializer;
 import hudson.model.AbstractItem;
 import hudson.model.AutoCompletionCandidates;
-import hudson.model.Descriptor;
 import hudson.model.Item;
 import hudson.model.ItemGroup;
 import hudson.model.Job;
 import hudson.model.Node;
 import hudson.security.ACL;
-import hudson.security.AuthorizationStrategy;
 import hudson.security.GlobalMatrixAuthorizationStrategy;
 import hudson.security.Permission;
 import hudson.security.SecurityRealm;
@@ -35,6 +33,7 @@ import jenkins.model.Jenkins;
 import okhttp3.Request;
 import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.matrixauth.AuthorizationContainer;
+import org.jenkinsci.plugins.matrixauth.PermissionEntry;
 import org.jenkinsci.plugins.matrixauth.AuthorizationMatrixNodeProperty;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.DoNotUse;
@@ -143,36 +142,26 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
     // Copy ended
 
     @Override
-    public void add(Permission p, String sid) {
-        super.add(p, sid);
-        objId2FullSidMap.putFullSid(sid);
+    public void add(Permission p, PermissionEntry entry) {
+        super.add(p, entry);
+        objId2FullSidMap.putFullSid(entry.getSid());
     }
 
     @Override
-    public boolean hasExplicitPermission(String objectId, Permission p) {
+    public boolean hasExplicitPermission(PermissionEntry entry, Permission p) {
         // Jenkins will pass in the object Id as sid
-        if (objectId == null) {
+        if (entry.getSid() == null) {
             return false;
         }
-        return super.hasExplicitPermission(objId2FullSidMap.getOrOriginal(objectId), p);
-    }
-
-    @Override
-    public boolean hasPermission(String objectId, Permission p) {
-        // Jenkins will pass in the object Id as sid
-        return super.hasPermission(objId2FullSidMap.getOrOriginal(objectId), p);
+        PermissionEntry entry1 = new PermissionEntry(entry.getType(), objId2FullSidMap.getOrOriginal(entry.getSid()));
+        return super.hasExplicitPermission(entry1, p);
     }
 
     @Override
     public boolean hasPermission(String sid, Permission p, boolean principal) {
         // Jenkins will pass in the object Id as sid
-        final String objectId = sid;
-        return super.hasPermission(objId2FullSidMap.getOrOriginal(objectId), p, principal);
+        return super.hasPermission(objId2FullSidMap.getOrOriginal(sid), p, principal);
     }
-
-    @Extension
-    public static final Descriptor<AuthorizationStrategy> DESCRIPTOR = new DescriptorImpl();
-
 
     static AutoCompletionCandidates searchAndGenerateCandidates(String prefix) {
         final int maxCandidates = 20;
@@ -244,6 +233,7 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
                 .get();
     }
 
+    @Extension
     public static class DescriptorImpl extends GlobalMatrixAuthorizationStrategy.DescriptorImpl {
         @Override
         protected GlobalMatrixAuthorizationStrategy create() {

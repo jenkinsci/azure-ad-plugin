@@ -63,6 +63,7 @@ THE SOFTWARE.
         </j:choose>
       </d:tag>
       <d:tag name="row">
+        <j:set var="permissionEntry" value="${descriptor.entryFor(attrs.type, attrs.sid)}"/>
         <j:set var="sid" value="${attrs.sid}"/>
         <j:choose>
           <j:when test="${attrs.sid == 'authenticated'}">
@@ -91,7 +92,7 @@ THE SOFTWARE.
                   data-permission-id="${p.id}"
                   data-tooltip-enabled="${%tooltip_enabled(p.group.title, p.name, attrs.sid)}"
                   data-tooltip-disabled="${%tooltip_disabled(p.group.title, p.name, attrs.sid)}">
-                <f:checkbox name="[${p.id}]" checked="${instance.hasExplicitPermission(attrs.sid,p)}"/>
+                <f:checkbox name="[${p.id}]" checked="${permissionEntry != null and instance.hasExplicitPermission(permissionEntry,p)}"/>
               </td>
             </j:if>
           </j:forEach>
@@ -153,16 +154,16 @@ THE SOFTWARE.
         </j:forEach>
       </tr>
 
-      <tr name="[anonymous]">
+      <tr name="[USER:anonymous]">
         <local:row sid="anonymous" title="${%Anonymous}" />
       </tr>
-      <tr name="[authenticated]">
-        <local:row sid="authenticated" title="authenticated" />
+      <tr name="[GROUP:authenticated]">
+        <local:row type="GROUP" sid="authenticated" title="authenticated" />
       </tr>
-      <j:forEach var="sid" items="${instance.allSIDs}">
-        <j:if test="${sid != 'authenticated'}">
-          <tr name="[${sid}]" class="permission-row" data-descriptor-url="${descriptor.descriptorFullUrl}">
-            <local:row title="${sid}" sid="${sid}"/>
+      <j:forEach var="entry" items="${instance.allPermissionEntries}">
+        <j:if test="${entry.sid != 'authenticated'}">
+          <tr name="[${entry.type}:${entry.sid}]" class="permission-row" data-descriptor-url="${descriptor.descriptorFullUrl}">
+            <local:row title="${entry.sid}" sid="${entry.sid}" type="${entry.type.toString()}" />
           </tr>
         </j:if>
       </j:forEach>
@@ -180,9 +181,15 @@ THE SOFTWARE.
             <j:when test="${descriptor.disableGraphIntegration}">
               <f:textbox field="userOrGroup" id="${id}text"/>
               <div class="no-graph-integration-wrapper">
-                <input type="button" class="azure-ad-add-button" value="${%Add}" id="${id}UserButton"
+                <input type="button" class="azure-ad-add-button" value="${%Add user}" id="${id}UserButton"
                        data-table-id="${id}"
-                       data-message-error="${%error}"
+                       data-type="USER"
+                       data-message-error="${%userError}"
+                />
+                <input type="button" class="azure-ad-add-button" value="${%Add group}" id="${id}GroupButton"
+                       data-table-id="${id}"
+                       data-type="GROUP"
+                       data-message-error="${%groupError}"
                 />
               </div>
               </j:when>
@@ -203,6 +210,11 @@ THE SOFTWARE.
         <div class="validation-error-area tr">
           <div class="azure-ad-validation-error error default-hidden">Please select a user or group.</div>
         </div>
+        <j:if test="${descriptor.hasAmbiguousEntries(instance)}">
+            <div class="alert alert-warning">
+                ${%ambiguous}
+            </div>
+        </j:if>
       <st:adjunct includes="com.microsoft.jenkins.azuread.table"/>
     </local:isEditable>
   </f:block>

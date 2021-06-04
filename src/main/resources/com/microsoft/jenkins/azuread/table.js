@@ -27,8 +27,12 @@ Behaviour.specify(".azure-ad-add-button", 'AzureAdMatrixAuthorizationStrategy', 
 
         selectedPeople.forEach(function(person) {
             var name = person
+            var type
             if (typeof person !== 'string') {
                 name = person.displayName + " (" + person.id + ")"
+                type = person.groupTypes ? "GROUP" : "USER"
+            } else {
+                type = dataReference.getAttribute('data-type')
             }
 
             if(findElementsBySelector(table,"TR").find(function(n){return n.getAttribute("name")=='['+name+']';})!=null) {
@@ -44,7 +48,7 @@ Behaviour.specify(".azure-ad-add-button", 'AzureAdMatrixAuthorizationStrategy', 
             copy.removeAttribute("id");
             copy.classList.remove("default-hidden");
             copy.firstChild.innerHTML = YAHOO.lang.escapeHTML(name); // TODO consider setting innerText
-            copy.setAttribute("name",'['+ name+']');
+            copy.setAttribute("name",'[' + type + ':' + name+']');
 
             for(var child = copy.firstChild; child !== null; child = child.nextSibling) {
                 if (child.hasAttribute('data-permission-id')) {
