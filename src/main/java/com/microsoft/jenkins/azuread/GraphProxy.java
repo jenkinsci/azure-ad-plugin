@@ -7,6 +7,8 @@ import jenkins.model.Jenkins;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
+import okhttp3.ResponseBody;
+import okio.ByteString;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.kohsuke.stapler.StaplerProxy;
@@ -103,16 +105,18 @@ public class GraphProxy implements RootAction, StaplerProxy {
                 response.setStatus(okResp.code());
                 response.addHeader("request-id", okResp.header("request-id"));
                 response.addHeader("client-request-id", okResp.header("client-request-id"));
-                if ("application/json".equals(contentType)) {
-                    String string = okResp.body().string();
-                    response.getWriter().write(string);
-                } else {
-                    // okhttp guesses the charset wrong for pictures when calling .string directly
-                    // it's supposed to use the content-type but it only seems to get utf-8 when that's not the right
-                    // one, (this is currently used for loading the user's photo
-                    response.getWriter().write(okResp.body().byteString().string(StandardCharsets.ISO_8859_1));
+                ResponseBody body = okResp.body();
+                if (body != null) {
+                    if ("application/json".equals(contentType)) {
+                        String string = body.string();
+                        response.getWriter().write(string);
+                    } else {
+                        // okhttp guesses the charset wrong for pictures when calling .string directly
+                        // it's supposed to use the content-type but it only seems to get utf-8 when that's not the right
+                        // one, (this is currently used for loading the user's photo
+                        response.getWriter().write(body.byteString().string(StandardCharsets.ISO_8859_1));
+                    }
                 }
-
             }
         }
 

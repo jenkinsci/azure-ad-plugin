@@ -5,6 +5,7 @@
 
 package com.microsoft.jenkins.azuread;
 
+import com.azure.core.credential.AccessToken;
 import com.azure.core.credential.TokenRequestContext;
 import com.azure.identity.ClientSecretCredential;
 import com.azure.identity.ClientSecretCredentialBuilder;
@@ -147,7 +148,13 @@ public class AzureSecurityRealm extends SecurityRealm {
         TokenRequestContext tokenRequestContext = new TokenRequestContext();
         tokenRequestContext.setScopes(singletonList("https://graph.microsoft.com/.default"));
 
-        return clientSecretCredential.getToken(tokenRequestContext).block().getToken();
+        AccessToken accessToken = clientSecretCredential.getToken(tokenRequestContext).block();
+
+        if (accessToken == null) {
+            throw new IllegalStateException("Access token null when it is required");
+        }
+
+        return accessToken.getToken();
     }
 
     private ClientSecretCredential getClientSecretCredential() {
