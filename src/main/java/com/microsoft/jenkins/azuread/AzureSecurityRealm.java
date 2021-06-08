@@ -45,6 +45,7 @@ import io.jenkins.plugins.azuresdk.HttpClientRetriever;
 import jenkins.model.Jenkins;
 import jenkins.security.SecurityListener;
 import jenkins.util.JenkinsJVM;
+import net.sf.json.JSONObject;
 import okhttp3.Credentials;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -142,7 +143,7 @@ public class AzureSecurityRealm extends SecurityRealm {
 
     });
 
-    public String getToken() {
+    public AccessToken getAccessToken() {
         ClientSecretCredential clientSecretCredential = getClientSecretCredential();
 
         TokenRequestContext tokenRequestContext = new TokenRequestContext();
@@ -154,7 +155,7 @@ public class AzureSecurityRealm extends SecurityRealm {
             throw new IllegalStateException("Access token null when it is required");
         }
 
-        return accessToken.getToken();
+        return accessToken;
     }
 
     private ClientSecretCredential getClientSecretCredential() {
