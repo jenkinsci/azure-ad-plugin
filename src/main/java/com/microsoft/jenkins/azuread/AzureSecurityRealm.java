@@ -30,6 +30,7 @@ import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.ProxyConfiguration;
+import hudson.Util;
 import hudson.model.Descriptor;
 import hudson.model.User;
 import hudson.security.GroupDetails;
@@ -45,7 +46,6 @@ import io.jenkins.plugins.azuresdk.HttpClientRetriever;
 import jenkins.model.Jenkins;
 import jenkins.security.SecurityListener;
 import jenkins.util.JenkinsJVM;
-import net.sf.json.JSONObject;
 import okhttp3.Credentials;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -214,6 +214,14 @@ public class AzureSecurityRealm extends SecurityRealm {
 
     public String getTenantSecret() {
         return tenant.getEncryptedValue();
+    }
+
+    String getCredentialCacheKey() {
+        return Util.getDigestOf(clientId.getPlainText()
+                        + clientSecret.getPlainText()
+                        + tenant.getPlainText()
+                        + azureEnvironmentName
+        );
     }
 
     public String getClientId() {

@@ -4,6 +4,7 @@ import com.azure.core.credential.AccessToken;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Expiry;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.model.RootAction;
 import hudson.security.SecurityRealm;
@@ -33,30 +34,29 @@ import java.util.concurrent.TimeUnit;
 public class GraphProxy implements RootAction, StaplerProxy {
 
     private static final OkHttpClient CLIENT = new OkHttpClient();
-    private static final long CLOCK_SKEW_PREVENT = TimeUnit.SECONDS.toNanos(30);
+    private static final long CLOCK_SKEW_TOLERANCE = TimeUnit.MINUTES.toNanos(1);
     private final Cache<String, AccessToken> tokenCache = Caffeine.newBuilder()
             .expireAfter(new Expiry<String, AccessToken>() {
                 @Override
-                public long expireAfterCreate(String key, AccessToken value, long currentTime) {
+                public long expireAfterCreate(
+                        @NonNull String key, @NonNull AccessToken value, long currentTime) {
                     long diff = ChronoUnit.NANOS.between(OffsetDateTime.now(), value.getExpiresAt());
-                    return diff - CLOCK_SKEW_PREVENT;
+                    return diff - CLOCK_SKEW_TOLERANCE;
                 }
 
                 @Override
-                public long expireAfterUpdate(String key, AccessToken value, long currentTime, long currentDuration) {
+                public long expireAfterUpdate(
+                        @NonNull String key, @NonNull AccessToken value, long currentTime, long currentDuration) {
                     return Long.MAX_VALUE;
                 }
 
                 @Override
-                public long expireAfterRead(String key, AccessToken value, long currentTime, long currentDuration) {
+                public long expireAfterRead(
+                        @NonNull String key, @NonNull AccessToken value, long currentTime, long currentDuration) {
                     return Long.MAX_VALUE;
                 }
             })
             .build();
-
-    public void invalidateCache(String clientId) {
-        tokenCache.invalidate(clientId);
-    }
 
     @Override
     public String getIconFileName() {
@@ -127,12 +127,8 @@ public class GraphProxy implements RootAction, StaplerProxy {
         SecurityRealm securityRealm = Jenkins.get().getSecurityRealm();
         if (securityRealm instanceof AzureSecurityRealm) {
             AzureSecurityRealm azureSecurityRealm = ((AzureSecurityRealm) securityRealm);
-            String clientId = azureSecurityRealm.getClientId();
-            AccessToken accessToken = tokenCache.get(clientId, (cacheKey) -> {
-                AccessToken token = azureSecurityRealm.getAccessToken();
-                System.out.println("Acquiring new token: " + token.getToken());
-                return token;
-            });
+            String cacheKey = azureSecurityRealm.getCredentialCacheKey();
+            AccessToken accessToken = tokenCache.get(cacheKey, (unused) -> azureSecurityRealm.getAccessToken());
 
             if (accessToken == null) {
                 throw new IllegalStateException("Access token must not be null here");
