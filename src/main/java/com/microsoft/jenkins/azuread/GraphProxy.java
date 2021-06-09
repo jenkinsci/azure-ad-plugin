@@ -7,6 +7,7 @@ import com.github.benmanes.caffeine.cache.Expiry;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.model.RootAction;
+import hudson.model.User;
 import hudson.security.SecurityRealm;
 import jenkins.model.Jenkins;
 import okhttp3.OkHttpClient;
@@ -81,15 +82,6 @@ public class GraphProxy implements RootAction, StaplerProxy {
     }
 
     public void doDynamic(StaplerRequest request, StaplerResponse response) throws IOException {
-        // can't load anything because we're using a confidential client and not a user
-        // this is just checking for a 200 response to see that we're logged in anyway
-        // TODO I think we can use the logged in user, so that me/people works to retrieve the 'people I work with'
-        if (request.getRestOfPath().startsWith("/v1.0/me")) {
-            response.setContentType("application/json");
-            response.getWriter().write("{}");
-            return;
-        }
-
         proxy(request, response);
     }
 
@@ -171,8 +163,21 @@ public class GraphProxy implements RootAction, StaplerProxy {
     }
 
     private String buildUrl(StaplerRequest request, String baseUrl) {
-        StringBuilder builder = new StringBuilder(baseUrl)
-                .append(StringUtils.removeStart(request.getRestOfPath(), "/v1.0"));
+        StringBuilder builder = new StringBuilder(baseUrl);
+
+        String path = StringUtils.removeStart(request.getRestOfPath(), "/v1.0");
+
+        // /me doesn't work for service principals but we can use the current logged in user instead
+        // this is also used for /me/people to get the people the current logged in user works with
+        if (path.startsWith("/me")) {
+            User currentUser = User.current();
+            if (currentUser == null) {
+                throw new IllegalStateException("User must be logged in here");
+            }
+            path = path.replace("me", "users/" + currentUser.getId());
+        }
+
+        builder.append(path);
 
         if (request.getQueryString() != null) {
             builder.append("?")
