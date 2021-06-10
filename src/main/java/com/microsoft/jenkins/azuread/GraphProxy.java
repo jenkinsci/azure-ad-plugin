@@ -3,15 +3,15 @@ package com.microsoft.jenkins.azuread;
 import com.azure.core.credential.AccessToken;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.Expiry;
-import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.model.RootAction;
 import hudson.model.User;
 import hudson.security.SecurityRealm;
 import jenkins.model.Jenkins;
+import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
+import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 import org.apache.commons.lang3.StringUtils;
@@ -23,9 +23,8 @@ import org.kohsuke.stapler.StaplerResponse;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.time.OffsetDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * Proxies calls to the Microsoft Graph API.
@@ -35,28 +34,9 @@ import java.util.concurrent.TimeUnit;
 public class GraphProxy implements RootAction, StaplerProxy {
 
     private static final OkHttpClient CLIENT = new OkHttpClient();
-    private static final long CLOCK_SKEW_TOLERANCE = TimeUnit.MINUTES.toNanos(1);
+    private static final int TEN = 10;
     private final Cache<String, AccessToken> tokenCache = Caffeine.newBuilder()
-            .expireAfter(new Expiry<String, AccessToken>() {
-                @Override
-                public long expireAfterCreate(
-                        @NonNull String key, @NonNull AccessToken value, long currentTime) {
-                    long diff = ChronoUnit.NANOS.between(OffsetDateTime.now(), value.getExpiresAt());
-                    return diff - CLOCK_SKEW_TOLERANCE;
-                }
-
-                @Override
-                public long expireAfterUpdate(
-                        @NonNull String key, @NonNull AccessToken value, long currentTime, long currentDuration) {
-                    return Long.MAX_VALUE;
-                }
-
-                @Override
-                public long expireAfterRead(
-                        @NonNull String key, @NonNull AccessToken value, long currentTime, long currentDuration) {
-                    return Long.MAX_VALUE;
-                }
-            })
+            .expireAfterWrite(TEN, TimeUnit.MINUTES)
             .build();
 
     @Override
@@ -120,7 +100,10 @@ public class GraphProxy implements RootAction, StaplerProxy {
         if (securityRealm instanceof AzureSecurityRealm) {
             AzureSecurityRealm azureSecurityRealm = ((AzureSecurityRealm) securityRealm);
             String cacheKey = azureSecurityRealm.getCredentialCacheKey();
-            AccessToken accessToken = tokenCache.get(cacheKey, (unused) -> azureSecurityRealm.getAccessToken());
+            AccessToken accessToken = tokenCache.get(cacheKey, (unused) -> {
+                AccessToken accessToken1 = azureSecurityRealm.getAccessToken();
+                return accessToken1;
+            });
 
             if (accessToken == null) {
                 throw new IllegalStateException("Access token must not be null here");
@@ -139,7 +122,7 @@ public class GraphProxy implements RootAction, StaplerProxy {
         throw new IllegalStateException("GraphProxy only works when Authentication is set to Azure");
     }
 
-    private Request buildRequest(StaplerRequest request, String token, String url) {
+    private Request buildRequest(StaplerRequest request, String token, String url) throws IOException {
         Request.Builder okRequest = new Request.Builder()
                 .url(url)
                 .addHeader("Authorization", "Bearer " + token);
@@ -147,6 +130,13 @@ public class GraphProxy implements RootAction, StaplerProxy {
         String consistencyLevel = request.getHeader("ConsistencyLevel");
         if (consistencyLevel != null) {
             okRequest.addHeader("ConsistencyLevel", consistencyLevel);
+        }
+
+        if (request.getMethod().equals("POST")) {
+            String body = request.getReader().lines()
+                    .collect(Collectors.joining(System.lineSeparator()));
+
+            okRequest.post(RequestBody.create(body, MediaType.get(request.getHeader("Content-Type"))));
         }
 
         String accept = request.getHeader("Accept");
@@ -163,7 +153,13 @@ public class GraphProxy implements RootAction, StaplerProxy {
     }
 
     private String buildUrl(StaplerRequest request, String baseUrl) {
-        StringBuilder builder = new StringBuilder(baseUrl);
+        String apiUrl = baseUrl;
+
+        if (request.getRestOfPath().startsWith("/beta")) {
+            apiUrl = baseUrl.replace("/v1.0", "");
+        }
+
+        StringBuilder builder = new StringBuilder(apiUrl);
 
         String path = StringUtils.removeStart(request.getRestOfPath(), "/v1.0");
 
