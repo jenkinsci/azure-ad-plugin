@@ -24,9 +24,9 @@ THE SOFTWARE.
 <?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:d="jelly:define" xmlns:f="/lib/form" xmlns:l="/lib/layout" xmlns:st="jelly:stapler">
 
-  <!-- TODO load via webpack -->
-  <script src="https://unpkg.com/@microsoft/mgt/dist/bundle/mgt-loader.js"/>
-  <mgt-proxy-provider graph-proxy-url="${rootURL}/GraphProxy" />
+  <script src="${rootURL}/plugin/azure-ad/js/azure-ad-bundle.js"/>
+
+  <div id="azure-ad-config" data-graphProxyUrl="${rootURL}/GraphProxy"/>
 
   <f:block xmlns:local="local">
     <j:set var="groups" value="${descriptor.allGroups}"/>
