@@ -3,11 +3,15 @@ package com.microsoft.jenkins.azuread;
 import com.azure.core.credential.AccessToken;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
+import hudson.model.Action;
+import hudson.model.Job;
 import hudson.model.RootAction;
 import hudson.model.User;
 import hudson.security.SecurityRealm;
 import jenkins.model.Jenkins;
+import jenkins.model.TransientActionFactory;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -23,6 +27,8 @@ import org.kohsuke.stapler.StaplerResponse;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -39,6 +45,8 @@ public class GraphProxy implements RootAction, StaplerProxy {
             .expireAfterWrite(TEN, TimeUnit.MINUTES)
             .build();
 
+    private Job<?, ?> job;
+
     @Override
     public String getIconFileName() {
         return null;
@@ -54,11 +62,40 @@ public class GraphProxy implements RootAction, StaplerProxy {
         return "GraphProxy";
     }
 
+    // used for the root action
+    @SuppressWarnings("unused")
+    public GraphProxy() {
+    }
+
+    public GraphProxy(Job<?, ?> job) {
+        this.job = job;
+    }
+
     @Override
     public Object getTarget() {
-        // TODO attach the action to a job so that someone configuring a job can do this
+        if (job != null) {
+            job.checkPermission(Job.CONFIGURE);
+            return this;
+        }
+
         Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+
         return this;
+    }
+
+    @Extension
+    public static class TransientActionFactoryImpl extends TransientActionFactory<Job> {
+
+        @Override
+        public Class<Job> type() {
+            return Job.class;
+        }
+
+        @NonNull
+        @Override
+        public Collection<? extends Action> createFor(@NonNull Job target) {
+            return Collections.singletonList(new GraphProxy(target));
+        }
     }
 
     public void doDynamic(StaplerRequest request, StaplerResponse response) throws IOException {

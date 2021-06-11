@@ -26,8 +26,6 @@ THE SOFTWARE.
 
   <script src="${rootURL}/plugin/azure-ad/js/azure-ad-bundle.js"/>
 
-  <div id="azure-ad-config" data-graphProxyUrl="${rootURL}/GraphProxy"/>
-
   <f:block xmlns:local="local">
     <j:set var="groups" value="${descriptor.allGroups}"/>
     <d:taglib uri="local">
