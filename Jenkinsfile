@@ -1,1 +1,1 @@
-buildPlugin(useAci: true, platforms: ['linux']])
+buildPlugin(useAci: true, platforms: ['linux'])
