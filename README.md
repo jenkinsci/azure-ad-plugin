@@ -52,6 +52,12 @@ Click `Manage Jenkins` in the left menu, then click `Configure Global Security`
 
 1. Click `Verify Application` to make sure your input is valid.
 
+1. Save the configuration, (logged-in users will have permission to do anything)
+
+1. Log in with Azure AD
+
+1. Return to 'Configure Global Security' to configure authorization
+
 _Note: if you haven't setup Graph API permissions, verify application will fail, skip over this step_
 
 ## Authorization
@@ -88,5 +94,6 @@ The following can normally be used:
 #### Q: How to recover if Jenkins keeps failing during the login phase?
 A: You can disable the security from the config file (see https://www.jenkins.io/doc/book/system-administration/security/#disabling-security)
 
-#### Q: Why am I getting an error "insufficient privileges to complete the operation" even having granted the permission?
-A: It takes rather long time for the privileges to take effect, which could be 10-20 minutes. So just wait for a while and try again.
+#### Q: Why am I getting an error "insufficient privileges to complete the operation" even after having granted the permission?
+
+A: It can take a long time for the privileges to take effect, which could be 10-20 minutes. Just wait for a while and try again.
