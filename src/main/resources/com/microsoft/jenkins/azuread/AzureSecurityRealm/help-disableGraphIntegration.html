@@ -1,0 +1,15 @@
+To support group based authentication and searching for users to grant permissions this plugin
+needs some graph API permissions:
+
+<ul>
+    <li>People.Read</li>
+    <li>User.Read.All</li>
+    <li>Group.Read.All</li>
+</ul>
+
+If you can't grant these permissions you will want to disable this feature so that:
+
+<ul>
+    <li>Your logs aren't full of permission errors</li>
+    <li>A different component is used for filling in users that allows free text</li>
+</ul>

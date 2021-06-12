@@ -8,28 +8,40 @@ Behaviour.specify(".azure-ad-add-user-button", 'AzureAdMatrixAuthorizationStrate
         var master = document.getElementById(dataTableId);
         var table = master.parentNode;
 
-        var selectedPeople = document.querySelector('mgt-people-picker').selectedPeople;
+        var nonGraphInput = document.getElementById(dataTableId + 'text')
+        var selectedPeople = []
+        var peoplePickerEnabled = true
+        if (nonGraphInput) {
+            peoplePickerEnabled = false
+            if (nonGraphInput.value) {
+                selectedPeople = [nonGraphInput.value]
+            }
+        } else {
+          selectedPeople = document.querySelector('mgt-people-picker').selectedPeople;
+        }
+
         if(selectedPeople && selectedPeople.length === 0) {
             document.querySelector('.azure-ad-validation-error').classList.remove('default-hidden')
             return;
         }
 
-        if(document.importNode!=null)
-            copy = document.importNode(master,true);
-        else
-            copy = master.cloneNode(true); // for IE
-        copy.removeAttribute("id");
-        copy.removeAttribute("style");
-        copy.firstChild.innerHTML = YAHOO.lang.escapeHTML(name); // TODO consider setting innerText
-        copy.setAttribute("name",'['+name+']');
-
         selectedPeople.forEach(function(person) {
-            var name = person.displayName + " (" + person.id + ")"
+            var name = person
+            if (typeof person !== 'string') {
+                name = person.displayName + " (" + person.id + ")"
+            }
 
-            if(document.importNode!=null)
-                copy = document.importNode(master,true);
-            else
+            // TODO assume this is for dupes, check it closer
+            if(findElementsBySelector(table,"TR").find(function(n){return n.getAttribute("name")=='['+name+']';})!=null) {
+                alert(dataReference.getAttribute('data-message-error') + ": " + name);
+                return;
+            }
+
+            if(document.importNode!=null) {
+                copy = document.importNode(master, true);
+            } else {
                 copy = master.cloneNode(true); // for IE
+            }
             copy.removeAttribute("id");
             copy.removeAttribute("style");
             copy.firstChild.innerHTML = YAHOO.lang.escapeHTML(name); // TODO consider setting innerText
@@ -52,7 +64,9 @@ Behaviour.specify(".azure-ad-add-user-button", 'AzureAdMatrixAuthorizationStrate
         })
 
 
-        document.querySelector('mgt-people-picker').selectedPeople = []
+        if (peoplePickerEnabled) {
+            document.querySelector('mgt-people-picker').selectedPeople = []
+        }
     });
 });
 
@@ -142,7 +156,11 @@ Behaviour.specify(".global-matrix-authorization-strategy-table TR.permission-row
 
 /*
  * Hide no users selected validation message on selection changed
- */
-document.querySelector('mgt-people-picker').addEventListener('selectionChanged', function(e) {
-    document.querySelector('.azure-ad-validation-error').classList.add('default-hidden')
-});
+*/
+var peoplePicker = document.querySelector('mgt-people-picker');
+if (peoplePicker) {
+    peoplePicker.addEventListener('selectionChanged', function (e) {
+        const validationError = document.querySelector('.azure-ad-validation-error');
+        validationError?.classList.add('default-hidden')
+    });
+}

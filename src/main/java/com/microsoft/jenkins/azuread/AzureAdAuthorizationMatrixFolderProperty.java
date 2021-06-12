@@ -93,7 +93,17 @@ public class AzureAdAuthorizationMatrixFolderProperty extends AuthorizationMatri
 
         @GET
         public FormValidation doCheckName(@AncestorInPath AbstractFolder<?> folder, @QueryParameter String value) {
+            if (isDisableGraphIntegration()) {
+                return Utils.undecidableResponse(value);
+            }
+
             return doCheckName_(value, folder, Item.CONFIGURE);
+        }
+
+        @SuppressWarnings("unused") // called by jelly
+        public boolean isDisableGraphIntegration() {
+            AzureSecurityRealm securityRealm = (AzureSecurityRealm) Jenkins.get().getSecurityRealm();
+            return securityRealm.isDisableGraphIntegration();
         }
 
         @Override
