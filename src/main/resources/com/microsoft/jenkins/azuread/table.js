@@ -31,7 +31,6 @@ Behaviour.specify(".azure-ad-add-user-button", 'AzureAdMatrixAuthorizationStrate
                 name = person.displayName + " (" + person.id + ")"
             }
 
-            // TODO assume this is for dupes, check it closer
             if(findElementsBySelector(table,"TR").find(function(n){return n.getAttribute("name")=='['+name+']';})!=null) {
                 alert(dataReference.getAttribute('data-message-error') + ": " + name);
                 return;
