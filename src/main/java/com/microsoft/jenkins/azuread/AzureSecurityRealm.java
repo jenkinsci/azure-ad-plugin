@@ -89,6 +89,7 @@ import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_US_GOVERNMENT
 import static com.microsoft.jenkins.azuread.AzureEnvironment.getAuthorityHost;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.getGraphResource;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.getServiceRoot;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.Objects.requireNonNull;
 
@@ -375,11 +376,12 @@ public class AzureSecurityRealm extends SecurityRealm {
                 final AzureAdUser user;
                 user = AzureAdUser.createFromJwt(claims);
 
+                List<AzureAdGroup> groups = emptyList();
                 if (!isDisableGraphIntegration()) {
-                    final List<AzureAdGroup> groups = AzureCachePool.get(getAzureClient())
+                    groups = AzureCachePool.get(getAzureClient())
                             .getBelongingGroupsByOid(user.getObjectID());
-                    user.setAuthorities(groups);
                 }
+                user.setAuthorities(groups);
                 LOGGER.info(String.format("Fetch user details with sub: %s***",
                         key.substring(0, CACHE_KEY_LOG_LENGTH)));
                 return user;
