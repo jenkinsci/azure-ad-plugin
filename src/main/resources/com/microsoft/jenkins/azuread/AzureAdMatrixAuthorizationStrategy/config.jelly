@@ -23,6 +23,11 @@ THE SOFTWARE.
 -->
 <?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:d="jelly:define" xmlns:f="/lib/form" xmlns:l="/lib/layout" xmlns:st="jelly:stapler">
+
+  <j:if test="${!descriptor.disableGraphIntegration}">
+    <script src="${rootURL}/plugin/azure-ad/js/azure-ad-bundle.js"/>
+  </j:if>
+
   <f:block xmlns:local="local">
     <j:set var="groups" value="${descriptor.allGroups}"/>
     <d:taglib uri="local">
@@ -169,8 +174,21 @@ THE SOFTWARE.
     <local:isEditable>
       <table style="margin-top:0.5em; width: 100%">
         <f:entry title="${%Azure User/group to add}">
-          <f:textbox field="userOrGroup" id="${id}text"/>
+
+            <j:choose>
+              <j:when test="${descriptor.disableGraphIntegration}">
+                <f:textbox field="userOrGroup" id="${id}text"/>
+              </j:when>
+              <j:otherwise>
+                <div style="border: 1px solid var(--input-border);border-radius: 3px">
+                  <mgt-people-picker type="any" user-type="any" group-type="security" show-max="10" />
+                </div>
+              </j:otherwise>
+            </j:choose>
         </f:entry>
+        <div class="validation-error-area tr">
+          <div class="azure-ad-validation-error error default-hidden" style="margin-top: 0.5rem">Please select a user or group.</div>
+        </div>
         <f:entry>
           <input type="button" class="azure-ad-add-user-button" value="${%Add}" id="${id}button"
                  data-table-id="${id}"

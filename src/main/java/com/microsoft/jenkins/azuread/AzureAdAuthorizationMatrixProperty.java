@@ -2,7 +2,6 @@ package com.microsoft.jenkins.azuread;
 
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
-import hudson.model.AutoCompletionCandidates;
 import hudson.model.Item;
 import hudson.model.Job;
 import hudson.model.JobProperty;
@@ -26,7 +25,6 @@ import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.verb.GET;
 
-import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -119,6 +117,10 @@ public class AzureAdAuthorizationMatrixProperty extends AuthorizationMatrixPrope
 
         @GET
         public FormValidation doCheckName(@AncestorInPath Job<?, ?> project, @QueryParameter String value) {
+            if (isDisableGraphIntegration()) {
+                return Utils.undecidableResponse(value);
+            }
+
             return doCheckName_(value, project, Item.CONFIGURE);
         }
 
@@ -128,8 +130,10 @@ public class AzureAdAuthorizationMatrixProperty extends AuthorizationMatrixPrope
             return "Azure Active Directory Authorization Matrix";
         }
 
-        public AutoCompletionCandidates doAutoCompleteUserOrGroup(@QueryParameter String value) throws IOException {
-            return AzureAdMatrixAuthorizationStrategy.searchAndGenerateCandidates(value);
+        @SuppressWarnings("unused") // called by jelly
+        public boolean isDisableGraphIntegration() {
+            AzureSecurityRealm securityRealm = (AzureSecurityRealm) Jenkins.get().getSecurityRealm();
+            return securityRealm.isDisableGraphIntegration();
         }
     }
 

@@ -8,42 +8,64 @@ Behaviour.specify(".azure-ad-add-user-button", 'AzureAdMatrixAuthorizationStrate
         var master = document.getElementById(dataTableId);
         var table = master.parentNode;
 
-        var name = document.getElementById(dataTableId + 'text').value;
-        if (name == null) {
-            return;
-        }
-        if(name=="") {
-            alert(dataReference.getAttribute('data-message-empty'));
-            return;
-        }
-        if(findElementsBySelector(table,"TR").find(function(n){return n.getAttribute("name")=='['+name+']';})!=null) {
-            alert(dataReference.getAttribute('data-message-error'));
-            return;
-        }
-
-        if(document.importNode!=null)
-            copy = document.importNode(master,true);
-        else
-            copy = master.cloneNode(true); // for IE
-        copy.removeAttribute("id");
-        copy.removeAttribute("style");
-        copy.firstChild.innerHTML = YAHOO.lang.escapeHTML(name); // TODO consider setting innerText
-        copy.setAttribute("name",'['+name+']');
-
-        for(var child = copy.firstChild; child !== null; child = child.nextSibling) {
-            if (child.hasAttribute('data-permission-id')) {
-                child.setAttribute("data-tooltip-enabled", child.getAttribute("data-tooltip-enabled").replace("__SID__", name));
-                child.setAttribute("data-tooltip-disabled", child.getAttribute("data-tooltip-disabled").replace("__SID__", name));
+        var nonGraphInput = document.getElementById(dataTableId + 'text')
+        var selectedPeople = []
+        var peoplePickerEnabled = true
+        if (nonGraphInput) {
+            peoplePickerEnabled = false
+            if (nonGraphInput.value) {
+                selectedPeople = [nonGraphInput.value]
             }
+        } else {
+          selectedPeople = document.querySelector('mgt-people-picker').selectedPeople;
         }
-        findElementsBySelector(copy, ".stop img").each(function(item) {
-            item.setAttribute("title", item.getAttribute("title").replace("__SID__", name));
-        });
-        findElementsBySelector(copy, "input[type=checkbox]").each(function(item) {
-            item.setAttribute("title", item.getAttribute("title").replace("__SID__", name));
-        });
-        table.appendChild(copy);
-        Behaviour.applySubtree(findAncestor(table,"TABLE"),true);
+
+        if(selectedPeople && selectedPeople.length === 0) {
+            document.querySelector('.azure-ad-validation-error').classList.remove('default-hidden')
+            return;
+        }
+
+        selectedPeople.forEach(function(person) {
+            var name = person
+            if (typeof person !== 'string') {
+                name = person.displayName + " (" + person.id + ")"
+            }
+
+            if(findElementsBySelector(table,"TR").find(function(n){return n.getAttribute("name")=='['+name+']';})!=null) {
+                alert(dataReference.getAttribute('data-message-error') + ": " + name);
+                return;
+            }
+
+            if(document.importNode!=null) {
+                copy = document.importNode(master, true);
+            } else {
+                copy = master.cloneNode(true); // for IE
+            }
+            copy.removeAttribute("id");
+            copy.removeAttribute("style");
+            copy.firstChild.innerHTML = YAHOO.lang.escapeHTML(name); // TODO consider setting innerText
+            copy.setAttribute("name",'['+ name+']');
+
+            for(var child = copy.firstChild; child !== null; child = child.nextSibling) {
+                if (child.hasAttribute('data-permission-id')) {
+                    child.setAttribute("data-tooltip-enabled", child.getAttribute("data-tooltip-enabled").replace("__SID__", name));
+                    child.setAttribute("data-tooltip-disabled", child.getAttribute("data-tooltip-disabled").replace("__SID__", name));
+                }
+            }
+            findElementsBySelector(copy, ".stop img").each(function(item) {
+                item.setAttribute("title", item.getAttribute("title").replace("__SID__", name));
+            });
+            findElementsBySelector(copy, "input[type=checkbox]").each(function(item) {
+                item.setAttribute("title", item.getAttribute("title").replace("__SID__", name));
+            });
+            table.appendChild(copy);
+            Behaviour.applySubtree(findAncestor(table,"TABLE"),true);
+        })
+
+
+        if (peoplePickerEnabled) {
+            document.querySelector('mgt-people-picker').selectedPeople = []
+        }
     });
 });
 
@@ -130,3 +152,14 @@ Behaviour.specify(".global-matrix-authorization-strategy-table TR.permission-row
         e.setAttribute('data-checked', 'true');
     }
 });
+
+/*
+ * Hide no users selected validation message on selection changed
+*/
+var peoplePicker = document.querySelector('mgt-people-picker');
+if (peoplePicker) {
+    peoplePicker.addEventListener('selectionChanged', function (e) {
+        const validationError = document.querySelector('.azure-ad-validation-error');
+        validationError?.classList.add('default-hidden')
+    });
+}

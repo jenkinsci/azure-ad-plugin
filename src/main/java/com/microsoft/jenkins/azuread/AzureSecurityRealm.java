@@ -5,6 +5,8 @@
 
 package com.microsoft.jenkins.azuread;
 
+import com.azure.core.credential.AccessToken;
+import com.azure.core.credential.TokenRequestContext;
 import com.azure.identity.ClientSecretCredential;
 import com.azure.identity.ClientSecretCredentialBuilder;
 import com.github.benmanes.caffeine.cache.Cache;
@@ -16,6 +18,7 @@ import com.google.common.base.Suppliers;
 import com.microsoft.graph.authentication.TokenCredentialAuthProvider;
 import com.microsoft.graph.http.GraphServiceException;
 import com.microsoft.graph.httpcore.HttpClients;
+import com.microsoft.graph.models.Group;
 import com.microsoft.graph.requests.GraphServiceClient;
 import com.microsoft.jenkins.azuread.scribe.AzureApi;
 import com.microsoft.jenkins.azuread.scribe.AzureOAuthService;
@@ -27,6 +30,7 @@ import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.ProxyConfiguration;
+import hudson.Util;
 import hudson.model.Descriptor;
 import hudson.model.User;
 import hudson.security.GroupDetails;
@@ -85,6 +89,8 @@ import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_US_GOVERNMENT
 import static com.microsoft.jenkins.azuread.AzureEnvironment.getAuthorityHost;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.getGraphResource;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.getServiceRoot;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
 import static java.util.Objects.requireNonNull;
 
 public class AzureSecurityRealm extends SecurityRealm {
@@ -102,6 +108,8 @@ public class AzureSecurityRealm extends SecurityRealm {
     private static final String CONVERTER_NODE_FROM_REQUEST = "fromrequest";
     private static final int CACHE_KEY_LOG_LENGTH = 8;
     private static final int NOT_FOUND = 404;
+    public static final String CONVERTER_DISABLE_GRAPH_INTEGRATION = "disableGraphIntegration";
+    public static final String CONVERTER_ENVIRONMENT_NAME = "environmentName";
 
     private Cache<String, AzureAdUser> caches;
 
@@ -111,18 +119,13 @@ public class AzureSecurityRealm extends SecurityRealm {
     private int cacheDuration;
     private boolean fromRequest = false;
     private boolean singleLogout;
+    private boolean disableGraphIntegration;
     private String azureEnvironmentName = "Azure";
 
-    private final Supplier<GraphServiceClient<Request>> cachedAzureClient = Suppliers.memoize(() -> {
+    private final transient Supplier<GraphServiceClient<Request>> cachedAzureClient = Suppliers.memoize(() -> {
 
         String azureEnv = getAzureEnvironmentName();
-        final ClientSecretCredential clientSecretCredential = new ClientSecretCredentialBuilder()
-                .clientId(clientId.getPlainText())
-                .clientSecret(clientSecret.getPlainText())
-                .tenantId(tenant.getPlainText())
-                .authorityHost(getAuthorityHost(azureEnv))
-                .httpClient(HttpClientRetriever.get())
-                .build();
+        final ClientSecretCredential clientSecretCredential = getClientSecretCredential();
 
         final TokenCredentialAuthProvider authProvider = new TokenCredentialAuthProvider(clientSecretCredential);
 
@@ -136,12 +139,39 @@ public class AzureSecurityRealm extends SecurityRealm {
                 .builder()
                 .httpClient(graphHttpClient)
                 .buildClient();
+
         if (!azureEnv.equals(AZURE_PUBLIC_CLOUD)) {
             graphServiceClient.setServiceRoot(getServiceRoot(azureEnv));
         }
         return graphServiceClient;
 
     });
+
+    public AccessToken getAccessToken() {
+        ClientSecretCredential clientSecretCredential = getClientSecretCredential();
+
+        TokenRequestContext tokenRequestContext = new TokenRequestContext();
+        tokenRequestContext.setScopes(singletonList("https://graph.microsoft.com/.default"));
+
+        AccessToken accessToken = clientSecretCredential.getToken(tokenRequestContext).block();
+
+        if (accessToken == null) {
+            throw new IllegalStateException("Access token null when it is required");
+        }
+
+        return accessToken;
+    }
+
+    private ClientSecretCredential getClientSecretCredential() {
+        String azureEnv = getAzureEnvironmentName();
+        return new ClientSecretCredentialBuilder()
+                .clientId(clientId.getPlainText())
+                .clientSecret(clientSecret.getPlainText())
+                .tenantId(tenant.getPlainText())
+                .authorityHost(getAuthorityHost(azureEnv))
+                .httpClient(HttpClientRetriever.get())
+                .build();
+    }
 
     private static OkHttpClient.Builder addProxyToHttpClientIfRequired(OkHttpClient.Builder builder) {
         if (JenkinsJVM.isJenkinsJVM()) {
@@ -190,6 +220,14 @@ public class AzureSecurityRealm extends SecurityRealm {
         return tenant.getEncryptedValue();
     }
 
+    String getCredentialCacheKey() {
+        return Util.getDigestOf(clientId.getPlainText()
+                        + clientSecret.getPlainText()
+                        + tenant.getPlainText()
+                        + azureEnvironmentName
+        );
+    }
+
     public String getClientId() {
         return clientId.getPlainText();
     }
@@ -205,6 +243,15 @@ public class AzureSecurityRealm extends SecurityRealm {
     @DataBoundSetter
     public void setAzureEnvironmentName(String azureEnvironmentName) {
         this.azureEnvironmentName = azureEnvironmentName;
+    }
+
+    public boolean isDisableGraphIntegration() {
+        return disableGraphIntegration;
+    }
+
+    @DataBoundSetter
+    public void setDisableGraphIntegration(boolean disableGraphIntegration) {
+        this.disableGraphIntegration = disableGraphIntegration;
     }
 
     public void setClientId(String clientId) {
@@ -328,8 +375,12 @@ public class AzureSecurityRealm extends SecurityRealm {
             AzureAdUser userDetails = caches.get(key, (cacheKey) -> {
                 final AzureAdUser user;
                 user = AzureAdUser.createFromJwt(claims);
-                final List<AzureAdGroup> groups = AzureCachePool.get(getAzureClient())
-                        .getBelongingGroupsByOid(user.getObjectID());
+
+                List<AzureAdGroup> groups = emptyList();
+                if (!isDisableGraphIntegration()) {
+                    groups = AzureCachePool.get(getAzureClient())
+                            .getBelongingGroupsByOid(user.getObjectID());
+                }
                 user.setAuthorities(groups);
                 LOGGER.info(String.format("Fetch user details with sub: %s***",
                         key.substring(0, CACHE_KEY_LOG_LENGTH)));
@@ -414,6 +465,10 @@ public class AzureSecurityRealm extends SecurityRealm {
                 throw new UserMayOrMayNotExistException2("Can't find a user with no username");
             }
 
+            if (isDisableGraphIntegration()) {
+                throw new UserMayOrMayNotExistException2("Can't lookup a user if graph integration is disabled");
+            }
+
             AzureAdUser azureAdUser = caches.get(username, (cacheKey) -> {
                 GraphServiceClient<Request> azureClient = getAzureClient();
                 String userId = ObjId2FullSidMap.extractObjectId(username);
@@ -455,7 +510,24 @@ public class AzureSecurityRealm extends SecurityRealm {
      */
     @Override
     public GroupDetails loadGroupByGroupname2(String groupName, boolean fetchMembers) {
-        throw new UsernameNotFoundException("groups not supported");
+        GraphServiceClient<Request> azureClient = getAzureClient();
+
+        String groupId = ObjId2FullSidMap.extractObjectId(groupName);
+
+        if (groupId == null) {
+            // just an object id on it's own?
+            groupId = groupName;
+        }
+
+        Group group = azureClient.groups(groupId)
+                .buildRequest()
+                .get();
+
+        if (group == null) {
+            throw new UsernameNotFoundException("Group: " + groupName + " not found");
+        }
+
+        return new AzureAdGroupDetails(group.id, group.displayName);
     }
 
     @Override
@@ -498,6 +570,14 @@ public class AzureSecurityRealm extends SecurityRealm {
             writer.startNode(CONVERTER_NODE_FROM_REQUEST);
             writer.setValue(String.valueOf(realm.isFromRequest()));
             writer.endNode();
+
+            writer.startNode(CONVERTER_ENVIRONMENT_NAME);
+            writer.setValue(String.valueOf(realm.getAzureEnvironmentName()));
+            writer.endNode();
+
+            writer.startNode(CONVERTER_DISABLE_GRAPH_INTEGRATION);
+            writer.setValue(String.valueOf(realm.isDisableGraphIntegration()));
+            writer.endNode();
         }
 
         @Override
@@ -523,6 +603,12 @@ public class AzureSecurityRealm extends SecurityRealm {
                     case CONVERTER_NODE_FROM_REQUEST:
                         realm.setFromRequest(Boolean.parseBoolean(value));
                         break;
+                    case CONVERTER_ENVIRONMENT_NAME:
+                        realm.setAzureEnvironmentName(value);
+                        break;
+                    case CONVERTER_DISABLE_GRAPH_INTEGRATION:
+                        realm.setDisableGraphIntegration(Boolean.parseBoolean(value));
+                        break;
                     default:
                         break;
                 }
@@ -544,7 +630,7 @@ public class AzureSecurityRealm extends SecurityRealm {
         public boolean process(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
                 throws IOException, ServletException {
             String pathInfo = request.getPathInfo();
-            if (pathInfo != null && pathInfo.equals(CALLBACK_URL)) {
+            if (pathInfo != null && (pathInfo.equals(CALLBACK_URL) || pathInfo.endsWith("GraphProxy/v1.0/$batch"))) {
                 chain.doFilter(request, response);
                 return true;
             }

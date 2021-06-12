@@ -38,7 +38,7 @@ _Note: You can skip this part and just use the claims returned when authenticati
 
 1. Application permissions
 
-1. Add 'User.Read.All' and 'Group.Read.All'
+1. Add 'User.Read.All', 'Group.Read.All' and 'People.Read'
 
 1. Click `Grant admin consent`. If you are not an admin in your tenant, please contact an admin to grant the permissions.
 
@@ -51,6 +51,12 @@ Click `Manage Jenkins` in the left menu, then click `Configure Global Security`
 1. Check `Azure Active Directory` and fill in the credential.
 
 1. Click `Verify Application` to make sure your input is valid.
+
+1. Save the configuration, (logged-in users will have permission to do anything)
+
+1. Log in with Azure AD
+
+1. Return to 'Configure Global Security' to configure authorization
 
 _Note: if you haven't setup Graph API permissions, verify application will fail, skip over this step_
 
@@ -88,5 +94,6 @@ The following can normally be used:
 #### Q: How to recover if Jenkins keeps failing during the login phase?
 A: You can disable the security from the config file (see https://www.jenkins.io/doc/book/system-administration/security/#disabling-security)
 
-#### Q: Why am I getting an error "insufficient privileges to complete the operation" even having granted the permission?
-A: It takes rather long time for the privileges to take effect, which could be 10-20 minutes. So just wait for a while and try again.
+#### Q: Why am I getting an error "insufficient privileges to complete the operation" even after having granted the permission?
+
+A: It can take a long time for the privileges to take effect, which could be 10-20 minutes. Just wait for a while and try again.

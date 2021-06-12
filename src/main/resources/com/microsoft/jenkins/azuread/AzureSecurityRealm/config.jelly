@@ -34,10 +34,16 @@
             <f:checkbox />
         </f:entry>
 
+        <f:entry title="${%Disable graph integration}" field="disableGraphIntegration">
+            <f:checkbox />
+        </f:entry>
+
         <f:entry title="Test user principal name or object id">
             <f:textbox name="testObject" />
         </f:entry>
+        <p>${%Save any configuration changes before configuring authorization settings}</p>
 
         <f:validateButton title="Verify Application" method="verifyConfiguration" progress="Verifying..." with="clientId,clientSecret,tenant,testObject,azureEnvironmentName"/>
+
     </f:block>
 </j:jelly>

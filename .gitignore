@@ -2,6 +2,9 @@
 /target
 /work
 
+node
+node_modules
+
 *.idea
 *.settings
 *.project
@@ -12,3 +15,6 @@
 nbactions-*.xml
 nb-configuration.xml
 nbactions.xml
+
+# frontend build output
+src/main/webapp/js

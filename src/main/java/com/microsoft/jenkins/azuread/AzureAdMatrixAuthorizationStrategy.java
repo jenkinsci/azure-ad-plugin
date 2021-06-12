@@ -38,10 +38,8 @@ import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.DoNotUse;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.kohsuke.accmod.restrictions.suppressions.SuppressRestrictedWarnings;
-import org.kohsuke.stapler.QueryParameter;
 import org.springframework.security.core.Authentication;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -246,8 +244,11 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
             return "Azure Active Directory Matrix-based security";
         }
 
-        public AutoCompletionCandidates doAutoCompleteUserOrGroup(@QueryParameter String value) throws IOException {
-            return searchAndGenerateCandidates(value);
+
+        @SuppressWarnings("unused") // called by jelly
+        public boolean isDisableGraphIntegration() {
+            AzureSecurityRealm securityRealm = (AzureSecurityRealm) Jenkins.get().getSecurityRealm();
+            return securityRealm.isDisableGraphIntegration();
         }
     }
 
