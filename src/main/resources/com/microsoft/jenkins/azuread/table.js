@@ -1,7 +1,7 @@
 /*
  * This handles the addition of new users/groups to the list.
  */
-Behaviour.specify(".azure-ad-add-user-button", 'AzureAdMatrixAuthorizationStrategy', 0, function(e) {
+Behaviour.specify(".azure-ad-add-button", 'AzureAdMatrixAuthorizationStrategy', 0, function(e) {
     makeButton(e, function (e) {
         var dataReference = e.target;
         var dataTableId = dataReference.getAttribute('data-table-id');
@@ -42,7 +42,7 @@ Behaviour.specify(".azure-ad-add-user-button", 'AzureAdMatrixAuthorizationStrate
                 copy = master.cloneNode(true); // for IE
             }
             copy.removeAttribute("id");
-            copy.removeAttribute("style");
+            copy.classList.remove("default-hidden");
             copy.firstChild.innerHTML = YAHOO.lang.escapeHTML(name); // TODO consider setting innerText
             copy.setAttribute("name",'['+ name+']');
 
@@ -65,6 +65,8 @@ Behaviour.specify(".azure-ad-add-user-button", 'AzureAdMatrixAuthorizationStrate
 
         if (peoplePickerEnabled) {
             document.querySelector('mgt-people-picker').selectedPeople = []
+        } else {
+            document.getElementById(dataTableId + 'text').value = ''
         }
     });
 });
