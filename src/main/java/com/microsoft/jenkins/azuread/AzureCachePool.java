@@ -37,6 +37,7 @@ public final class AzureCachePool {
                     try {
                         DirectoryObjectCollectionWithReferencesPage collection = azure
                                 .users(oid)
+                                // TODO asGroup isn't working json error, and neither is $filter on securityEnabled
                                 .transitiveMemberOf()
                                 .buildRequest()
                                 .get();
@@ -48,7 +49,8 @@ public final class AzureCachePool {
                             final List<DirectoryObject> directoryObjects = collection.getCurrentPage();
 
                             List<AzureAdGroup> groupsFromPage = directoryObjects.stream()
-                                    .filter(group -> group instanceof Group)
+                                    .filter(group -> group instanceof Group
+                                            && Boolean.TRUE.equals(((Group) group).securityEnabled))
                                     .map(group -> new AzureAdGroup(group.id, ((Group) group).displayName))
                                     .collect(Collectors.toList());
                             groups.addAll(groupsFromPage);
