@@ -28,6 +28,8 @@ THE SOFTWARE.
     <script src="${rootURL}/plugin/azure-ad/js/azure-ad-bundle.js"/>
   </j:if>
 
+  <link rel="stylesheet" href="${rootURL}/plugin/azure-ad/css/azure-ad.css" />
+
   <f:block xmlns:local="local">
     <j:set var="groups" value="${descriptor.allGroups}"/>
     <d:taglib uri="local">
@@ -61,18 +63,19 @@ THE SOFTWARE.
         </j:choose>
       </d:tag>
       <d:tag name="row">
+        <j:set var="sid" value="${attrs.sid}"/>
         <j:choose>
           <j:when test="${attrs.sid == 'authenticated'}">
             <td class="left-most">
               <span title="authenticated">
-                <img src="${imagesURL}/16x16/user.png" style="margin-right:0.2em"/>${%Authenticated Users}
+                <img src="${imagesURL}/16x16/user.png" class="icon-user-or-group-img"/>${%Authenticated Users}
               </span>
             </td>
           </j:when>
           <j:when test="${attrs.sid == 'anonymous'}">
             <td class="left-most">
               <span title="anonymous">
-                <img src="${imagesURL}/16x16/user.png" style="margin-right:0.2em"/>${%Anonymous Users}
+                <img src="${imagesURL}/16x16/user.png" class="icon-user-or-group-img"/>${%Anonymous Users}
               </span>
             </td>
           </j:when>
@@ -94,16 +97,16 @@ THE SOFTWARE.
           </j:forEach>
         </j:forEach>
         <local:isEditable>
-          <td class="stop" style="text-align:left;">
+          <td class="stop azure-ad-controls">
             <a href="#" class="selectall">
-              <img alt="${%Select all}" title="${%selectall(attrs.sid)}" src="${rootURL}/plugin/matrix-auth/images/16x16/select-all.png" height="16" width="16"/>
+              <img alt="${%Select all}" title="${%selectall(sid)}" src="${rootURL}/plugin/matrix-auth/images/16x16/select-all.png" height="16" width="16"/>
             </a>
             <a href="#" class="unselectall">
-              <img alt="${%Unselect all}" title="${%unselectall(attrs.sid)}" src="${rootURL}/plugin/matrix-auth/images/16x16/unselect-all.png" height="16" width="16"/>
+              <img alt="${%Unselect all}" title="${%unselectall(sid)}" src="${rootURL}/plugin/matrix-auth/images/16x16/unselect-all.png" height="16" width="16"/>
             </a>
-            <j:if test="${attrs.sid!='anonymous' and attrs.sid!='authenticated'}">
+            <j:if test="${sid!='anonymous' and sid != 'authenticated'}">
               <a href="#" class="remove">
-                <img alt="${%Remove user/group}" title="${%remove(attrs.sid)}" src="${imagesURL}/16x16/stop.png" height="16" width="16"/>
+                <img alt="${%Remove user/group}" title="${%remove(sid)}" src="${imagesURL}/16x16/stop.png" height="16" width="16"/>
               </a>
             </j:if>
           </td>
@@ -167,36 +170,39 @@ THE SOFTWARE.
 
       <!-- template row to be used for adding a new row -->
       <j:set var="id" value="${h.generateId()}"/>
-      <tr id="${id}" style="display:none" class="permission-row" data-descriptor-url="${descriptor.descriptorFullUrl}" name="__unused__">
+      <tr id="${id}" class="default-hidden permission-row" data-descriptor-url="${descriptor.descriptorFullUrl}" name="__unused__">
         <local:row sid="__SID__" />
       </tr>
     </table>
     <local:isEditable>
-      <table style="margin-top:0.5em; width: 100%">
         <f:entry title="${%Azure User/group to add}">
-
-            <j:choose>
-              <j:when test="${descriptor.disableGraphIntegration}">
-                <f:textbox field="userOrGroup" id="${id}text"/>
+          <j:choose>
+            <j:when test="${descriptor.disableGraphIntegration}">
+              <f:textbox field="userOrGroup" id="${id}text"/>
+              <div class="no-graph-integration-wrapper">
+                <input type="button" class="azure-ad-add-button" value="${%Add}" id="${id}UserButton"
+                       data-table-id="${id}"
+                       data-message-error="${%error}"
+                />
+              </div>
               </j:when>
               <j:otherwise>
-                <div style="border: 1px solid var(--input-border);border-radius: 3px">
+                <div class="mgmt-people-picker-wrapper">
                   <mgt-people-picker type="any" user-type="any" group-type="security" show-max="10" />
+                </div>
+                <div class="no-graph-integration-wrapper">
+                  <input type="button" class="azure-ad-add-button" value="${%Add}" id="${id}button"
+                         data-table-id="${id}"
+                         data-message-empty="${%empty}"
+                         data-message-error="${%error}"
+                  />
                 </div>
               </j:otherwise>
             </j:choose>
         </f:entry>
         <div class="validation-error-area tr">
-          <div class="azure-ad-validation-error error default-hidden" style="margin-top: 0.5rem">Please select a user or group.</div>
+          <div class="azure-ad-validation-error error default-hidden">Please select a user or group.</div>
         </div>
-        <f:entry>
-          <input type="button" class="azure-ad-add-user-button" value="${%Add}" id="${id}button"
-                 data-table-id="${id}"
-                 data-message-empty="${%empty}"
-                 data-message-error="${%error}"
-          />
-        </f:entry>
-      </table>
       <st:adjunct includes="com.microsoft.jenkins.azuread.table"/>
     </local:isEditable>
   </f:block>
