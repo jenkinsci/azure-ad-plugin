@@ -498,7 +498,7 @@ public class AzureSecurityRealm extends SecurityRealm {
             });
 
             if (azureAdUser == null) {
-                throw new UserMayOrMayNotExistException2("Cannot find user: " + username);
+                throw new UsernameNotFoundException("Cannot find user: " + username);
             }
 
             return azureAdUser;
@@ -510,6 +510,10 @@ public class AzureSecurityRealm extends SecurityRealm {
      */
     @Override
     public GroupDetails loadGroupByGroupname2(String groupName, boolean fetchMembers) {
+        if (isDisableGraphIntegration()) {
+            throw new UserMayOrMayNotExistException2("Can't lookup a group if graph integration is disabled");
+        }
+
         GraphServiceClient<Request> azureClient = getAzureClient();
 
         String groupId = ObjId2FullSidMap.extractObjectId(groupName);
