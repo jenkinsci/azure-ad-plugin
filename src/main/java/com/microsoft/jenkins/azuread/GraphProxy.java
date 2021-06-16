@@ -6,9 +6,11 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.model.Action;
+import hudson.model.Computer;
 import hudson.model.Job;
 import hudson.model.RootAction;
 import hudson.model.User;
+import hudson.security.AccessControlled;
 import hudson.security.SecurityRealm;
 import jenkins.model.Jenkins;
 import jenkins.model.TransientActionFactory;
@@ -45,7 +47,7 @@ public class GraphProxy implements RootAction, StaplerProxy {
             .expireAfterWrite(TEN, TimeUnit.MINUTES)
             .build();
 
-    private Job<?, ?> job;
+    private AccessControlled accessControlled;
 
     @Override
     public String getIconFileName() {
@@ -67,14 +69,21 @@ public class GraphProxy implements RootAction, StaplerProxy {
     public GraphProxy() {
     }
 
-    public GraphProxy(Job<?, ?> job) {
-        this.job = job;
+    public GraphProxy(AccessControlled accessControlled) {
+        this.accessControlled = accessControlled;
     }
 
     @Override
     public Object getTarget() {
-        if (job != null) {
-            job.checkPermission(Job.CONFIGURE);
+        if (accessControlled != null) {
+            if (accessControlled instanceof Job) {
+                accessControlled.checkPermission(Job.CONFIGURE);
+            } else if (accessControlled instanceof Computer) {
+                accessControlled.checkPermission(Computer.CONFIGURE);
+            } else {
+                accessControlled.checkPermission(Jenkins.ADMINISTER);
+            }
+
             return this;
         }
 
@@ -94,6 +103,21 @@ public class GraphProxy implements RootAction, StaplerProxy {
         @NonNull
         @Override
         public Collection<? extends Action> createFor(@NonNull Job target) {
+            return Collections.singletonList(new GraphProxy(target));
+        }
+    }
+
+    @Extension
+    public static class TransientActionFactoryComputer extends TransientActionFactory<Computer> {
+
+        @Override
+        public Class<Computer> type() {
+            return Computer.class;
+        }
+
+        @NonNull
+        @Override
+        public Collection<? extends Action> createFor(@NonNull Computer target) {
             return Collections.singletonList(new GraphProxy(target));
         }
     }
