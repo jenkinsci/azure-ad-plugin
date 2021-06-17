@@ -39,3 +39,22 @@ jenkins:
       tenant: "tenantId"
       cacheduration: 0
       fromrequest: true
+  nodes:
+    - permanent:
+        labelString: "agent"
+        launcher:
+          jnlp:
+            webSocket: true
+            workDirSettings:
+              disabled: false
+              failIfWorkDirIsMissing: false
+              internalDir: "remoting"
+        name: "agent"
+        nodeProperties:
+          - azureAdAuthorizationMatrix:
+              inheritanceStrategy: "nonInheriting"
+              permissions:
+                - "Agent/Build:Adele Vance (be674052-e519-4231-b5e7-2b390bff6346)"
+                - "Agent/Disconnect:Lee Gu (7678bed6-0e7f-4a83-86d2-81d8e47614ee)"
+        remoteFS: "/opt/jenkins"
+        retentionStrategy: "always"

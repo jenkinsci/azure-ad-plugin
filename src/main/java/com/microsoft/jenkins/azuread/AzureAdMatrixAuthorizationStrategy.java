@@ -24,6 +24,7 @@ import hudson.model.Descriptor;
 import hudson.model.Item;
 import hudson.model.ItemGroup;
 import hudson.model.Job;
+import hudson.model.Node;
 import hudson.security.ACL;
 import hudson.security.AuthorizationStrategy;
 import hudson.security.GlobalMatrixAuthorizationStrategy;
@@ -34,6 +35,7 @@ import jenkins.model.Jenkins;
 import okhttp3.Request;
 import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.matrixauth.AuthorizationContainer;
+import org.jenkinsci.plugins.matrixauth.AuthorizationMatrixNodeProperty;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.DoNotUse;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
@@ -68,6 +70,16 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
         } else {
             return getACL(project.getParent());
         }
+    }
+
+    @NonNull
+    @Override
+    public ACL getACL(@NonNull Node node) {
+        AuthorizationMatrixNodeProperty property = node.getNodeProperty(AzureAdAuthorizationMatrixNodeProperty.class);
+        if (property != null) {
+            return property.getInheritanceStrategy().getEffectiveACL(property.getACL(), node);
+        }
+        return getRootACL();
     }
 
     @Restricted(NoExternalUse.class)

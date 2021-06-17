@@ -358,6 +358,12 @@ public class AzureSecurityRealm extends SecurityRealm {
         try {
             final Long beginTime = (Long) request.getSession().getAttribute(TIMESTAMP_ATTRIBUTE);
             final String expectedNonce = (String) request.getSession().getAttribute(NONCE_ATTRIBUTE);
+            if (expectedNonce == null) {
+                // no nonce, probably some issue with an old session, force the user to re-auth
+                request.getSession().invalidate();
+                return HttpResponses.redirectToContextRoot();
+            }
+
             if (beginTime != null) {
                 long endTime = System.currentTimeMillis();
                 LOGGER.info("Requesting oauth code time = " + (endTime - beginTime) + " ms");
