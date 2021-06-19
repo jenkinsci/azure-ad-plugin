@@ -1,8 +1,11 @@
 package com.microsoft.jenkins.azuread.integrations.casc;
 
+import com.microsoft.jenkins.azuread.AzureAdAuthorizationMatrixNodeProperty;
 import com.microsoft.jenkins.azuread.AzureAdMatrixAuthorizationStrategy;
 import com.microsoft.jenkins.azuread.AzureSecurityRealm;
+import hudson.model.Computer;
 import hudson.model.Item;
+import hudson.model.Node;
 import hudson.security.AuthorizationStrategy;
 import hudson.security.SecurityRealm;
 import io.jenkins.plugins.casc.ConfigurationContext;
@@ -13,6 +16,7 @@ import io.jenkins.plugins.casc.misc.JenkinsConfiguredWithCodeRule;
 import io.jenkins.plugins.casc.model.CNode;
 import io.jenkins.plugins.casc.model.Mapping;
 import jenkins.model.Jenkins;
+import org.jenkinsci.plugins.matrixauth.inheritance.NonInheritingStrategy;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.LoggerRule;
@@ -21,10 +25,13 @@ import org.jvnet.hudson.test.recipes.LocalData;
 import java.util.List;
 import java.util.logging.Level;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.hamcrest.CoreMatchers.*;
 
 public class ConfigAsCodeTest {
     private static final String TEST_UPN = "abc@jenkins.com";
@@ -62,6 +69,22 @@ public class ConfigAsCodeTest {
         assertTrue("authenticated can administer", azureAdMatrixAuthorizationStrategy.hasExplicitPermission(TEST_UPN, Jenkins.ADMINISTER));
 
         assertEquals("no warnings", 0, l.getMessages().size());
+
+        {
+            Node agent = j.jenkins.getNode("agent");
+            assertThat(agent, is(notNullValue()));
+            assertThat(agent.getDisplayName(), is(equalTo("agent")));
+            AzureAdAuthorizationMatrixNodeProperty nodeProperty =
+                    agent.getNodeProperty(AzureAdAuthorizationMatrixNodeProperty.class);
+            assertThat(nodeProperty, is(notNullValue()));
+            assertThat(nodeProperty.getInheritanceStrategy(), instanceOf(NonInheritingStrategy.class));
+            assertThat(
+                    nodeProperty
+                            .hasExplicitPermission("Adele Vance (be674052-e519-4231-b5e7-2b390bff6346)",
+                                    Computer.BUILD),
+                    is(true)
+            );
+        }
     }
 
     @Test

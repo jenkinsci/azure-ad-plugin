@@ -24,6 +24,7 @@ import hudson.model.Descriptor;
 import hudson.model.Item;
 import hudson.model.ItemGroup;
 import hudson.model.Job;
+import hudson.model.Node;
 import hudson.security.ACL;
 import hudson.security.AuthorizationStrategy;
 import hudson.security.GlobalMatrixAuthorizationStrategy;
@@ -34,14 +35,13 @@ import jenkins.model.Jenkins;
 import okhttp3.Request;
 import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.matrixauth.AuthorizationContainer;
+import org.jenkinsci.plugins.matrixauth.AuthorizationMatrixNodeProperty;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.DoNotUse;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.kohsuke.accmod.restrictions.suppressions.SuppressRestrictedWarnings;
-import org.kohsuke.stapler.QueryParameter;
 import org.springframework.security.core.Authentication;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -70,6 +70,16 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
         } else {
             return getACL(project.getParent());
         }
+    }
+
+    @NonNull
+    @Override
+    public ACL getACL(@NonNull Node node) {
+        AuthorizationMatrixNodeProperty property = node.getNodeProperty(AzureAdAuthorizationMatrixNodeProperty.class);
+        if (property != null) {
+            return property.getInheritanceStrategy().getEffectiveACL(property.getACL(), node);
+        }
+        return getRootACL();
     }
 
     @Restricted(NoExternalUse.class)
@@ -164,7 +174,7 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
     public static final Descriptor<AuthorizationStrategy> DESCRIPTOR = new DescriptorImpl();
 
 
-    static AutoCompletionCandidates searchAndGenerateCandidates(String prefix) throws IOException {
+    static AutoCompletionCandidates searchAndGenerateCandidates(String prefix) {
         final int maxCandidates = 20;
         if (StringUtils.isEmpty(prefix)) {
             return null;
@@ -246,8 +256,11 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
             return "Azure Active Directory Matrix-based security";
         }
 
-        public AutoCompletionCandidates doAutoCompleteUserOrGroup(@QueryParameter String value) throws IOException {
-            return searchAndGenerateCandidates(value);
+
+        @SuppressWarnings("unused") // called by jelly
+        public boolean isDisableGraphIntegration() {
+            AzureSecurityRealm securityRealm = (AzureSecurityRealm) Jenkins.get().getSecurityRealm();
+            return securityRealm.isDisableGraphIntegration();
         }
     }
 
@@ -260,7 +273,6 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
         }
 
         @Override
-        @SuppressWarnings("rawtypes")
         public boolean canConvert(Class type) {
             return type == AzureAdMatrixAuthorizationStrategy.class;
         }

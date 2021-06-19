@@ -1,0 +1,35 @@
+{
+  "name": "azure-ad-plugin",
+  "version": "1.0.0",
+  "description": "AzureAd authentication for Jenkins",
+  "private": true,
+  "scripts": {
+    "mvnbuild": "npm run build",
+    "mvntest": "npm run test",
+    "build": "webpack --mode production",
+    "build:dev": "webpack --mode development --watch",
+    "test": "echo \"Error: no test specified\" && exit 0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jenkinsci/azure-ad-plugin.git"
+  },
+  "author": "Tim Jacomb",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jenkinsci/azure-ad-plugin/issues"
+  },
+  "homepage": "https://github.com/jenkinsci/azure-ad-plugin#readme",
+  "devDependencies": {
+    "source-map-loader": "^3.0.0",
+    "ts-loader": "^9.2.3",
+    "typescript": "^4.3.2",
+    "webpack": "^5.38.1",
+    "webpack-cli": "^4.7.2"
+  },
+  "dependencies": {
+    "@microsoft/mgt-components": "^2.2.0",
+    "@microsoft/mgt-element": "^2.2.0",
+    "@microsoft/mgt-proxy-provider": "^2.2.0"
+  }
+}

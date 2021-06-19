@@ -18,7 +18,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
@@ -43,13 +43,13 @@ public final class AzureAdUser implements UserDetails {
     private transient volatile List<GrantedAuthority> authorities;
 
     private AzureAdUser() {
-        authorities = Arrays.asList(SecurityRealm.AUTHENTICATED_AUTHORITY2);
+        authorities = Collections.singletonList(SecurityRealm.AUTHENTICATED_AUTHORITY2);
     }
 
     private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
         in.defaultReadObject();
 
-        authorities = Arrays.asList(SecurityRealm.AUTHENTICATED_AUTHORITY2);
+        authorities = Collections.singletonList(SecurityRealm.AUTHENTICATED_AUTHORITY2);
     }
 
     public static AzureAdUser createFromActiveDirectoryUser(com.microsoft.graph.models.User activeDirectoryUser) {
@@ -119,7 +119,6 @@ public final class AzureAdUser implements UserDetails {
 
     public void setAuthorities(List<AzureAdGroup> groups) {
         List<GrantedAuthority> newAuthorities = new ArrayList<>();
-        int i = 0;
         if (!groups.isEmpty()) {
             for (AzureAdGroup group : groups) {
                 newAuthorities.add(group);
