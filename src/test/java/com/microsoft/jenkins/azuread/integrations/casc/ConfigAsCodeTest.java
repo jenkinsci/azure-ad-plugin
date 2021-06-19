@@ -94,8 +94,7 @@ public class ConfigAsCodeTest {
         ConfigurationContext context = new ConfigurationContext(registry);
 
         SecurityRealm securityRealm = j.jenkins.getSecurityRealm();
-        Configurator realmConfigurator = context.lookupOrFail(AzureSecurityRealm.class);
-        @SuppressWarnings("unchecked")
+        Configurator<SecurityRealm> realmConfigurator = context.lookupOrFail(AzureSecurityRealm.class);
         CNode realmNode = realmConfigurator.describe(securityRealm, context);
         assertNotNull(realmNode);
         Mapping realMapping = realmNode.asMapping();
@@ -107,9 +106,8 @@ public class ConfigAsCodeTest {
         assertEquals(clientSecret, encryptedClientSecret);
 
         AuthorizationStrategy authorizationStrategy = j.jenkins.getAuthorizationStrategy();
-        Configurator c = context.lookupOrFail(AzureAdMatrixAuthorizationStrategy.class);
+        Configurator<AuthorizationStrategy> c = context.lookupOrFail(AzureAdMatrixAuthorizationStrategy.class);
 
-        @SuppressWarnings("unchecked")
         CNode node = c.describe(authorizationStrategy, context);
         assertNotNull(node);
         Mapping mapping = node.asMapping();
