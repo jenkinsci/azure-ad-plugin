@@ -5,6 +5,7 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
+import hudson.model.AbstractItem;
 import hudson.model.Action;
 import hudson.model.Computer;
 import hudson.model.Job;
@@ -93,16 +94,16 @@ public class GraphProxy implements RootAction, StaplerProxy {
     }
 
     @Extension
-    public static class TransientActionFactoryImpl extends TransientActionFactory<Job> {
+    public static class TransientActionFactoryImpl extends TransientActionFactory<AbstractItem> {
 
         @Override
-        public Class<Job> type() {
-            return Job.class;
+        public Class<AbstractItem> type() {
+            return AbstractItem.class;
         }
 
         @NonNull
         @Override
-        public Collection<? extends Action> createFor(@NonNull Job target) {
+        public Collection<? extends Action> createFor(@NonNull AbstractItem target) {
             return Collections.singletonList(new GraphProxy(target));
         }
     }
@@ -161,10 +162,7 @@ public class GraphProxy implements RootAction, StaplerProxy {
         if (securityRealm instanceof AzureSecurityRealm) {
             AzureSecurityRealm azureSecurityRealm = ((AzureSecurityRealm) securityRealm);
             String cacheKey = azureSecurityRealm.getCredentialCacheKey();
-            AccessToken accessToken = tokenCache.get(cacheKey, (unused) -> {
-                AccessToken accessToken1 = azureSecurityRealm.getAccessToken();
-                return accessToken1;
-            });
+            AccessToken accessToken = tokenCache.get(cacheKey, (unused) -> azureSecurityRealm.getAccessToken());
 
             if (accessToken == null) {
                 throw new IllegalStateException("Access token must not be null here");
