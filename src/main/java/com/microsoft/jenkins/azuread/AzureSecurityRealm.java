@@ -19,14 +19,20 @@ import com.microsoft.graph.authentication.TokenCredentialAuthProvider;
 import com.microsoft.graph.http.GraphServiceException;
 import com.microsoft.graph.httpcore.HttpClients;
 import com.microsoft.graph.models.Group;
+import com.microsoft.graph.options.HeaderOption;
+import com.microsoft.graph.options.Option;
+import com.microsoft.graph.options.QueryOption;
 import com.microsoft.graph.requests.GraphServiceClient;
+import com.microsoft.graph.requests.GroupCollectionPage;
 import com.microsoft.jenkins.azuread.scribe.AzureApi;
 import com.microsoft.jenkins.azuread.scribe.AzureOAuthService;
+import com.microsoft.jenkins.azuread.utils.UUIDValidator;
 import com.thoughtworks.xstream.converters.Converter;
 import com.thoughtworks.xstream.converters.MarshallingContext;
 import com.thoughtworks.xstream.converters.UnmarshallingContext;
 import com.thoughtworks.xstream.io.HierarchicalStreamReader;
 import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
+import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.ProxyConfiguration;
@@ -73,13 +79,18 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.Proxy;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_CHINA;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_GERMANY;
@@ -489,6 +500,11 @@ public class AzureSecurityRealm extends SecurityRealm {
                     com.microsoft.graph.models.User activeDirectoryUser = azureClient.users(userId).buildRequest()
                             .get();
 
+                    if (activeDirectoryUser != null & activeDirectoryUser.id == null) {
+                        // known to happen when subject is a group with display name only and starts with a #
+                        return null;
+                    }
+
                     AzureAdUser user = requireNonNull(AzureAdUser.createFromActiveDirectoryUser(activeDirectoryUser));
                     List<AzureAdGroup> groups = AzureCachePool.get(azureClient)
                             .getBelongingGroupsByOid(user.getObjectID());
@@ -529,15 +545,57 @@ public class AzureSecurityRealm extends SecurityRealm {
             groupId = groupName;
         }
 
-        Group group = azureClient.groups(groupId)
-                .buildRequest()
-                .get();
+        Group group;
+        if (UUIDValidator.isValidUUID(groupId)) {
+            group = azureClient.groups(groupId)
+                    .buildRequest()
+                    .get();
+        } else {
+            group = loadGroupByDisplayName(groupName);
+        }
 
-        if (group == null) {
+        if (group == null || group.id == null) {
             throw new UsernameNotFoundException("Group: " + groupName + " not found");
         }
 
         return new AzureAdGroupDetails(group.id, group.displayName);
+    }
+
+    @CheckForNull
+    private Group loadGroupByDisplayName(String groupName) {
+        LinkedList<Option> requestOptions = new LinkedList<>();
+        String encodedGroupName = groupName
+                .replace("'", "''");
+        try {
+            encodedGroupName = URLEncoder.encode(encodedGroupName, StandardCharsets.UTF_8.name());
+        } catch (UnsupportedEncodingException e) {
+            LOGGER.log(Level.WARNING, "Failed to url encode query, group name was: " + groupName);
+        }
+
+        String query = String.format("\"displayName:%s\"", encodedGroupName);
+
+        requestOptions.add(new QueryOption("$search", query));
+        requestOptions.add(new HeaderOption("ConsistencyLevel", "eventual"));
+
+        GroupCollectionPage groupCollectionPage = getAzureClient().groups()
+                .buildRequest(requestOptions)
+                .select("id,displayName")
+                .get();
+
+        assert groupCollectionPage != null;
+        List<Group> currentPage = groupCollectionPage.getCurrentPage();
+        Group group = null;
+        if (currentPage.size() > 1) {
+            String groupIds = currentPage
+                    .stream()
+                    .map(groupO -> groupO.id)
+                    .collect(Collectors.joining(","));
+            throw new UsernameNotFoundException("Multiple matches found for group display name, "
+                    + "this must be unique: " + groupIds);
+        } else if (currentPage.size() == 1) {
+             group = currentPage.get(0);
+        }
+        return group;
     }
 
     @Override
