@@ -259,8 +259,12 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
 
         @SuppressWarnings("unused") // called by jelly
         public boolean isDisableGraphIntegration() {
-            AzureSecurityRealm securityRealm = (AzureSecurityRealm) Jenkins.get().getSecurityRealm();
-            return securityRealm.isDisableGraphIntegration();
+            SecurityRealm securityRealm = Jenkins.get().getSecurityRealm();
+            if (securityRealm instanceof AzureSecurityRealm) {
+                AzureSecurityRealm azureSecurityRealm = (AzureSecurityRealm) securityRealm;
+                return azureSecurityRealm.isDisableGraphIntegration();
+            }
+            return true;
         }
     }
 
