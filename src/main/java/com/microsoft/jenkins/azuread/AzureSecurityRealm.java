@@ -383,7 +383,10 @@ public class AzureSecurityRealm extends SecurityRealm {
             final String idToken = request.getParameter("id_token");
 
             if (StringUtils.isBlank(idToken)) {
-                throw new IllegalStateException("Can't extract id_token");
+                LOGGER.info("No `id_token` found ensure you have enabled it on the 'Authentication' page of the "
+                        + "app registration");
+                request.getSession().invalidate();
+                return HttpResponses.redirectToContextRoot();
             }
             // validate the nonce to avoid CSRF
             final JwtClaims claims = validateIdToken(expectedNonce, idToken);
