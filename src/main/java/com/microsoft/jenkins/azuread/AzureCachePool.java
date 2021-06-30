@@ -49,8 +49,6 @@ public final class AzureCachePool {
                             final List<DirectoryObject> directoryObjects = collection.getCurrentPage();
 
                             List<AzureAdGroup> groupsFromPage = directoryObjects.stream()
-                                    .filter(group -> group instanceof Group
-                                            && Boolean.TRUE.equals(((Group) group).securityEnabled))
                                     .map(group -> new AzureAdGroup(group.id, ((Group) group).displayName))
                                     .collect(Collectors.toList());
                             groups.addAll(groupsFromPage);
