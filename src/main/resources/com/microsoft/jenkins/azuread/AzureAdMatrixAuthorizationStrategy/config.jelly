@@ -188,7 +188,7 @@ THE SOFTWARE.
               </j:when>
               <j:otherwise>
                 <div class="mgmt-people-picker-wrapper">
-                  <mgt-people-picker type="any" user-type="any" group-type="security" show-max="10" />
+                  <mgt-people-picker type="any" user-type="any" group-type="any" show-max="10" />
                 </div>
                 <div class="no-graph-integration-wrapper">
                   <input type="button" class="azure-ad-add-button" value="${%Add}" id="${id}button"
