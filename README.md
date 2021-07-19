@@ -16,7 +16,7 @@ A Jenkins Plugin that supports authentication & authorization via Azure Active D
 
 1. Click `Authentication`, under 'Implicit grant', enable `ID tokens`.
 
-1. (optional) To enable AzureAD group support: Click `Manifest` and modify the `"groupMembershipClaims": "None"` value to `"groupMembershipClaims": "SecurityGroup"` manifest.
+1. (optional) To enable AzureAD group support: Click `Manifest` and modify the `"groupMembershipClaims": "None"` value to `"groupMembershipClaims": "SecurityGroup"`, then 'Save' it.
 
 ### Setup Azure AD permissions (optional, but recommended)
 
