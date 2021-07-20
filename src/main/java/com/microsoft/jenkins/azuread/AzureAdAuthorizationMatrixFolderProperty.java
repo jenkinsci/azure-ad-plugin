@@ -9,6 +9,7 @@ import hudson.model.AutoCompletionCandidates;
 import hudson.model.Item;
 import hudson.security.Permission;
 import hudson.security.PermissionScope;
+import hudson.security.SecurityRealm;
 import hudson.util.FormValidation;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
@@ -102,8 +103,13 @@ public class AzureAdAuthorizationMatrixFolderProperty extends AuthorizationMatri
 
         @SuppressWarnings("unused") // called by jelly
         public boolean isDisableGraphIntegration() {
-            AzureSecurityRealm securityRealm = (AzureSecurityRealm) Jenkins.get().getSecurityRealm();
-            return securityRealm.isDisableGraphIntegration();
+            SecurityRealm securityRealm = Jenkins.get().getSecurityRealm();
+            if (securityRealm instanceof AzureSecurityRealm) {
+                AzureSecurityRealm azureSecurityRealm = (AzureSecurityRealm) securityRealm;
+                return azureSecurityRealm.isDisableGraphIntegration();
+            }
+
+            return true;
         }
 
         @Override
