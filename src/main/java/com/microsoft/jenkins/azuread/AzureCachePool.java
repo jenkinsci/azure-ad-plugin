@@ -12,6 +12,7 @@ import okhttp3.Request;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -49,7 +50,13 @@ public final class AzureCachePool {
                             final List<DirectoryObject> directoryObjects = collection.getCurrentPage();
 
                             List<AzureAdGroup> groupsFromPage = directoryObjects.stream()
-                                    .map(group -> new AzureAdGroup(group.id, ((Group) group).displayName))
+                                    .map(group -> {
+                                        if (group instanceof Group) {
+                                            return new AzureAdGroup(group.id, ((Group) group).displayName);
+                                        }
+                                        return null;
+                                    })
+                                    .filter(Objects::nonNull)
                                     .collect(Collectors.toList());
                             groups.addAll(groupsFromPage);
 
