@@ -264,6 +264,7 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
                 AzureSecurityRealm azureSecurityRealm = (AzureSecurityRealm) securityRealm;
                 return azureSecurityRealm.isDisableGraphIntegration();
             }
+
             return true;
         }
     }

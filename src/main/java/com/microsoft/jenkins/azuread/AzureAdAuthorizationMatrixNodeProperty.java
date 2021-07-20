@@ -8,6 +8,7 @@ import hudson.model.User;
 import hudson.security.AuthorizationStrategy;
 import hudson.security.Permission;
 import hudson.security.PermissionScope;
+import hudson.security.SecurityRealm;
 import hudson.slaves.NodePropertyDescriptor;
 import hudson.util.FormValidation;
 import jenkins.model.Jenkins;
@@ -129,8 +130,13 @@ public class AzureAdAuthorizationMatrixNodeProperty extends AuthorizationMatrixN
 
         @SuppressWarnings("unused") // called by jelly
         public boolean isDisableGraphIntegration() {
-            AzureSecurityRealm securityRealm = (AzureSecurityRealm) Jenkins.get().getSecurityRealm();
-            return securityRealm.isDisableGraphIntegration();
+            SecurityRealm securityRealm = Jenkins.get().getSecurityRealm();
+            if (securityRealm instanceof AzureSecurityRealm) {
+                AzureSecurityRealm azureSecurityRealm = (AzureSecurityRealm) securityRealm;
+                return azureSecurityRealm.isDisableGraphIntegration();
+            }
+
+            return true;
         }
 
         @Restricted(DoNotUse.class)
