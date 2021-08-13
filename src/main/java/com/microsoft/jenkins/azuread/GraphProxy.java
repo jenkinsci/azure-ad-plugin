@@ -8,7 +8,6 @@ import hudson.Extension;
 import hudson.model.AbstractItem;
 import hudson.model.Action;
 import hudson.model.Computer;
-import hudson.model.Job;
 import hudson.model.RootAction;
 import hudson.model.User;
 import hudson.security.AccessControlled;
@@ -77,8 +76,8 @@ public class GraphProxy implements RootAction, StaplerProxy {
     @Override
     public Object getTarget() {
         if (accessControlled != null) {
-            if (accessControlled instanceof Job) {
-                accessControlled.checkPermission(Job.CONFIGURE);
+            if (accessControlled instanceof AbstractItem) {
+                accessControlled.checkPermission(AbstractItem.CONFIGURE);
             } else if (accessControlled instanceof Computer) {
                 accessControlled.checkPermission(Computer.CONFIGURE);
             } else {
