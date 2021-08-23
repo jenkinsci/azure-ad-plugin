@@ -701,7 +701,7 @@ public class AzureSecurityRealm extends SecurityRealm {
         public boolean process(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
                 throws IOException, ServletException {
             String pathInfo = request.getPathInfo();
-            if (pathInfo != null && (pathInfo.equals(CALLBACK_URL) || pathInfo.endsWith("GraphProxy/v1.0/$batch"))) {
+            if (pathInfo != null && pathInfo.equals(CALLBACK_URL)) {
                 chain.doFilter(request, response);
                 return true;
             }

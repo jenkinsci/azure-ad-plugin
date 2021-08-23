@@ -10,5 +10,9 @@ document.addEventListener('DOMContentLoaded', (_) => {
         .replace('configureSecurity/', '')
         .replace('configure', '');
 
-    Providers.globalProvider = new ProxyProvider(`${endStrippedCurrentUrl}/GraphProxy`);
+    Providers.globalProvider = new ProxyProvider(`${endStrippedCurrentUrl}/GraphProxy`, async () => {
+        return {
+            [document.head.dataset.crumbHeader as string]: document.head.dataset.crumbValue,
+        };
+    });
 })
