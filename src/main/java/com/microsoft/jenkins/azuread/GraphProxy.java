@@ -26,7 +26,6 @@ import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.kohsuke.stapler.StaplerProxy;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
-
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
@@ -34,14 +33,15 @@ import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static com.microsoft.jenkins.azuread.AzureSecurityRealm.addProxyToHttpClientIfRequired;
+
 /**
  * Proxies calls to the Microsoft Graph API.
  */
 @Extension
 @Restricted(NoExternalUse.class)
 public class GraphProxy implements RootAction, StaplerProxy {
-
-    private static final OkHttpClient CLIENT = new OkHttpClient();
+    private static final OkHttpClient CLIENT = addProxyToHttpClientIfRequired(new OkHttpClient().newBuilder()).build();
     private static final int TEN = 10;
     private final Cache<String, AccessToken> tokenCache = Caffeine.newBuilder()
             .expireAfterWrite(TEN, TimeUnit.MINUTES)
@@ -121,7 +121,6 @@ public class GraphProxy implements RootAction, StaplerProxy {
             return Collections.singletonList(new GraphProxy(target));
         }
     }
-
     public void doDynamic(StaplerRequest request, StaplerResponse response) throws IOException {
         proxy(request, response);
     }

@@ -184,7 +184,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                 .build();
     }
 
-    private static OkHttpClient.Builder addProxyToHttpClientIfRequired(OkHttpClient.Builder builder) {
+    public static OkHttpClient.Builder addProxyToHttpClientIfRequired(OkHttpClient.Builder builder) {
         if (JenkinsJVM.isJenkinsJVM()) {
             ProxyConfiguration proxyConfiguration = Jenkins.get().getProxy();
             if (proxyConfiguration != null && StringUtils.isNotBlank(proxyConfiguration.getName())) {
