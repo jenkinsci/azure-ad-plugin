@@ -41,7 +41,6 @@ import static com.microsoft.jenkins.azuread.AzureSecurityRealm.addProxyToHttpCli
 @Extension
 @Restricted(NoExternalUse.class)
 public class GraphProxy implements RootAction, StaplerProxy {
-    private static final OkHttpClient CLIENT = addProxyToHttpClientIfRequired(new OkHttpClient().newBuilder()).build();
     private static final int TEN = 10;
     private final Cache<String, AccessToken> tokenCache = Caffeine.newBuilder()
             .expireAfterWrite(TEN, TimeUnit.MINUTES)
@@ -126,13 +125,14 @@ public class GraphProxy implements RootAction, StaplerProxy {
     }
 
     private void proxy(StaplerRequest request, StaplerResponse response) throws IOException {
+        OkHttpClient client = addProxyToHttpClientIfRequired(new OkHttpClient().newBuilder()).build();
         String baseUrl = getBaseUrl();
         String token = getToken();
 
         String url = buildUrl(request, baseUrl);
         Request okRequest = buildRequest(request, token, url);
 
-        try (Response okResp = CLIENT.newCall(okRequest).execute()) {
+        try (Response okResp = client.newCall(okRequest).execute()) {
             String contentType = okResp.header("Content-Type", "application/json");
 
             response.setContentType(contentType);
