@@ -188,7 +188,7 @@ public class AzureSecurityRealm extends SecurityRealm {
         if (JenkinsJVM.isJenkinsJVM()) {
             ProxyConfiguration proxyConfiguration = Jenkins.get().getProxy();
             if (proxyConfiguration != null && StringUtils.isNotBlank(proxyConfiguration.getName())) {
-                Proxy proxy = proxyConfiguration.createProxy("https://graph.microsoft.com");
+                Proxy proxy = proxyConfiguration.createProxy("graph.microsoft.com");
 
                 builder = builder.proxy(proxy);
                 if (StringUtils.isNotBlank(proxyConfiguration.getUserName())) {
