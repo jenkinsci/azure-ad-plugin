@@ -10,7 +10,6 @@ import hudson.model.AbstractItem;
 import hudson.model.Action;
 import hudson.model.Computer;
 import hudson.model.RootAction;
-import hudson.model.User;
 import hudson.security.AccessControlled;
 import hudson.security.SecurityRealm;
 import jenkins.model.Jenkins;
@@ -27,6 +26,9 @@ import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.kohsuke.stapler.StaplerProxy;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
@@ -236,11 +238,12 @@ public class GraphProxy implements RootAction, StaplerProxy {
         // /me doesn't work for service principals but we can use the current logged in user instead
         // this is also used for /me/people to get the people the current logged in user works with
         if (path.startsWith("/me")) {
-            User currentUser = User.current();
-            if (currentUser == null) {
-                throw new IllegalStateException("User must be logged in here");
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+            if (authentication instanceof AzureAuthenticationToken) {
+                String objectID = ((AzureAuthenticationToken) authentication).getAzureAdUser().getObjectID();
+                path = path.replace("me", "users/" + objectID);
             }
-            path = path.replace("me", "users/" + currentUser.getId());
         }
 
         builder.append(path);
