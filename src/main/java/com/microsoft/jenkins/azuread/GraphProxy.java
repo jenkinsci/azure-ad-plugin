@@ -5,6 +5,7 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
+import hudson.ProxyConfiguration;
 import hudson.model.AbstractItem;
 import hudson.model.Action;
 import hudson.model.Computer;
@@ -47,6 +48,7 @@ public class GraphProxy implements RootAction, StaplerProxy {
             .build();
 
     private AccessControlled accessControlled;
+    private static final OkHttpClient DEFAULT_CLIENT = new OkHttpClient();
 
     @Override
     public String getIconFileName() {
@@ -125,7 +127,7 @@ public class GraphProxy implements RootAction, StaplerProxy {
     }
 
     private void proxy(StaplerRequest request, StaplerResponse response) throws IOException {
-        OkHttpClient client = addProxyToHttpClientIfRequired(new OkHttpClient().newBuilder()).build();
+        OkHttpClient client = getClient();
         String baseUrl = getBaseUrl();
         String token = getToken();
 
@@ -153,6 +155,17 @@ public class GraphProxy implements RootAction, StaplerProxy {
                 }
             }
         }
+    }
+
+    /**
+     * Prefers the default client for performance, proxy users will get a new instance each time.
+     */
+    private OkHttpClient getClient() {
+        ProxyConfiguration proxyConfiguration = Jenkins.get().getProxy();
+        if (proxyConfiguration != null && StringUtils.isNotBlank(proxyConfiguration.getName())) {
+            return addProxyToHttpClientIfRequired(new OkHttpClient().newBuilder()).build();
+        }
+        return DEFAULT_CLIENT;
     }
 
     private String getToken() {
