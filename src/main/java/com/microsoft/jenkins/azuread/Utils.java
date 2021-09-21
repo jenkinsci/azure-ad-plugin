@@ -10,7 +10,10 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import hudson.Functions;
+import hudson.ProxyConfiguration;
 import hudson.util.FormValidation;
+import jenkins.model.Jenkins;
+import org.jose4j.http.Get;
 import org.jose4j.jwk.HttpsJwks;
 import org.jose4j.jwt.consumer.JwtConsumer;
 import org.jose4j.jwt.consumer.JwtConsumerBuilder;
@@ -72,9 +75,16 @@ public final class Utils {
 
         public static JwtConsumer jwt(final String clientId, final String tenantId) {
             final String expectedIssuer = String.format("https://login.microsoftonline.com/%s/v2.0", tenantId);
-            HttpsJwks httpsJkws = new HttpsJwks(KEYSTORE_URL);
-            httpsJkws.setDefaultCacheDuration(DEFAULT_CACHE_DURATION);
-            HttpsJwksVerificationKeyResolver httpsJwksKeyResolver = new HttpsJwksVerificationKeyResolver(httpsJkws);
+            HttpsJwks httpsJwks = new HttpsJwks(KEYSTORE_URL);
+            httpsJwks.setDefaultCacheDuration(DEFAULT_CACHE_DURATION);
+            ProxyConfiguration proxy = Jenkins.get().getProxy();
+            if (proxy != null) {
+                Get get = new Get();
+                get.setHttpProxy(proxy.createProxy("login.microsoftonline.com"));
+                httpsJwks.setSimpleHttpGet(get);
+            }
+
+            HttpsJwksVerificationKeyResolver httpsJwksKeyResolver = new HttpsJwksVerificationKeyResolver(httpsJwks);
             return new JwtConsumerBuilder()
                     .setVerificationKeyResolver(httpsJwksKeyResolver)
                     .setExpectedIssuer(expectedIssuer)
