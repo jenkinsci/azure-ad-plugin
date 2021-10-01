@@ -119,6 +119,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     private static final String CONVERTER_NODE_FROM_REQUEST = "fromrequest";
     private static final int CACHE_KEY_LOG_LENGTH = 8;
     private static final int NOT_FOUND = 404;
+    private static final int BAD_REQUEST = 400;
     public static final String CONVERTER_DISABLE_GRAPH_INTEGRATION = "disableGraphIntegration";
     public static final String CONVERTER_ENVIRONMENT_NAME = "environmentName";
 
@@ -516,6 +517,14 @@ public class AzureSecurityRealm extends SecurityRealm {
                     return user;
                 } catch (GraphServiceException e) {
                     if (e.getResponseCode() == NOT_FOUND) {
+                        return null;
+                    } else if (e.getResponseCode() == BAD_REQUEST) {
+                        if (LOGGER.isLoggable(Level.FINE)) {
+                            LOGGER.log(Level.FINE, "Failed to lookup user with userid '" + userId, e);
+                        } else {
+                            LOGGER.log(Level.WARNING, "Failed to lookup user with userid '" + userId + "'."
+                                    + " Enable 'Fine' Logging for more information.");
+                        }
                         return null;
                     }
                     throw e;
