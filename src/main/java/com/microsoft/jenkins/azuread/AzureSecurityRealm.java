@@ -519,9 +519,12 @@ public class AzureSecurityRealm extends SecurityRealm {
                     if (e.getResponseCode() == NOT_FOUND) {
                         return null;
                     } else if (e.getResponseCode() == BAD_REQUEST) {
-                        LOGGER.log(Level.WARNING, "Failed to lookup user with userid '" + userId + "'."
-                                + " Enable 'Fine' Logging for more information.");
-                        LOGGER.log(Level.FINE, "Failed to lookup user with userid '" + userId, e);
+                        if (LOGGER.isLoggable(Level.FINE)) {
+                            LOGGER.log(Level.FINE, "Failed to lookup user with userid '" + userId, e);
+                        } else {
+                            LOGGER.log(Level.WARNING, "Failed to lookup user with userid '" + userId + "'."
+                                    + " Enable 'Fine' Logging for more information.");
+                        }
                         return null;
                     }
                     throw e;
