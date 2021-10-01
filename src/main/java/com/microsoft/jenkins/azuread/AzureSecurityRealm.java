@@ -526,7 +526,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                         StringWriter stacktraceStringWriter = new StringWriter();
                         PrintWriter stacktracePrintWriter = new PrintWriter(stacktraceStringWriter);
                         e.printStackTrace(stacktracePrintWriter);
-                        LOGGER.log(Level.FINE, stacktraceStringWriter.toString());
+                        LOGGER.log(Level.FINE, "Failed to lookup user with userid '" + userId, e);
                         return null;
                     }
                     throw e;
