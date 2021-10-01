@@ -79,8 +79,6 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.Proxy;
 import java.net.URLEncoder;
@@ -523,10 +521,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                     } else if (e.getResponseCode() == BAD_REQUEST) {
                         LOGGER.log(Level.WARNING, "Failed to lookup user with userid '" + userId + "'."
                                 + " Enable 'Fine' Logging for more information.");
-                        StringWriter stacktraceStringWriter = new StringWriter();
-                        PrintWriter stacktracePrintWriter = new PrintWriter(stacktraceStringWriter);
-                        e.printStackTrace(stacktracePrintWriter);
-                        LOGGER.log(Level.FINE, stacktraceStringWriter.toString());
+                        LOGGER.log(Level.FINE, "Failed to lookup user with userid '" + userId, e);
                         return null;
                     }
                     throw e;
