@@ -37,9 +37,18 @@ public class AzureAuthenticationToken implements Authentication {
         return null;
     }
 
+
+    private String getObjectId() {
+        return azureAdUser != null ? azureAdUser.getObjectID() : null;
+    }
+
+    private String getDisplayName() {
+        return azureAdUser != null ? azureAdUser.getName() : null;
+    }
+
     @Override
     public Object getPrincipal() {
-        return getName();
+        return String.format("%s (%s)", getDisplayName(), getObjectId());
     }
 
     @Override
