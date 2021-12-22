@@ -16,6 +16,7 @@ import net.sf.json.JSONObject;
 import org.jenkinsci.Symbol;
 import org.jenkinsci.plugins.matrixauth.AbstractAuthorizationPropertyConverter;
 import org.jenkinsci.plugins.matrixauth.AuthorizationPropertyDescriptor;
+import org.jenkinsci.plugins.matrixauth.PermissionEntry;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.kohsuke.accmod.restrictions.suppressions.SuppressRestrictedWarnings;
@@ -25,7 +26,6 @@ import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.verb.GET;
 
-import java.io.IOException;
 import java.util.List;
 
 public class AzureAdAuthorizationMatrixFolderProperty extends AuthorizationMatrixProperty {
@@ -44,26 +44,27 @@ public class AzureAdAuthorizationMatrixFolderProperty extends AuthorizationMatri
     }
 
     @Override
-    public void add(Permission p, String sid) {
-        super.add(p, sid);
-        objId2FullSidMap.putFullSid(sid);
+    public void add(Permission permission, PermissionEntry entry) {
+        super.add(permission, entry);
+        objId2FullSidMap.putFullSid(entry.getSid());
     }
 
     @Override
-    public boolean hasExplicitPermission(String sid, Permission p) {
+    public boolean hasExplicitPermission(PermissionEntry entry, Permission p) {
         // Jenkins will pass in the object Id as sid
-        final String objectId = sid;
+        final String objectId = entry.getSid();
         if (objectId == null) {
             return false;
         }
-        return super.hasExplicitPermission(objId2FullSidMap.getOrOriginal(objectId), p);
+        String fullSid = objId2FullSidMap.getOrOriginal(objectId);
+        return super.hasExplicitPermission(new PermissionEntry(entry.getType(), fullSid), p);
     }
 
     @Override
-    public boolean hasPermission(String sid, Permission p) {
+    public boolean hasPermission(String sid, Permission p, boolean principal) {
         // Jenkins will pass in the object Id as sid
-        final String objectId = sid;
-        return super.hasPermission(objId2FullSidMap.getOrOriginal(objectId), p);
+        String fullSid = objId2FullSidMap.getOrOriginal(sid);
+        return super.hasPermission(fullSid, p, principal);
     }
 
     @Extension(optional = true)
@@ -118,13 +119,15 @@ public class AzureAdAuthorizationMatrixFolderProperty extends AuthorizationMatri
             return "Azure Active Directory Authorization Matrix";
         }
 
-        public AutoCompletionCandidates doAutoCompleteUserOrGroup(@QueryParameter String value) throws IOException {
+        @SuppressWarnings("unused")
+        public AutoCompletionCandidates doAutoCompleteUserOrGroup(@QueryParameter String value) {
             return AzureAdMatrixAuthorizationStrategy.searchAndGenerateCandidates(value);
         }
     }
 
+    @SuppressWarnings("unused")
     @SuppressRestrictedWarnings(AbstractAuthorizationPropertyConverter.class)
-    public static class ConverterImpl extends AbstractAuthorizationPropertyConverter {
+    public static class ConverterImpl extends AbstractAuthorizationPropertyConverter<AzureAdAuthorizationMatrixFolderProperty> {
 
         @Override
         public boolean canConvert(Class type) {
