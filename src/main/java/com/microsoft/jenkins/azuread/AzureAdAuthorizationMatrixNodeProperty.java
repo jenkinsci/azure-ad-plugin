@@ -18,6 +18,7 @@ import org.jenkinsci.Symbol;
 import org.jenkinsci.plugins.matrixauth.AbstractAuthorizationPropertyConverter;
 import org.jenkinsci.plugins.matrixauth.AuthorizationMatrixNodeProperty;
 import org.jenkinsci.plugins.matrixauth.AuthorizationPropertyDescriptor;
+import org.jenkinsci.plugins.matrixauth.PermissionEntry;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.DoNotUse;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
@@ -40,46 +41,40 @@ public class AzureAdAuthorizationMatrixNodeProperty extends AuthorizationMatrixN
     }
 
     void refreshMap() {
-        for (String fullSid : this.getAllSIDs()) {
-            objId2FullSidMap.putFullSid(fullSid);
+        for (PermissionEntry entry : this.getAllPermissionEntries()) {
+            objId2FullSidMap.putFullSid(entry.getSid());
         }
         new AzureAdAuthorizationMatrixNodeProperty();
     }
 
     @Override
-    public void add(Permission p, String sid) {
-        super.add(p, sid);
-        objId2FullSidMap.putFullSid(sid);
+    public void add(Permission permission, PermissionEntry entry) {
+        super.add(permission, entry);
+        objId2FullSidMap.putFullSid(entry.getSid());
     }
 
     @Override
-    public boolean hasExplicitPermission(String sid, Permission p) {
+    public boolean hasExplicitPermission(PermissionEntry entry, Permission p) {
         // Jenkins will pass in the object Id as sid
-        final String objectId = sid;
+        final String objectId = entry.getSid();
         if (objectId == null) {
             return false;
         }
-        return super.hasExplicitPermission(objId2FullSidMap.getOrOriginal(objectId), p);
-    }
-
-    @Override
-    public boolean hasPermission(String sid, Permission p) {
-        // Jenkins will pass in the object Id as sid
-        final String objectId = sid;
-        return super.hasPermission(objId2FullSidMap.getOrOriginal(objectId), p);
+        String fullSid = objId2FullSidMap.getOrOriginal(objectId);
+        return super.hasExplicitPermission(new PermissionEntry(entry.getType(), fullSid), p);
     }
 
     @Override
     public boolean hasPermission(String sid, Permission p, boolean principal) {
         // Jenkins will pass in the object Id as sid
-        final String objectId = sid;
-        return super.hasPermission(objId2FullSidMap.getOrOriginal(objectId), p, principal);
+        return super.hasPermission(objId2FullSidMap.getOrOriginal(sid), p, principal);
     }
 
     /**
      * Persist {@link AzureAdAuthorizationMatrixNodeProperty} as a list of IDs that
-     * represent {@link AzureAdAuthorizationMatrixNodeProperty#getGrantedPermissions()}.
+     * represent {@link AzureAdAuthorizationMatrixNodeProperty#getGrantedPermissionEntries()}.
      */
+    @SuppressWarnings("unused")
     @Restricted(NoExternalUse.class)
     @SuppressRestrictedWarnings(AbstractAuthorizationPropertyConverter.class)
     public static final class ConverterImpl extends
@@ -139,6 +134,7 @@ public class AzureAdAuthorizationMatrixNodeProperty extends AuthorizationMatrixN
             return true;
         }
 
+        @SuppressWarnings("unused")
         @Restricted(DoNotUse.class)
         public FormValidation doCheckName(@AncestorInPath Computer computer, @QueryParameter String value) {
             if (isDisableGraphIntegration()) {
@@ -175,9 +171,9 @@ public class AzureAdAuthorizationMatrixNodeProperty extends AuthorizationMatrixN
                 String sid = current == null ? "anonymous" : current.getId();
 
                 if (!strategy.getACL(node).hasPermission2(Jenkins.getAuthentication2(), Computer.CONFIGURE)) {
-                    prop.add(Computer.CONFIGURE, sid);
+                    prop.add(Computer.CONFIGURE, PermissionEntry.user(sid));
                 }
-                if (!prop.getGrantedPermissions().isEmpty()) {
+                if (!prop.getGrantedPermissionEntries().isEmpty()) {
                     try {
                         node.getNodeProperties().replace(prop);
                     } catch (IOException ex) {

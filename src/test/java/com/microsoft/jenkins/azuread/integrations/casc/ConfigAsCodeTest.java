@@ -16,6 +16,7 @@ import io.jenkins.plugins.casc.misc.JenkinsConfiguredWithCodeRule;
 import io.jenkins.plugins.casc.model.CNode;
 import io.jenkins.plugins.casc.model.Mapping;
 import jenkins.model.Jenkins;
+import org.jenkinsci.plugins.matrixauth.PermissionEntry;
 import org.jenkinsci.plugins.matrixauth.inheritance.NonInheritingStrategy;
 import org.junit.Rule;
 import org.junit.Test;
@@ -61,12 +62,12 @@ public class ConfigAsCodeTest {
         assertTrue("authorization strategy", authorizationStrategy instanceof AzureAdMatrixAuthorizationStrategy);
         AzureAdMatrixAuthorizationStrategy azureAdMatrixAuthorizationStrategy = (AzureAdMatrixAuthorizationStrategy) authorizationStrategy;
 
-        assertEquals("one real user sid", 2, azureAdMatrixAuthorizationStrategy.getAllSIDs().size());
-        assertTrue("anon can read", azureAdMatrixAuthorizationStrategy.hasExplicitPermission("anonymous", Jenkins.READ));
-        assertTrue("authenticated can read", azureAdMatrixAuthorizationStrategy.hasExplicitPermission(TEST_UPN, Jenkins.READ));
-        assertTrue("authenticated can build", azureAdMatrixAuthorizationStrategy.hasExplicitPermission("authenticated", Item.BUILD));
-        assertTrue("authenticated can delete jobs", azureAdMatrixAuthorizationStrategy.hasExplicitPermission(TEST_UPN, Item.DELETE));
-        assertTrue("authenticated can administer", azureAdMatrixAuthorizationStrategy.hasExplicitPermission(TEST_UPN, Jenkins.ADMINISTER));
+        assertEquals("one real user sid", 2, azureAdMatrixAuthorizationStrategy.getAllPermissionEntries().size());
+        assertTrue("anon can read", azureAdMatrixAuthorizationStrategy.hasExplicitPermission(PermissionEntry.user("anonymous"), Jenkins.READ));
+        assertTrue("authenticated can read", azureAdMatrixAuthorizationStrategy.hasExplicitPermission(PermissionEntry.user(TEST_UPN), Jenkins.READ));
+        assertTrue("authenticated can build", azureAdMatrixAuthorizationStrategy.hasExplicitPermission(PermissionEntry.group("authenticated"), Item.BUILD));
+        assertTrue("authenticated can delete jobs", azureAdMatrixAuthorizationStrategy.hasExplicitPermission(PermissionEntry.user(TEST_UPN), Item.DELETE));
+        assertTrue("authenticated can administer", azureAdMatrixAuthorizationStrategy.hasExplicitPermission(PermissionEntry.user(TEST_UPN), Jenkins.ADMINISTER));
 
         assertEquals("no warnings", 0, l.getMessages().size());
 
@@ -80,7 +81,7 @@ public class ConfigAsCodeTest {
             assertThat(nodeProperty.getInheritanceStrategy(), instanceOf(NonInheritingStrategy.class));
             assertThat(
                     nodeProperty
-                            .hasExplicitPermission("Adele Vance (be674052-e519-4231-b5e7-2b390bff6346)",
+                            .hasExplicitPermission(PermissionEntry.user("Adele Vance (be674052-e519-4231-b5e7-2b390bff6346)"),
                                     Computer.BUILD),
                     is(true)
             );

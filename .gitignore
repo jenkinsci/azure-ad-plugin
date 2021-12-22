@@ -6,6 +6,7 @@ node
 node_modules
 
 *.idea
+*.dylib
 *.settings
 *.project
 *.classpath
