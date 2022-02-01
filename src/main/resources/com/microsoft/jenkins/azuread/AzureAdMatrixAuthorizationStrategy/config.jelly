@@ -69,14 +69,14 @@ THE SOFTWARE.
           <j:when test="${attrs.sid == 'authenticated'}">
             <td class="left-most">
               <span title="authenticated">
-                <img src="${imagesURL}/16x16/user.png" class="icon-user-or-group-img"/>${%Authenticated Users}
+                <l:icon class="icon-user icon-sm"/>${%Authenticated Users}
               </span>
             </td>
           </j:when>
           <j:when test="${attrs.sid == 'anonymous'}">
             <td class="left-most">
               <span title="anonymous">
-                <img src="${imagesURL}/16x16/user.png" class="icon-user-or-group-img"/>${%Anonymous Users}
+                <l:icon class="icon-user icon-sm"/>${%Anonymous Users}
               </span>
             </td>
           </j:when>
@@ -100,14 +100,14 @@ THE SOFTWARE.
         <local:isEditable>
           <td class="stop azure-ad-controls">
             <a href="#" class="selectall">
-              <img alt="${%Select all}" title="${%selectall(sid)}" src="${rootURL}/plugin/matrix-auth/images/16x16/select-all.png" height="16" width="16"/>
+              <img alt="${%Select all}" title="${%selectall(sid)}" src="${rootURL}/plugin/matrix-auth/images/select-all.svg" style='margin-right:0.2em' height="16" width="16"/>
             </a>
             <a href="#" class="unselectall">
-              <img alt="${%Unselect all}" title="${%unselectall(sid)}" src="${rootURL}/plugin/matrix-auth/images/16x16/unselect-all.png" height="16" width="16"/>
+              <img alt="${%Unselect all}" title="${%unselectall(sid)}" src="${rootURL}/plugin/matrix-auth/images/unselect-all.svg" height="16" width="16"/>
             </a>
             <j:if test="${sid!='anonymous' and sid != 'authenticated'}">
               <a href="#" class="remove">
-                <img alt="${%Remove user/group}" title="${%remove(sid)}" src="${imagesURL}/16x16/stop.png" height="16" width="16"/>
+                <l:icon alt="${%Remove user/group}" title="${%remove(sid)}" class="icon-stop icon-sm" />
               </a>
             </j:if>
           </td>
