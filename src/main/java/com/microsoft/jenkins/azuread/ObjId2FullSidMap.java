@@ -20,6 +20,10 @@ public class ObjId2FullSidMap extends HashMap<String, String> {
         if (containsKey(objectId)) {
             return get(objectId);
         }
+        String extractedObjectId = extractObjectId(objectId);
+        if (containsKey(extractedObjectId)) {
+            return get(extractedObjectId);
+        }
         for (String value : values()) {
             if (value.startsWith(objectId + " (")) {
                 return value;
