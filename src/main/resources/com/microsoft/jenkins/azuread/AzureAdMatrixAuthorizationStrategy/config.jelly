@@ -155,7 +155,7 @@ THE SOFTWARE.
       </tr>
 
       <tr name="[USER:anonymous]">
-        <local:row sid="anonymous" title="${%Anonymous}" />
+        <local:row type="USER" sid="anonymous" title="${%Anonymous}" />
       </tr>
       <tr name="[GROUP:authenticated]">
         <local:row type="GROUP" sid="authenticated" title="authenticated" />
