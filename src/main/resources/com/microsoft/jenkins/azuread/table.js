@@ -29,8 +29,13 @@ Behaviour.specify(".azure-ad-add-button", 'AzureAdMatrixAuthorizationStrategy', 
             var name = person
             var type
             if (typeof person !== 'string') {
-                name = person.displayName + " (" + person.id + ")"
-                type = person.groupTypes ? "GROUP" : "USER"
+                if (person.groupTypes) {
+                    name = person.displayName + " (" + person.id + ")"
+                    type = "GROUP"
+                } else {
+                    name = person.userPrincipalName + " (" + person.id + ")"
+                    type = "USER"
+                }
             } else {
                 type = dataReference.getAttribute('data-type')
             }

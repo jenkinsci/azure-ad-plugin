@@ -64,19 +64,18 @@ THE SOFTWARE.
       </d:tag>
       <d:tag name="row">
         <j:set var="permissionEntry" value="${descriptor.entryFor(attrs.type, attrs.sid)}"/>
-        <j:set var="sid" value="${attrs.sid}"/>
         <j:choose>
-          <j:when test="${attrs.sid == 'authenticated'}">
+          <j:when test="${attrs.sid == 'authenticated' and attrs.type == 'GROUP'}">
             <td class="left-most">
               <span title="authenticated">
-                <l:icon class="icon-user icon-sm"/>${%Authenticated Users}
+                <l:icon class="icon-user icon-sm" style="margin-right:0.2em"/>${%Authenticated Users}
               </span>
             </td>
           </j:when>
-          <j:when test="${attrs.sid == 'anonymous'}">
+          <j:when test="${attrs.sid == 'anonymous' and attrs.type == 'USER'}">
             <td class="left-most">
               <span title="anonymous">
-                <l:icon class="icon-user icon-sm"/>${%Anonymous Users}
+                <l:icon class="icon-person icon-sm" style="margin-right:0.2em"/>${%Anonymous}
               </span>
             </td>
           </j:when>
@@ -84,30 +83,31 @@ THE SOFTWARE.
             <td class="left-most">${title}</td>
           </j:otherwise>
         </j:choose>
+        <j:set var="typeName" value="${descriptor.getTypeLabel(attrs.type.toLowerCase())}"/>
         <j:forEach var="g" items="${groups}">
           <j:forEach var="p" items="${g.permissions}">
             <j:if test="${descriptor.showPermission(p)}">
               <td width="*"
                   data-implied-by-list="${descriptor.impliedByList(p)}"
                   data-permission-id="${p.id}"
-                  data-tooltip-enabled="${%tooltip_enabled(p.group.title, p.name, attrs.sid)}"
-                  data-tooltip-disabled="${%tooltip_disabled(p.group.title, p.name, attrs.sid)}">
+                  data-tooltip-enabled="${%tooltip_enabled(p.group.title, p.name, typeName, attrs.sid)}"
+                  data-tooltip-disabled="${%tooltip_disabled(p.group.title, p.name, typeName, attrs.sid)}">
                 <f:checkbox name="[${p.id}]" checked="${permissionEntry != null and instance.hasExplicitPermission(permissionEntry,p)}"/>
               </td>
             </j:if>
           </j:forEach>
         </j:forEach>
-        <local:isEditable>
-          <td class="stop azure-ad-controls">
+        <local:isEditable sid="${attrs.sid}" type="${attrs.type}">
+          <td class="stop azure-ad-controls" style="text-align:left;">
             <a href="#" class="selectall">
-              <img alt="${%Select all}" title="${%selectall(sid)}" src="${rootURL}/plugin/matrix-auth/images/select-all.svg" style='margin-right:0.2em' height="16" width="16"/>
+              <img alt="${%Select all}" title="${%selectall(attrs.sid)}" src="${rootURL}/plugin/matrix-auth/images/select-all.svg" style='margin-right:0.2em' height="16" width="16"/>
             </a>
             <a href="#" class="unselectall">
-              <img alt="${%Unselect all}" title="${%unselectall(sid)}" src="${rootURL}/plugin/matrix-auth/images/unselect-all.svg" height="16" width="16"/>
+              <img alt="${%Unselect all}" title="${%unselectall(attrs.sid)}" src="${rootURL}/plugin/matrix-auth/images/unselect-all.svg" height="16" width="16"/>
             </a>
-            <j:if test="${sid!='anonymous' and sid != 'authenticated'}">
+            <j:if test="${(attrs.sid != 'authenticated' or attrs.type != 'GROUP') and (attrs.sid != 'anonymous' or attrs.type != 'USER')}">
               <a href="#" class="remove">
-                <l:icon alt="${%Remove user/group}" title="${%remove(sid)}" class="icon-stop icon-sm" />
+                <l:icon alt="${%Remove user/group}" title="${%remove(attrs.sid)}" class="icon-stop icon-sm" />
               </a>
             </j:if>
           </td>
@@ -116,7 +116,8 @@ THE SOFTWARE.
     </d:taglib>
     <link rel="stylesheet" href="${rootURL}${app.VIEW_RESOURCE_PATH}/hudson/security/table.css" type="text/css" />
     <j:set var="strategyid" value="${descriptor.jsonSafeClassName}" />
-    <table id="${strategyid}" class="center-align global-matrix-authorization-strategy-table" name="data">
+    <j:set var="tableid" value="${h.generateId()}"/>
+    <table id="${strategyid}" data-table-id="${tableid}" class="center-align global-matrix-authorization-strategy-table ${readOnlyMode ? 'read-only' : ''}" name="data">
 
       <!-- The first row will show grouping -->
       <tr class="group-row">
@@ -155,10 +156,10 @@ THE SOFTWARE.
       </tr>
 
       <tr name="[USER:anonymous]">
-        <local:row type="USER" sid="anonymous" title="${%Anonymous}" />
+        <local:row type="USER" sid="anonymous" />
       </tr>
       <tr name="[GROUP:authenticated]">
-        <local:row type="GROUP" sid="authenticated" title="authenticated" />
+        <local:row type="GROUP" sid="authenticated" />
       </tr>
       <j:forEach var="entry" items="${instance.allPermissionEntries}">
         <j:if test="${entry.sid != 'authenticated'}">
@@ -176,45 +177,45 @@ THE SOFTWARE.
       </tr>
     </table>
     <local:isEditable>
-        <f:entry title="${%Azure User/group to add}">
-          <j:choose>
-            <j:when test="${descriptor.disableGraphIntegration}">
-              <f:textbox field="userOrGroup" id="${id}text"/>
-              <div class="no-graph-integration-wrapper">
-                <input type="button" class="azure-ad-add-button" value="${%Add user}" id="${id}UserButton"
-                       data-table-id="${id}"
-                       data-type="USER"
-                       data-message-error="${%userError}"
-                />
-                <input type="button" class="azure-ad-add-button" value="${%Add group}" id="${id}GroupButton"
-                       data-table-id="${id}"
-                       data-type="GROUP"
-                       data-message-error="${%groupError}"
-                />
-              </div>
-              </j:when>
-              <j:otherwise>
-                <div class="mgmt-people-picker-wrapper">
-                  <mgt-people-picker type="any" user-type="any" group-type="any" show-max="10" />
-                </div>
-                <div class="no-graph-integration-wrapper">
-                  <input type="button" class="azure-ad-add-button" value="${%Add}" id="${id}button"
-                         data-table-id="${id}"
-                         data-message-empty="${%empty}"
-                         data-message-error="${%error}"
-                  />
-                </div>
-              </j:otherwise>
-            </j:choose>
-        </f:entry>
-        <div class="validation-error-area tr">
-          <div class="azure-ad-validation-error error default-hidden">Please select a user or group.</div>
-        </div>
-        <j:if test="${descriptor.hasAmbiguousEntries(instance)}">
-            <div class="alert alert-warning">
-                ${%ambiguous}
+      <f:entry title="${%Azure User/group to add}">
+        <j:choose>
+          <j:when test="${descriptor.disableGraphIntegration}">
+            <f:textbox field="userOrGroup" id="${id}text"/>
+            <div class="no-graph-integration-wrapper">
+              <input type="button" class="azure-ad-add-button" value="${%Add user}" id="${id}UserButton"
+                     data-table-id="${id}"
+                     data-type="USER"
+                     data-message-error="${%userError}"
+              />
+              <input type="button" class="azure-ad-add-button" value="${%Add group}" id="${id}GroupButton"
+                     data-table-id="${id}"
+                     data-type="GROUP"
+                     data-message-error="${%groupError}"
+              />
             </div>
-        </j:if>
+          </j:when>
+          <j:otherwise>
+            <div class="mgmt-people-picker-wrapper">
+              <mgt-people-picker type="any" user-type="any" group-type="any" show-max="10" />
+            </div>
+            <div class="no-graph-integration-wrapper">
+              <input type="button" class="azure-ad-add-button" value="${%Add}" id="${id}button"
+                     data-table-id="${id}"
+                     data-message-empty="${%empty}"
+                     data-message-error="${%error}"
+              />
+            </div>
+          </j:otherwise>
+        </j:choose>
+      </f:entry>
+      <div class="validation-error-area tr">
+        <div class="azure-ad-validation-error error default-hidden">Please select a user or group.</div>
+      </div>
+      <j:if test="${descriptor.hasAmbiguousEntries(instance)}">
+        <div class="alert alert-warning">
+          ${%ambiguous}
+        </div>
+      </j:if>
       <st:adjunct includes="com.microsoft.jenkins.azuread.table"/>
     </local:isEditable>
   </f:block>

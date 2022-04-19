@@ -20,7 +20,7 @@ public class AzureAdGroup implements GrantedAuthority {
 
     @Override
     public String getAuthority() {
-        return groupName;
+        return getObjectId();
     }
 
     public String getObjectId() {
