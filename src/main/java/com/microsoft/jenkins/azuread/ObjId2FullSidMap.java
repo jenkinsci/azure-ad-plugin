@@ -19,9 +19,13 @@ public class ObjId2FullSidMap extends HashMap<String, String> {
     public String getOrOriginal(String objectId) {
         if (containsKey(objectId)) {
             return get(objectId);
-        } else {
-            return objectId;
         }
+        for (String value : values()) {
+            if (value.startsWith(objectId + " (")) {
+                return value;
+            }
+        }
+        return objectId;
     }
 
     static String extractObjectId(String fullSid) {
