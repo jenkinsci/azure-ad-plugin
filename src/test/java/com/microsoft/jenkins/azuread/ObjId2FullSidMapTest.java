@@ -24,6 +24,7 @@ public class ObjId2FullSidMapTest {
         map.putFullSid(FULL_SID_1);
         Assert.assertEquals(FULL_SID_1, map.get(OBJECT_ID_1));
         Assert.assertEquals(FULL_SID_1, map.getOrOriginal(OBJECT_ID_1));
+        Assert.assertEquals(FULL_SID_1, map.getOrOriginal(NAME_1));
         Assert.assertEquals("some string", map.getOrOriginal("some string"));
     }
 }
