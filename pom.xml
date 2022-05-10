@@ -113,7 +113,7 @@
         <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-core-http-okhttp</artifactId>
-            <version>1.7.0</version>
+            <version>1.9.0</version>
             <exclusions>
                 <!-- loaded via jackson2-api plugin -->
                 <exclusion>
