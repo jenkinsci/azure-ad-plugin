@@ -24,8 +24,7 @@ import com.microsoft.graph.options.Option;
 import com.microsoft.graph.options.QueryOption;
 import com.microsoft.graph.requests.GraphServiceClient;
 import com.microsoft.graph.requests.GroupCollectionPage;
-import com.microsoft.jenkins.azuread.scribe.AzureApi;
-import com.microsoft.jenkins.azuread.scribe.AzureOAuthService;
+import com.microsoft.jenkins.azuread.scribe.AzureAdApi;
 import com.microsoft.jenkins.azuread.utils.UUIDValidator;
 import com.thoughtworks.xstream.converters.Converter;
 import com.thoughtworks.xstream.converters.MarshallingContext;
@@ -98,7 +97,6 @@ import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_PUBLIC_CLOUD;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_US_GOVERNMENT_L4;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_US_GOVERNMENT_L5;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.getAuthorityHost;
-import static com.microsoft.jenkins.azuread.AzureEnvironment.getGraphResource;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.getServiceRoot;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
@@ -311,15 +309,13 @@ public class AzureSecurityRealm extends SecurityRealm {
         return jwtConsumer.get();
     }
 
-    AzureOAuthService getOAuthService() {
-        return (AzureOAuthService) new ServiceBuilder(clientId.getPlainText())
+    OAuth20Service getOAuthService() {
+        return new ServiceBuilder(clientId.getPlainText())
                 .apiSecret(clientSecret.getPlainText())
                 .responseType("id_token")
-                .scope("openid profile email")
+                .defaultScope("openid profile email")
                 .callback(getRootUrl() + CALLBACK_URL)
-                .build(AzureApi.instance(getGraphResource(getAzureEnvironmentName()),
-                        this.getTenant(),
-                        getAuthorityHost(getAzureEnvironmentName())));
+                .build(AzureAdApi.custom(getTenant(), getAuthorityHost(getAzureEnvironmentName())));
     }
 
     GraphServiceClient<Request> getAzureClient() {
@@ -469,7 +465,7 @@ public class AzureSecurityRealm extends SecurityRealm {
         // Ensure single sign-out
 
         if (singleLogout) {
-            return getOAuthService().getLogoutUrl();
+            return ((AzureAdApi) getOAuthService().getApi()).getLogoutUrl();
         }
         return req.getContextPath() + "/" + AzureAdLogoutAction.POST_LOGOUT_URL;
     }
