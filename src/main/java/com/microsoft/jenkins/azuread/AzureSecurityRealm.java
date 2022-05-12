@@ -119,6 +119,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     private static final int NOT_FOUND = 404;
     private static final int BAD_REQUEST = 400;
     public static final String CONVERTER_DISABLE_GRAPH_INTEGRATION = "disableGraphIntegration";
+    public static final String CONVERTER_SINGLE_LOGOUT = "singleLogout";
     public static final String CONVERTER_ENVIRONMENT_NAME = "environmentName";
 
     private Cache<String, AzureAdUser> caches;
@@ -654,6 +655,10 @@ public class AzureSecurityRealm extends SecurityRealm {
             writer.startNode(CONVERTER_DISABLE_GRAPH_INTEGRATION);
             writer.setValue(String.valueOf(realm.isDisableGraphIntegration()));
             writer.endNode();
+
+            writer.startNode(CONVERTER_SINGLE_LOGOUT);
+            writer.setValue(String.valueOf(realm.isSingleLogout()));
+            writer.endNode();
         }
 
         @Override
@@ -684,6 +689,9 @@ public class AzureSecurityRealm extends SecurityRealm {
                         break;
                     case CONVERTER_DISABLE_GRAPH_INTEGRATION:
                         realm.setDisableGraphIntegration(Boolean.parseBoolean(value));
+                        break;
+                    case CONVERTER_SINGLE_LOGOUT:
+                        realm.setSingleLogout(Boolean.parseBoolean(value));
                         break;
                     default:
                         break;

@@ -29,6 +29,6 @@ public class AzureAdApi extends MicrosoftAzureActiveDirectory20Api {
     }
 
     public String getLogoutUrl() {
-        return authorityHost + "logout";
+        return authorityHost + tenant + OAUTH_2 + "/logout";
     }
 }
