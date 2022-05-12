@@ -145,7 +145,11 @@ THE SOFTWARE.
         <j:forEach var="g" items="${groups}">
           <j:forEach var="p" items="${g.permissions}">
             <j:if test="${descriptor.showPermission(p)}">
-              <th class="pane" tooltip="${descriptor.getDescription(p)}">
+              <th class="pane" html-tooltip="${descriptor.getDescription(p)}" tooltip="${descriptor.getDescription(p)}">
+                <!--
+                  Tooltip needs to be HTML for GlobalMatrixAuthorizationStrategy.PermissionNotImpliedBy formatting.
+                  So set 'html-tooltip' for Tippy and 'tooltip' for YUI.
+                 -->
                 <span>
                   ${p.name}
                 </span>
@@ -185,11 +189,13 @@ THE SOFTWARE.
               <input type="button" class="azure-ad-add-button" value="${%Add user}" id="${id}UserButton"
                      data-table-id="${id}"
                      data-type="USER"
+                     data-type-label="${%user}"
                      data-message-error="${%userError}"
               />
               <input type="button" class="azure-ad-add-button" value="${%Add group}" id="${id}GroupButton"
                      data-table-id="${id}"
                      data-type="GROUP"
+                     data-type-label="${%group}"
                      data-message-error="${%groupError}"
               />
             </div>
@@ -203,6 +209,8 @@ THE SOFTWARE.
                      data-table-id="${id}"
                      data-message-empty="${%empty}"
                      data-message-error="${%error}"
+                     data-type-user-label="${%user}"
+                     data-type-group-label="${%user}"
               />
             </div>
           </j:otherwise>
