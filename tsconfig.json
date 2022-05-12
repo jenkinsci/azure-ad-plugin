@@ -10,5 +10,6 @@
     "allowJs": true,
     "resolveJsonModule": true,
     "moduleResolution": "node",
-  }
+  },
+  "include": ["src/main/frontend/index.ts"],
 }
