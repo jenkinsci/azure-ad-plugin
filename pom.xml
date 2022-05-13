@@ -50,7 +50,6 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <jenkins.version>2.289.3</jenkins.version>
-        <java.level>8</java.level>
         <node.version>16.13.2</node.version>
         <npm.version>8.4.0</npm.version>
     </properties>
@@ -91,6 +90,10 @@
                     <artifactId>azure-core-http-netty</artifactId>
                 </exclusion>
                 <exclusion>
+                    <groupId>com.squareup.okhttp3</groupId>
+                    <artifactId>okhttp</artifactId>
+                </exclusion>
+                <exclusion>
                     <groupId>com.google.guava</groupId>
                     <artifactId>guava</artifactId>
                 </exclusion>
@@ -102,12 +105,22 @@
                     <groupId>com.azure</groupId>
                     <artifactId>azure-identity</artifactId>
                 </exclusion>
+                <!-- Comes from Azure SDK plugin -->
+                <exclusion>
+                    <groupId>com.azure</groupId>
+                    <artifactId>azure-core</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
             <version>3.12.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.jenkins.plugins</groupId>
+            <artifactId>okhttp-api</artifactId>
         </dependency>
 
         <dependency>
@@ -131,6 +144,15 @@
                 <exclusion>
                     <groupId>org.slf4j</groupId>
                     <artifactId>slf4j-api</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.squareup.okhttp3</groupId>
+                    <artifactId>okhttp</artifactId>
+                </exclusion>
+                <!-- Comes from Azure SDK plugin -->
+                <exclusion>
+                    <groupId>com.azure</groupId>
+                    <artifactId>azure-core</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -229,20 +251,11 @@
                 <scope>import</scope>
                 <type>pom</type>
             </dependency>
-
-
-            <dependency>
-                <groupId>org.jetbrains.kotlin</groupId>
-                <artifactId>kotlin-stdlib-common</artifactId>
-                <version>1.6.21</version>
-            </dependency>
-
             <dependency>
                 <groupId>org.jetbrains</groupId>
                 <artifactId>annotations</artifactId>
                 <version>23.0.0</version>
             </dependency>
-
         </dependencies>
     </dependencyManagement>
 
