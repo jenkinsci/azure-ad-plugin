@@ -20,8 +20,6 @@ public final class AzureEnvironment {
         switch (azureEnvironmentName) {
             case AZURE_CHINA:
                 return AzureAuthorityHosts.AZURE_CHINA;
-            case AZURE_GERMANY:
-                return AzureAuthorityHosts.AZURE_GERMANY;
             case AZURE_US_GOVERNMENT_L4:
             case AZURE_US_GOVERNMENT_L5:
                 return AzureAuthorityHosts.AZURE_GOVERNMENT;
@@ -35,8 +33,6 @@ public final class AzureEnvironment {
         switch (azureEnv) {
             case AZURE_CHINA:
                 return "https://microsoftgraph.chinacloudapi.cn/";
-            case AZURE_GERMANY:
-                return "https://graph.microsoft.de/";
             case AZURE_US_GOVERNMENT_L4:
                 return "https://graph.microsoft.us/";
             case AZURE_US_GOVERNMENT_L5:

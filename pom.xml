@@ -49,8 +49,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
-        <jenkins.version>2.277.2</jenkins.version>
-        <java.level>8</java.level>
+        <jenkins.version>2.289.3</jenkins.version>
         <node.version>16.13.2</node.version>
         <npm.version>8.4.0</npm.version>
     </properties>
@@ -79,16 +78,20 @@
         <dependency>
             <groupId>io.jenkins.plugins</groupId>
             <artifactId>azure-sdk</artifactId>
-            <version>20.vd701043901ab</version>
+            <version>106.v552de1e64d56</version>
         </dependency>
         <dependency>
             <groupId>com.microsoft.graph</groupId>
             <artifactId>microsoft-graph</artifactId>
-            <version>3.8.0</version>
+            <version>5.24.0</version>
             <exclusions>
                 <exclusion>
                     <groupId>com.azure</groupId>
                     <artifactId>azure-core-http-netty</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.squareup.okhttp3</groupId>
+                    <artifactId>okhttp</artifactId>
                 </exclusion>
                 <exclusion>
                     <groupId>com.google.guava</groupId>
@@ -102,6 +105,11 @@
                     <groupId>com.azure</groupId>
                     <artifactId>azure-identity</artifactId>
                 </exclusion>
+                <!-- Comes from Azure SDK plugin -->
+                <exclusion>
+                    <groupId>com.azure</groupId>
+                    <artifactId>azure-core</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
@@ -111,9 +119,14 @@
         </dependency>
 
         <dependency>
+            <groupId>io.jenkins.plugins</groupId>
+            <artifactId>okhttp-api</artifactId>
+        </dependency>
+
+        <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-core-http-okhttp</artifactId>
-            <version>1.7.0</version>
+            <version>1.9.0</version>
             <exclusions>
                 <!-- loaded via jackson2-api plugin -->
                 <exclusion>
@@ -131,6 +144,15 @@
                 <exclusion>
                     <groupId>org.slf4j</groupId>
                     <artifactId>slf4j-api</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.squareup.okhttp3</groupId>
+                    <artifactId>okhttp</artifactId>
+                </exclusion>
+                <!-- Comes from Azure SDK plugin -->
+                <exclusion>
+                    <groupId>com.azure</groupId>
+                    <artifactId>azure-core</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -152,17 +174,28 @@
         <dependency>
             <groupId>org.jenkins-ci.plugins</groupId>
             <artifactId>matrix-auth</artifactId>
-            <version>3.0.1</version>
+            <version>3.1.2</version>
         </dependency>
         <dependency>
             <groupId>com.github.scribejava</groupId>
             <artifactId>scribejava-apis</artifactId>
-            <version>4.2.0</version>
+            <version>8.3.1</version>
+            <exclusions>
+                <!-- loaded via jackson2-api plugin -->
+                <exclusion>
+                    <groupId>com.fasterxml.jackson.datatype</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.fasterxml.jackson.core</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.bitbucket.b_c</groupId>
             <artifactId>jose4j</artifactId>
-            <version>0.7.9</version>
+            <version>0.7.12</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.slf4j</groupId>
@@ -193,7 +226,7 @@
         <dependency>
             <groupId>org.jenkins-ci.plugins</groupId>
             <artifactId>job-dsl</artifactId>
-            <version>1.77</version>
+            <version>1.79</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -213,25 +246,16 @@
         <dependencies>
             <dependency>
                 <groupId>io.jenkins.tools.bom</groupId>
-                <artifactId>bom-2.277.x</artifactId>
-                <version>961.vf0c9f6f59827</version>
+                <artifactId>bom-2.289.x</artifactId>
+                <version>1362.v59f2f3db_80ee</version>
                 <scope>import</scope>
                 <type>pom</type>
             </dependency>
-
-
-            <dependency>
-                <groupId>org.jetbrains.kotlin</groupId>
-                <artifactId>kotlin-stdlib-common</artifactId>
-                <version>1.4.10</version>
-            </dependency>
-
             <dependency>
                 <groupId>org.jetbrains</groupId>
                 <artifactId>annotations</artifactId>
                 <version>23.0.0</version>
             </dependency>
-
         </dependencies>
     </dependencyManagement>
 
@@ -253,7 +277,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-checkstyle-plugin</artifactId>
-                <version>3.1.1</version>
+                <version>3.1.2</version>
                 <dependencies>
                     <dependency>
                         <groupId>com.puppycrawl.tools</groupId>
