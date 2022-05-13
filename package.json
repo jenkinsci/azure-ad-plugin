@@ -28,8 +28,8 @@
     "webpack-cli": "^4.7.2"
   },
   "dependencies": {
-    "@microsoft/mgt-components": "^2.2.0",
-    "@microsoft/mgt-element": "^2.2.0",
-    "@microsoft/mgt-proxy-provider": "^2.2.0"
+    "@microsoft/mgt-components": "^2.4.0",
+    "@microsoft/mgt-element": "^2.4.0",
+    "@microsoft/mgt-proxy-provider": "^2.4.0"
   }
 }
