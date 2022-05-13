@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.jenkins-ci.plugins</groupId>
         <artifactId>plugin</artifactId>
-        <version>4.31</version>
+        <version>4.40</version>
     </parent>
 
     <artifactId>azure-ad</artifactId>
@@ -214,7 +214,7 @@
             <dependency>
                 <groupId>io.jenkins.tools.bom</groupId>
                 <artifactId>bom-2.277.x</artifactId>
-                <version>807.v6d348e44c987</version>
+                <version>961.vf0c9f6f59827</version>
                 <scope>import</scope>
                 <type>pom</type>
             </dependency>
@@ -229,7 +229,7 @@
             <dependency>
                 <groupId>org.jetbrains</groupId>
                 <artifactId>annotations</artifactId>
-                <version>15.0</version>
+                <version>23.0.0</version>
             </dependency>
 
         </dependencies>
