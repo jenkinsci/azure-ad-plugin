@@ -30,6 +30,6 @@
   "dependencies": {
     "@microsoft/mgt-components": "^2.5.2",
     "@microsoft/mgt-element": "^2.4.0",
-    "@microsoft/mgt-proxy-provider": "^2.4.0"
+    "@microsoft/mgt-proxy-provider": "^2.5.2"
   }
 }
