@@ -92,7 +92,7 @@ The following can normally be used:
 
 ## FAQ
 #### Q: How to recover if Jenkins keeps failing during the login phase?
-A: You can disable the security from the config file (see https://www.jenkins.io/doc/book/system-administration/security/#disabling-security)
+A: You can disable the security from the config file (see [https://www.jenkins.io/doc/book/security/access-control/disable/](https://www.jenkins.io/doc/book/security/access-control/disable/))
 
 #### Q: Why am I getting an error "insufficient privileges to complete the operation" even after having granted the permission?
 
