@@ -117,7 +117,7 @@ public final class AzureAdUser implements UserDetails {
         return user;
     }
 
-    public void setAuthorities(List<AzureAdGroup> groups) {
+    public void setAuthorities(List<AzureAdGroup> groups, String userPrincipalName) {
         List<GrantedAuthority> newAuthorities = new ArrayList<>();
         if (!groups.isEmpty()) {
             for (AzureAdGroup group : groups) {
@@ -132,6 +132,7 @@ public final class AzureAdUser implements UserDetails {
         }
         newAuthorities.add(SecurityRealm.AUTHENTICATED_AUTHORITY2);
         newAuthorities.add(new SimpleGrantedAuthority(objectID));
+        newAuthorities.add(new SimpleGrantedAuthority(userPrincipalName));
         this.authorities = newAuthorities;
     }
 

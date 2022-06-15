@@ -399,7 +399,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                     groups = AzureCachePool.get(getAzureClient())
                             .getBelongingGroupsByOid(user.getObjectID());
                 }
-                user.setAuthorities(groups);
+                user.setAuthorities(groups, user.getUniqueName());
                 LOGGER.info(String.format("Fetch user details with sub: %s***",
                         key.substring(0, CACHE_KEY_LOG_LENGTH)));
                 return user;
@@ -510,7 +510,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                     List<AzureAdGroup> groups = AzureCachePool.get(azureClient)
                             .getBelongingGroupsByOid(user.getObjectID());
 
-                    user.setAuthorities(groups);
+                    user.setAuthorities(groups, user.getEmail());
                     return user;
                 } catch (GraphServiceException e) {
                     if (e.getResponseCode() == NOT_FOUND) {
