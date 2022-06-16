@@ -122,12 +122,11 @@ public final class AzureAdUser implements UserDetails {
         if (!groups.isEmpty()) {
             for (AzureAdGroup group : groups) {
                 newAuthorities.add(group);
-                newAuthorities.add(new SimpleGrantedAuthority(group.getObjectId()));
+                newAuthorities.add(new SimpleGrantedAuthority(group.getGroupName()));
             }
         } else {
             for (String groupOID : groupOIDs) {
                 newAuthorities.add(new AzureAdGroup(groupOID, groupOID));
-                newAuthorities.add(new SimpleGrantedAuthority(groupOID));
             }
         }
         newAuthorities.add(SecurityRealm.AUTHENTICATED_AUTHORITY2);
