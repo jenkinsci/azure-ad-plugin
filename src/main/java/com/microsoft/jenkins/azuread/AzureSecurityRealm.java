@@ -510,7 +510,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                     List<AzureAdGroup> groups = AzureCachePool.get(azureClient)
                             .getBelongingGroupsByOid(user.getObjectID());
 
-                    user.setAuthorities(groups, user.getEmail());
+                    user.setAuthorities(groups, user.getUniqueName());
                     return user;
                 } catch (GraphServiceException e) {
                     if (e.getResponseCode() == NOT_FOUND) {
