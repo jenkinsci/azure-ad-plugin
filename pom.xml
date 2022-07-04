@@ -78,7 +78,7 @@
         <dependency>
             <groupId>io.jenkins.plugins</groupId>
             <artifactId>azure-sdk</artifactId>
-            <version>106.v552de1e64d56</version>
+            <version>118.v43f74dd9ca_dc</version>
         </dependency>
         <dependency>
             <groupId>com.microsoft.graph</groupId>
