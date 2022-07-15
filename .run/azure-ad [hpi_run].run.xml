@@ -12,7 +12,7 @@
           <option name="mavenProperties">
             <map>
               <entry key="java.awt.headless" value="true" />
-              <entry key="jenkins.version" value="2.347" />
+              <entry key="jenkins.version" value="2.355" />
               <entry key="port" value="6322" />
               <entry key="skip.npm" value="true" />
             </map>
