@@ -26,6 +26,7 @@ import org.kohsuke.accmod.restrictions.suppressions.SuppressRestrictedWarnings;
 import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
+import org.springframework.security.core.userdetails.UserDetailsService;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -168,7 +169,15 @@ public class AzureAdAuthorizationMatrixNodeProperty extends AuthorizationMatrixN
                 }
 
                 User current = User.current();
-                String sid = current == null ? "anonymous" : current.getId();
+                String sid;
+
+                if (current != null) {
+                    UserDetailsService detailsService = Jenkins.get().getSecurityRealm().getSecurityComponents().userDetails2;
+                    AzureAdUser details = (AzureAdUser) detailsService.loadUserByUsername(current.getId());
+                    sid = ObjId2FullSidMap.generateFullSid(current.getId(), details.getObjectID());
+                } else {
+                    sid = "anonymous";
+                }
 
                 if (!strategy.getACL(node).hasPermission2(Jenkins.getAuthentication2(), Computer.CONFIGURE)) {
                     prop.add(Computer.CONFIGURE, PermissionEntry.user(sid));
