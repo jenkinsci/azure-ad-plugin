@@ -48,6 +48,7 @@ import hudson.util.FormValidation;
 import hudson.util.ListBoxModel;
 import hudson.util.Secret;
 import io.jenkins.plugins.azuresdk.HttpClientRetriever;
+import javax.servlet.http.HttpSession;
 import jenkins.model.Jenkins;
 import jenkins.security.SecurityListener;
 import jenkins.util.JenkinsJVM;
@@ -362,14 +363,30 @@ public class AzureSecurityRealm extends SecurityRealm {
         return new HttpRedirect(service.getAuthorizationUrl(additionalParams));
     }
 
+    /**
+     * Check if a request contains a session, if so, invalidate the session and create a new one to avoid session
+     * fixation.
+     */
+    private void recreateSession(StaplerRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            session.invalidate();
+        }
+        request.getSession(true);
+    }
+
+
     public HttpResponse doFinishLogin(StaplerRequest request)
             throws InvalidJwtException, IOException {
+        String referer = (String) request.getSession().getAttribute(REFERER_ATTRIBUTE);
         try {
             final Long beginTime = (Long) request.getSession().getAttribute(TIMESTAMP_ATTRIBUTE);
             final String expectedNonce = (String) request.getSession().getAttribute(NONCE_ATTRIBUTE);
+
+            recreateSession(request);
+
             if (expectedNonce == null) {
                 // no nonce, probably some issue with an old session, force the user to re-auth
-                request.getSession().invalidate();
                 return HttpResponses.redirectToContextRoot();
             }
 
@@ -383,7 +400,6 @@ public class AzureSecurityRealm extends SecurityRealm {
             if (StringUtils.isBlank(idToken)) {
                 LOGGER.info("No `id_token` found ensure you have enabled it on the 'Authentication' page of the "
                         + "app registration");
-                request.getSession().invalidate();
                 return HttpResponses.redirectToContextRoot();
             }
             // validate the nonce to avoid CSRF
@@ -431,14 +447,8 @@ public class AzureSecurityRealm extends SecurityRealm {
         } catch (Exception ex) {
             LOGGER.log(Level.SEVERE, "error", ex);
             throw ex;
-        } finally {
-            if (request.isRequestedSessionIdValid()) {
-                request.getSession().removeAttribute(NONCE_ATTRIBUTE);
-            }
         }
 
-        // redirect to referer
-        String referer = (String) request.getSession().getAttribute(REFERER_ATTRIBUTE);
         if (referer != null) {
             return HttpResponses.redirectTo(referer);
         } else {
