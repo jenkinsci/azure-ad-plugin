@@ -404,7 +404,7 @@ public class AzureSecurityRealm extends SecurityRealm {
             }
             // validate the nonce to avoid CSRF
             final JwtClaims claims = validateIdToken(expectedNonce, idToken);
-            String key = (String) claims.getClaimValue("preferred_username");
+            String key = (String) claims.getClaimValue("oid");
 
             AzureAdUser userDetails = caches.get(key, (cacheKey) -> {
                 final AzureAdUser user;
@@ -508,6 +508,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                 // Currently triggers annoying log spam if the user is a group, but there's no way to tell currently
                 // as we look up by object id we don't know if it's a user or a group :(
                 try {
+                    // TODO try https://docs.microsoft.com/en-us/answers/questions/42697/how-to-get-a-particular-azure-ad-guest-user-from-h.html
                     com.microsoft.graph.models.User activeDirectoryUser = azureClient.users(userId).buildRequest()
                             .get();
 
@@ -560,7 +561,7 @@ public class AzureSecurityRealm extends SecurityRealm {
         String groupId = ObjId2FullSidMap.extractObjectId(groupName);
 
         if (groupId == null) {
-            // just an object id on it's own?
+            // just an object id on its own?
             groupId = groupName;
         }
 
@@ -807,8 +808,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                     + "\nUnique Principal Name: " + user.getUniqueName()
                     + "\nEmail: " + user.getEmail()
                     + "\nObject ID: " + user.getObjectID()
-                    + "\nTenant ID: " + user.getTenantID()
-                    + "\nGroups: " + user.getGroupOIDs() + "\n";
+                    + "\nTenant ID: " + user.getTenantID();
         }
         return "";
     }

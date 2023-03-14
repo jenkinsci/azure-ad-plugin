@@ -189,7 +189,7 @@ public final class AzureAdUser implements UserDetails {
 
     @Override
     public String getUsername() {
-        return getUniqueName();
+        return getObjectID();
     }
 
     @Override

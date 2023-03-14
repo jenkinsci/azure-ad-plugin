@@ -48,7 +48,7 @@ public class AzureAuthenticationToken implements Authentication {
 
     @Override
     public Object getPrincipal() {
-        return String.format("%s (%s)", getDisplayName(), getObjectId());
+        return getObjectId();
     }
 
     @Override
@@ -63,7 +63,7 @@ public class AzureAuthenticationToken implements Authentication {
 
     @Override
     public String getName() {
-        return (azureAdUser != null ? azureAdUser.getUniqueName() : null);
+        return (azureAdUser != null ? azureAdUser.getObjectID() : null);
     }
 
     public AzureAdUser getAzureAdUser() {

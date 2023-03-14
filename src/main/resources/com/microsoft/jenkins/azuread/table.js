@@ -36,7 +36,7 @@ Behaviour.specify(".azure-ad-add-button", 'AzureAdMatrixAuthorizationStrategy', 
                     type = "GROUP"
                     typeLabel = dataReference.getAttribute('data-type-group-label')
                 } else {
-                    name = person.userPrincipalName + " (" + person.id + ")"
+                    name = person.id
                     type = "USER"
                     typeLabel = dataReference.getAttribute('data-type-user-label')
                 }

@@ -14,8 +14,10 @@ import com.microsoft.graph.options.QueryOption;
 import com.microsoft.graph.requests.GraphServiceClient;
 import com.microsoft.graph.requests.GroupCollectionPage;
 import com.microsoft.graph.requests.UserCollectionPage;
+import com.microsoft.jenkins.azuread.utils.ValidationUtil;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
+import hudson.Functions;
 import hudson.init.InitMilestone;
 import hudson.init.Initializer;
 import hudson.model.AbstractItem;
@@ -25,14 +27,17 @@ import hudson.model.ItemGroup;
 import hudson.model.Job;
 import hudson.model.Node;
 import hudson.security.ACL;
+import hudson.security.AccessControlled;
 import hudson.security.GlobalMatrixAuthorizationStrategy;
 import hudson.security.Permission;
 import hudson.security.SecurityRealm;
 import hudson.security.SidACL;
+import hudson.util.FormValidation;
 import jenkins.model.Jenkins;
 import okhttp3.Request;
 import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.matrixauth.AuthorizationContainer;
+import org.jenkinsci.plugins.matrixauth.AuthorizationType;
 import org.jenkinsci.plugins.matrixauth.PermissionEntry;
 import org.jenkinsci.plugins.matrixauth.AuthorizationMatrixNodeProperty;
 import org.kohsuke.accmod.Restricted;
@@ -48,6 +53,10 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import static com.microsoft.jenkins.azuread.utils.ValidationUtil.formatNonExistentUserGroupValidationResponse;
+import static com.microsoft.jenkins.azuread.utils.ValidationUtil.formatUserGroupValidationResponse;
+
 
 public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizationStrategy {
 
@@ -256,6 +265,108 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
             }
 
             return true;
+        }
+
+        @Override
+        public FormValidation doCheckName(String value) {
+            final String unbracketedValue = value.substring(1, value.length() - 1); // remove leading [ and trailing ]
+            AccessControlled subject = Jenkins.get();
+            Permission permission = Jenkins.ADMINISTER;
+
+            final int splitIndex = unbracketedValue.indexOf(':');
+            if (splitIndex < 0) {
+                return FormValidation.error("No type prefix: " + unbracketedValue);
+            }
+            final String typeString = unbracketedValue.substring(0, splitIndex);
+            final AuthorizationType type;
+            try {
+                type = AuthorizationType.valueOf(typeString);
+            } catch (Exception ex) {
+                return FormValidation.error("Invalid type prefix: " + unbracketedValue);
+            }
+            String sid = unbracketedValue.substring(splitIndex + 1);
+
+            String escapedSid = Functions.escape(sid);
+
+            if (!subject.hasPermission(permission)) {
+                // Lacking permissions, so respond based on input only
+                if (type == AuthorizationType.USER) {
+                    return FormValidation.okWithMarkup(formatUserGroupValidationResponse("person", escapedSid, "User may or may not exist"));
+                }
+                if (type == AuthorizationType.GROUP) {
+                    return FormValidation.okWithMarkup(formatUserGroupValidationResponse("user", escapedSid, "Group may or may not exist"));
+                }
+                return FormValidation.warningWithMarkup(
+                        formatUserGroupValidationResponse(
+                        null, escapedSid, "Permissions would be granted to a user or group of this name"
+                    )
+                );
+            }
+
+            SecurityRealm sr = Jenkins.get().getSecurityRealm();
+
+            if (sid.equals("authenticated") && type == AuthorizationType.EITHER) {
+                // system reserved group
+                return FormValidation.warningWithMarkup(
+                        formatUserGroupValidationResponse(
+                                "user", escapedSid,
+                                "Internal group found; but permissions would also be granted to a user of this name"
+                        )
+                );
+            }
+
+            if (sid.equals("anonymous") && type == AuthorizationType.EITHER) {
+                // system reserved user
+                return FormValidation.warningWithMarkup(formatUserGroupValidationResponse(
+                        "person",
+                        escapedSid,
+                        "Internal user found; but permissions would also be granted to a group of this name"
+                    )
+                );
+            }
+
+            try {
+                FormValidation groupValidation;
+                FormValidation userValidation;
+                switch (type) {
+                    case GROUP:
+                        groupValidation = ValidationUtil.validateGroup(sid, sr, false);
+                        if (groupValidation != null) {
+                            return groupValidation;
+                        }
+                        return FormValidation.errorWithMarkup(
+                                // TODO i18n (after 3.0)
+                                formatNonExistentUserGroupValidationResponse(escapedSid, "Group not found"));
+                    case USER:
+                        userValidation = ValidationUtil.validateUser(sid, sr, false);
+                        if (userValidation != null) {
+                            return userValidation;
+                        }
+                        return FormValidation.errorWithMarkup(
+                                // TODO i18n (after 3.0)
+                                formatNonExistentUserGroupValidationResponse(escapedSid, "User not found")
+                        );
+                    case EITHER:
+                        userValidation = ValidationUtil.validateUser(sid, sr, true);
+                        if (userValidation != null) {
+                            return userValidation;
+                        }
+                        groupValidation = ValidationUtil.validateGroup(sid, sr, true);
+                        if (groupValidation != null) {
+                            return groupValidation;
+                        }
+                        // TODO i18n (after 3.0)
+                        return FormValidation.errorWithMarkup(
+                                formatNonExistentUserGroupValidationResponse(escapedSid, "User or group not found")
+                        );
+                    default:
+                        return FormValidation.error("Unexpected type: " + type);
+                }
+            } catch (Exception e) {
+                // if the check fails miserably, we still want the user to be able to see the name of the user,
+                // so use 'escapedSid' as the message
+                return FormValidation.error(e, escapedSid);
+            }
         }
     }
 
