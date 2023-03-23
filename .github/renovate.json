@@ -6,8 +6,18 @@
     "schedule:earlyMondays"
   ],
   "automerge": true,
+  "platformAutomerge": true,
+  "automergeType": "pr",
   "labels": [
     "dependencies"
   ],
-  "rebaseWhen": "conflicted"
+  "rebaseWhen": "conflicted",
+  "packageRules": [
+    {
+      "groupName": "microsoft-mgt",
+      "matchPackagePatterns": [
+        "@microsoft/mgt"
+      ]
+    }
+  ]
 }
