@@ -39,6 +39,7 @@
         <jenkins.version>2.361.4</jenkins.version>
         <node.version>18.12.1</node.version>
         <npm.version>8.19.2</npm.version>
+        <hpi.compatibleSinceVersion>336.vd05b_01358644</hpi.compatibleSinceVersion>
     </properties>
 
     <repositories>
