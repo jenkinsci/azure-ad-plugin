@@ -161,6 +161,7 @@
         <dependency>
             <groupId>org.jenkins-ci.plugins</groupId>
             <artifactId>matrix-auth</artifactId>
+            <version>3.1.7-rc419.4cc59a324f61</version>
         </dependency>
         <dependency>
             <groupId>com.github.scribejava</groupId>
