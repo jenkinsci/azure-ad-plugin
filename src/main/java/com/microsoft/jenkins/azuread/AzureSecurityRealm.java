@@ -19,7 +19,6 @@ import com.microsoft.graph.authentication.TokenCredentialAuthProvider;
 import com.microsoft.graph.http.GraphServiceException;
 import com.microsoft.graph.httpcore.HttpClients;
 import com.microsoft.graph.models.Group;
-import com.microsoft.graph.options.HeaderOption;
 import com.microsoft.graph.options.Option;
 import com.microsoft.graph.options.QueryOption;
 import com.microsoft.graph.requests.GraphServiceClient;
@@ -592,10 +591,9 @@ public class AzureSecurityRealm extends SecurityRealm {
             LOGGER.log(Level.WARNING, "Failed to url encode query, group name was: " + groupName);
         }
 
-        String query = String.format("\"displayName:%s\"", encodedGroupName);
+        String query = String.format("displayName eq '%s'", encodedGroupName);
 
-        requestOptions.add(new QueryOption("$search", query));
-        requestOptions.add(new HeaderOption("ConsistencyLevel", "eventual"));
+        requestOptions.add(new QueryOption("$filter", query));
 
         GroupCollectionPage groupCollectionPage = getAzureClient().groups()
                 .buildRequest(requestOptions)
