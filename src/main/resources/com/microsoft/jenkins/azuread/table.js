@@ -65,13 +65,13 @@ Behaviour.specify(".azure-ad-add-button", 'AzureAdMatrixAuthorizationStrategy', 
                     child.setAttribute("data-tooltip-disabled", child.getAttribute("data-tooltip-disabled").replace("__SID__", name).replace("__TYPE__", typeLabel));
                 }
             }
-            findElementsBySelector(copy, ".stop img").each(function(item) {
+            findElementsBySelector(copy, ".stop img").forEach(function(item) {
                 item.setAttribute("title", item.getAttribute("title").replace("__SID__", name).replace("__TYPE__", typeLabel));
             });
 
             var tooltipAttributeName = getTooltipAttributeName();
 
-            findElementsBySelector(copy, "input[type=checkbox]").each(function(item) {
+            findElementsBySelector(copy, "input[type=checkbox]").forEach(function(item) {
                 const tooltip = item.getAttribute(tooltipAttributeName);
                 if (tooltip) {
                     item.setAttribute(tooltipAttributeName, tooltip.replace("__SID__", name).replace("__TYPE__", typeLabel));
@@ -93,8 +93,13 @@ Behaviour.specify(".azure-ad-add-button", 'AzureAdMatrixAuthorizationStrategy', 
 });
 
 function getTooltipAttributeName() {
-    var tippySupported = window.registerTooltips !== undefined;
-    return tippySupported ? 'html-tooltip' : 'tooltip';
+    let coreVersion = document.body.getAttribute('data-version');
+    if (coreVersion === null) {
+        return 'tooltip'
+    }
+    // TODO remove after minimum version is 2.379 or higher
+    let tippySupported = coreVersion >= '2.379';
+    return tippySupported ? 'data-html-tooltip' : 'tooltip';
 }
 
 /*
