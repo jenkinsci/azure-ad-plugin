@@ -24,8 +24,9 @@ public class ObjId2FullSidMap extends HashMap<String, String> {
         if (containsKey(extractedObjectId)) {
             return get(extractedObjectId);
         }
+        String objValuesPrefix = objectId + " (";
         for (String value : values()) {
-            if (value.startsWith(objectId + " (")) {
+            if (value.startsWith(objValuesPrefix)) {
                 return value;
             }
         }
