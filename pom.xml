@@ -61,7 +61,7 @@
             <groupId>org.kohsuke</groupId>
             <artifactId>access-modifier-suppressions</artifactId>
             <!-- needs to be kept in sync with Jenkins core -->
-            <version>1.27</version>
+            <version>1.31</version>
         </dependency>
         <dependency>
             <groupId>io.jenkins.plugins</groupId>
