@@ -14,9 +14,9 @@ A Jenkins Plugin that supports authentication & authorization via Azure Active D
 
 1. Click `Certificates & secrets`, under Client secrets click `New client secret` to generate a new key, copy the `value`, it will be used as `Client Secret` in Jenkins.
 
-1. Click `Authentication`, under 'Implicit grant', enable `ID tokens`.
+1. Click `Authentication`, under 'Implicit grant and hybrid flows', enable `ID tokens`.
 
-1. (optional) To enable AzureAD group support: Click `Manifest` and modify the `"groupMembershipClaims": "None"` value to `"groupMembershipClaims": "SecurityGroup"`, then 'Save' it.
+1. (optional) To enable AzureAD group support: Click `Manifest` and modify the `"groupMembershipClaims": null` value to `"groupMembershipClaims": "SecurityGroup"`, then 'Save' it.
 
 ### Setup Azure AD permissions (optional, but recommended)
 
@@ -24,7 +24,7 @@ In order for Jenkins to be able to lookup data from Azure AD it needs some Graph
 
 This is used for:
 
-* Autocompleting users and groups on the 'Configure Global Security' page
+* Autocompleting users and groups on the 'Security' page
 * Jenkins looking up the user, e.g. when you use the Rest API
 * Group display name support (rather than just object ID)
 
@@ -44,7 +44,7 @@ _Note: You can skip this part and just use the claims returned when authenticati
 
 ## Setup In Jenkins
 
-Click `Manage Jenkins` in the left menu, then click `Configure Global Security`
+Click `Manage Jenkins` in the left menu, then click `Security`
 
 ## Authentication
 
@@ -56,7 +56,7 @@ Click `Manage Jenkins` in the left menu, then click `Configure Global Security`
 
 1. Log in with Azure AD
 
-1. Return to 'Configure Global Security' to configure authorization
+1. Return to 'Security' to configure authorization
 
 _Note: if you haven't setup Graph API permissions, verify application will fail, skip over this step_
 
@@ -70,10 +70,10 @@ It will also include the display name in the authorization rule.
 
 To use this feature:
 
-1. click `Azure Active Directory Matrix-based security`
-1. search for user in 'Azure User/group to add' and click Add
-1. select the permission(s) in the table
-1. click 'Apply'
+1. Click `Azure Active Directory Matrix-based security`
+1. Search for user in 'Azure User/group to add' and click Add
+1. Select the permission(s) in the table
+1. Click 'Apply'
 
 You can still use other authorization strategies such as:
 
