@@ -99,17 +99,19 @@ THE SOFTWARE.
         </j:forEach>
         <local:isEditable sid="${attrs.sid}" type="${attrs.type}">
           <td class="stop azure-ad-controls" style="text-align:left;">
-            <a href="#" class="selectall">
-              <img alt="${%Select all}" title="${%selectall(attrs.sid)}" src="${rootURL}/plugin/matrix-auth/images/select-all.svg" style='margin-right:0.2em' height="16" width="16"/>
-            </a>
-            <a href="#" class="unselectall">
-              <img alt="${%Unselect all}" title="${%unselectall(attrs.sid)}" src="${rootURL}/plugin/matrix-auth/images/unselect-all.svg" height="16" width="16"/>
-            </a>
-            <j:if test="${(attrs.sid != 'authenticated' or attrs.type != 'GROUP') and (attrs.sid != 'anonymous' or attrs.type != 'USER')}">
-              <a href="#" class="remove">
-                <l:icon alt="${%Remove user/group}" title="${%remove(attrs.sid)}" class="icon-stop icon-sm" />
+            <div class="mas-table__cell">
+              <a href="#" class="selectall" tooltip="${%selectall(h.escape(attrs.sid))}" data-html-tooltip="${%selectall(h.escape(attrs.sid))}">
+                <l:icon alt="${%Select all}" src="symbol-select-all plugin-matrix-auth" class="icon-sm"/>
               </a>
-            </j:if>
+              <a href="#" class="unselectall" tooltip="${%unselectall(h.escape(attrs.sid))}" data-html-tooltip="${%unselectall(h.escape(attrs.sid))}">
+                <l:icon alt="${%Unselect all}" src="symbol-unselect-all plugin-matrix-auth" class="icon-sm"/>
+              </a>
+              <j:if test="${(attrs.sid != 'authenticated' or attrs.type != 'GROUP') and (attrs.sid != 'anonymous' or attrs.type != 'USER')}">
+                <a href="#" class="remove" tooltip="${%remove(h.escape(attrs.sid))}" data-html-tooltip="${%remove(h.escape(attrs.sid))}">
+                  <l:icon alt="${%Remove user/group}" src="symbol-trash-outline plugin-ionicons-api" class="icon-sm icon-red" />
+                </a>
+              </j:if>
+            </div>
           </td>
         </local:isEditable>
       </d:tag>
@@ -185,19 +187,19 @@ THE SOFTWARE.
         <j:choose>
           <j:when test="${descriptor.disableGraphIntegration}">
             <f:textbox field="userOrGroup" id="${id}text"/>
-            <div class="no-graph-integration-wrapper">
-              <input type="button" class="azure-ad-add-button" value="${%Add user}" id="${id}UserButton"
+            <div class="no-graph-integration-wrapper jenkins-buttons-row jenkins-buttons-row--equal-width">
+              <button type="button" class="jenkins-button azure-ad-add-button" id="${id}UserButton"
                      data-table-id="${id}"
                      data-type="USER"
                      data-type-label="${%user}"
                      data-message-error="${%userError}"
-              />
-              <input type="button" class="azure-ad-add-button" value="${%Add group}" id="${id}GroupButton"
+              >${%Add user}</button>
+              <button type="button" class="jenkins-button azure-ad-add-button" id="${id}GroupButton"
                      data-table-id="${id}"
                      data-type="GROUP"
                      data-type-label="${%group}"
                      data-message-error="${%groupError}"
-              />
+              >${%Add group}</button>
             </div>
           </j:when>
           <j:otherwise>
@@ -205,13 +207,13 @@ THE SOFTWARE.
               <mgt-people-picker type="any" user-type="any" group-type="any" show-max="10" />
             </div>
             <div class="no-graph-integration-wrapper">
-              <input type="button" class="azure-ad-add-button" value="${%Add}" id="${id}button"
+              <button type="button" class="jenkins-button azure-ad-add-button" id="${id}button"
                      data-table-id="${id}"
                      data-message-empty="${%empty}"
                      data-message-error="${%error}"
                      data-type-user-label="${%user}"
                      data-type-group-label="${%user}"
-              />
+              >${%Add}</button>
             </div>
           </j:otherwise>
         </j:choose>

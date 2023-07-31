@@ -2,8 +2,8 @@
  * This handles the addition of new users/groups to the list.
  */
 Behaviour.specify(".azure-ad-add-button", 'AzureAdMatrixAuthorizationStrategy', 0, function(e) {
-    makeButton(e, function (e) {
-        var dataReference = e.target;
+    e.addEventListener('click', function(event) {
+        var dataReference = event.target;
         var dataTableId = dataReference.getAttribute('data-table-id');
         var master = document.getElementById(dataTableId);
         var table = master.parentNode;
@@ -65,11 +65,18 @@ Behaviour.specify(".azure-ad-add-button", 'AzureAdMatrixAuthorizationStrategy', 
                     child.setAttribute("data-tooltip-disabled", child.getAttribute("data-tooltip-disabled").replace("__SID__", name).replace("__TYPE__", typeLabel));
                 }
             }
-            findElementsBySelector(copy, ".stop img").forEach(function(item) {
-                item.setAttribute("title", item.getAttribute("title").replace("__SID__", name).replace("__TYPE__", typeLabel));
-            });
 
             var tooltipAttributeName = getTooltipAttributeName();
+
+            findElementsBySelector(copy, ".stop a").forEach(function(item) {
+                let oldTitle = item.getAttribute("title");
+                if (oldTitle !== null) {
+                    item.setAttribute("title", oldTitle.replace("__SID__", name).replace("__TYPE__", typeLabel));
+                }
+
+                item.setAttribute(tooltipAttributeName, item.getAttribute(tooltipAttributeName).replace("__SID__", name).replace("__TYPE__", typeLabel));
+            });
+
 
             findElementsBySelector(copy, "input[type=checkbox]").forEach(function(item) {
                 const tooltip = item.getAttribute(tooltipAttributeName);
