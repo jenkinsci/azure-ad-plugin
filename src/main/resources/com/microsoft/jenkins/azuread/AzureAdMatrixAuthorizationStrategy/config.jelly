@@ -67,16 +67,16 @@ THE SOFTWARE.
         <j:choose>
           <j:when test="${attrs.sid == 'authenticated' and attrs.type == 'GROUP'}">
             <td class="left-most">
-              <span title="authenticated">
-                <l:icon class="icon-user icon-sm" style="margin-right:0.2em"/>${%Authenticated Users}
-              </span>
+              <div tooltip="${%Internal group authenticated}" class="mas-table__cell">
+                <l:icon class="icon-user icon-sm"/>${%Authenticated Users}
+              </div>
             </td>
           </j:when>
           <j:when test="${attrs.sid == 'anonymous' and attrs.type == 'USER'}">
             <td class="left-most">
-              <span title="anonymous">
-                <l:icon class="icon-person icon-sm" style="margin-right:0.2em"/>${%Anonymous}
-              </span>
+              <div tooltip="${%Internal user anonymous}" class="mas-table__cell">
+                <l:icon class="icon-person icon-sm" />${%Anonymous}
+              </div>
             </td>
           </j:when>
           <j:otherwise>
@@ -87,8 +87,7 @@ THE SOFTWARE.
         <j:forEach var="g" items="${groups}">
           <j:forEach var="p" items="${g.permissions}">
             <j:if test="${descriptor.showPermission(p)}">
-              <td width="*"
-                  data-implied-by-list="${descriptor.impliedByList(p)}"
+              <td data-implied-by-list="${descriptor.impliedByList(p)}"
                   data-permission-id="${p.id}"
                   data-tooltip-enabled="${%tooltip_enabled(p.group.title, p.name, typeName, attrs.sid)}"
                   data-tooltip-disabled="${%tooltip_disabled(p.group.title, p.name, typeName, attrs.sid)}">

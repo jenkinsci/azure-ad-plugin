@@ -36,7 +36,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
-        <jenkins.version>2.361.4</jenkins.version>
+        <jenkins.version>2.387.3</jenkins.version>
         <node.version>18.12.1</node.version>
         <npm.version>8.19.2</npm.version>
         <hpi.compatibleSinceVersion>336.vd05b_01358644</hpi.compatibleSinceVersion>

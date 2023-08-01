@@ -291,10 +291,10 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
             if (!subject.hasPermission(permission)) {
                 // Lacking permissions, so respond based on input only
                 if (type == AuthorizationType.USER) {
-                    return FormValidation.okWithMarkup(formatUserGroupValidationResponse("person", escapedSid, "User may or may not exist"));
+                    return FormValidation.okWithMarkup(formatUserGroupValidationResponse(AuthorizationType.USER, escapedSid, "User may or may not exist"));
                 }
                 if (type == AuthorizationType.GROUP) {
-                    return FormValidation.okWithMarkup(formatUserGroupValidationResponse("user", escapedSid, "Group may or may not exist"));
+                    return FormValidation.okWithMarkup(formatUserGroupValidationResponse(AuthorizationType.GROUP, escapedSid, "Group may or may not exist"));
                 }
                 return FormValidation.warningWithMarkup(
                         formatUserGroupValidationResponse(
@@ -309,7 +309,7 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
                 // system reserved group
                 return FormValidation.warningWithMarkup(
                         formatUserGroupValidationResponse(
-                                "user", escapedSid,
+                                AuthorizationType.GROUP, escapedSid,
                                 "Internal group found; but permissions would also be granted to a user of this name"
                         )
                 );
@@ -318,7 +318,7 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
             if (sid.equals("anonymous") && type == AuthorizationType.EITHER) {
                 // system reserved user
                 return FormValidation.warningWithMarkup(formatUserGroupValidationResponse(
-                        "person",
+                        AuthorizationType.USER,
                         escapedSid,
                         "Internal user found; but permissions would also be granted to a group of this name"
                     )

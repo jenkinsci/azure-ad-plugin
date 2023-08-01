@@ -66,22 +66,20 @@ Behaviour.specify(".azure-ad-add-button", 'AzureAdMatrixAuthorizationStrategy', 
                 }
             }
 
-            var tooltipAttributeName = getTooltipAttributeName();
-
             findElementsBySelector(copy, ".stop a").forEach(function(item) {
                 let oldTitle = item.getAttribute("title");
                 if (oldTitle !== null) {
                     item.setAttribute("title", oldTitle.replace("__SID__", name).replace("__TYPE__", typeLabel));
                 }
 
-                item.setAttribute(tooltipAttributeName, item.getAttribute(tooltipAttributeName).replace("__SID__", name).replace("__TYPE__", typeLabel));
+                item.setAttribute('data-html-tooltip', item.getAttribute('data-html-tooltip').replace("__SID__", name).replace("__TYPE__", typeLabel));
             });
 
 
             findElementsBySelector(copy, "input[type=checkbox]").forEach(function(item) {
-                const tooltip = item.getAttribute(tooltipAttributeName);
+                const tooltip = item.getAttribute('data-html-tooltip');
                 if (tooltip) {
-                    item.setAttribute(tooltipAttributeName, tooltip.replace("__SID__", name).replace("__TYPE__", typeLabel));
+                    item.setAttribute('data-html-tooltip', tooltip.replace("__SID__", name).replace("__TYPE__", typeLabel));
                 } else {
                     item.setAttribute("title", item.getAttribute("title").replace("__SID__", name).replace("__TYPE__", typeLabel));
                 }
@@ -98,16 +96,6 @@ Behaviour.specify(".azure-ad-add-button", 'AzureAdMatrixAuthorizationStrategy', 
         }
     });
 });
-
-function getTooltipAttributeName() {
-    let coreVersion = document.body.getAttribute('data-version');
-    if (coreVersion === null) {
-        return 'tooltip'
-    }
-    // TODO remove after minimum version is 2.379 or higher
-    let tippySupported = coreVersion >= '2.379';
-    return tippySupported ? 'data-html-tooltip' : 'tooltip';
-}
 
 /*
  * Behavior for the element removing a permission assignment row for a user/group
@@ -157,14 +145,13 @@ Behaviour.specify(".global-matrix-authorization-strategy-table TD.stop A.unselec
  * Whenever permission assignments change, this ensures that implied permissions get their checkboxes disabled.
  */
 Behaviour.specify(".global-matrix-authorization-strategy-table td input", 'AzureAdMatrixAuthorizationStrategy', 0, function(e) {
-    var tooltipAttributeName = getTooltipAttributeName();
     var impliedByString = findAncestor(e, "TD").getAttribute('data-implied-by-list');
     var impliedByList = impliedByString.split(" ");
     var tr = findAncestor(e,"TR");
     e.disabled = false;
     var enabledTooltip = YAHOO.lang.escapeHTML(findAncestor(e, "TD").getAttribute('data-tooltip-enabled'));
-    e.setAttribute(tooltipAttributeName, enabledTooltip);
-    e.nextSibling.setAttribute(tooltipAttributeName, enabledTooltip); // 2.335+
+    e.setAttribute('data-html-tooltip', enabledTooltip);
+    e.nextSibling.setAttribute('data-html-tooltip', enabledTooltip); // 2.335+
 
     for (var i = 0; i < impliedByList.length; i++) {
         var permissionId = impliedByList[i];
@@ -173,8 +160,7 @@ Behaviour.specify(".global-matrix-authorization-strategy-table td input", 'Azure
             if (reference.checked) {
                 e.disabled = true;
                 var tooltip = YAHOO.lang.escapeHTML(findAncestor(e, "TD").getAttribute('data-tooltip-disabled'));
-                e.setAttribute(tooltipAttributeName, tooltip); // before 2.335 -- TODO remove once baseline is new enough
-                e.nextSibling.setAttribute(tooltipAttributeName, tooltip); // 2.335+
+                e.nextSibling.setAttribute('data-html-tooltip', tooltip);
             }
         }
     }
