@@ -28,19 +28,15 @@ import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Functions;
 import hudson.Util;
 import hudson.model.User;
-import hudson.security.GroupDetails;
 import hudson.security.SecurityRealm;
 import hudson.security.UserMayOrMayNotExistException2;
 import hudson.util.FormValidation;
-import hudson.util.VersionNumber;
-import jenkins.model.Jenkins;
 import org.apache.commons.lang.StringUtils;
 import org.jenkins.ui.symbol.Symbol;
 import org.jenkins.ui.symbol.SymbolRequest;
 import org.jenkinsci.plugins.matrixauth.AuthorizationType;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
-import org.kohsuke.stapler.Stapler;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
@@ -53,20 +49,20 @@ public final class ValidationUtil {
 
     private static final int MAX_WIDTH = 50;
 
-    private static final String userSymbol;
-    private static final String groupSymbol;
-    private static final String warningSymbol;
-    private static final String alertSymbol;
+    private static final String USER_SYMBOL;
+    private static final String GROUP_SYMBOL;
+    private static final String WARNING_SYMBOL;
+    private static final String ALERT_SYMBOL;
 
     private ValidationUtil() {
         // do not use
     }
 
     static {
-        userSymbol = getSymbol("person", "icon-sm");
-        groupSymbol = getSymbol("people", "icon-sm");
-        alertSymbol = getSymbol("alert-circle", "icon-md mas-table__icon-alert");
-        warningSymbol = getSymbol("warning", "icon-md mas-table__icon-warning");
+        USER_SYMBOL = getSymbol("person", "icon-sm");
+        GROUP_SYMBOL = getSymbol("people", "icon-sm");
+        ALERT_SYMBOL = getSymbol("alert-circle", "icon-md mas-table__icon-alert");
+        WARNING_SYMBOL = getSymbol("warning", "icon-md mas-table__icon-warning");
     }
 
     private static String getSymbol(String symbol, String classes) {
@@ -100,13 +96,13 @@ public final class ValidationUtil {
         String symbol;
         switch (type) {
             case "GROUP":
-                symbol = groupSymbol;
+                symbol = GROUP_SYMBOL;
                 break;
             case "alert":
-                symbol = alertSymbol;
+                symbol = ALERT_SYMBOL;
                 break;
             case "USER":
-                symbol = userSymbol;
+                symbol = USER_SYMBOL;
                 break;
             case "EITHER":
             default:
@@ -116,7 +112,7 @@ public final class ValidationUtil {
         if (warning) {
             return String.format(
                     "<div tooltip='%s' class='mas-table__cell mas-table__cell-warning'>%s%s%s</div>",
-                    tooltip, warningSymbol, symbol, user);
+                    tooltip, WARNING_SYMBOL, symbol, user);
         }
         return String.format("<div tooltip='%s' class='mas-table__cell'>%s%s</div>", tooltip, symbol, user);
     }
@@ -192,7 +188,7 @@ public final class ValidationUtil {
                 return FormValidation.respond(
                         FormValidation.Kind.OK,
                         formatUserGroupValidationResponse(
-                                USER, Util.escape(StringUtils.abbreviate(u.getFullName(), 50)), "User " + escapedSid));
+                                USER, Util.escape(StringUtils.abbreviate(u.getFullName(), MAX_WIDTH)), "User " + escapedSid));
             }
         } catch (UserMayOrMayNotExistException2 e) {
             // undecidable, meaning the user may exist

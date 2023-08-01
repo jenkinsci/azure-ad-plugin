@@ -291,15 +291,20 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
             if (!subject.hasPermission(permission)) {
                 // Lacking permissions, so respond based on input only
                 if (type == AuthorizationType.USER) {
-                    return FormValidation.okWithMarkup(formatUserGroupValidationResponse(AuthorizationType.USER, escapedSid, "User may or may not exist"));
+                    return FormValidation.okWithMarkup(formatUserGroupValidationResponse(
+                            AuthorizationType.USER, escapedSid, "User may or may not exist")
+                    );
                 }
                 if (type == AuthorizationType.GROUP) {
-                    return FormValidation.okWithMarkup(formatUserGroupValidationResponse(AuthorizationType.GROUP, escapedSid, "Group may or may not exist"));
+                    return FormValidation.okWithMarkup(formatUserGroupValidationResponse(
+                            AuthorizationType.GROUP, escapedSid, "Group may or may not exist")
+                    );
                 }
                 return FormValidation.warningWithMarkup(
                         formatUserGroupValidationResponse(
-                        null, escapedSid, "Permissions would be granted to a user or group of this name"
-                    )
+                                AuthorizationType.EITHER, escapedSid,
+                                "Permissions would be granted to a user or group of this name"
+                        )
                 );
             }
 
