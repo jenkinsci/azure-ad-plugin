@@ -66,7 +66,6 @@ Jenkins will match permissions based on the Object ID of a user or group.
 
 This plugin extends the traditional [Matrix Authorization Strategy](https://plugins.jenkins.io/matrix-auth/)
 with the ability to search by users / groups by display name when configuring the authorization rules.
-It will also include the display name in the authorization rule.
 
 To use this feature:
 
@@ -81,11 +80,9 @@ You can still use other authorization strategies such as:
 * [Folder-based Authorization Strategy](https://plugins.jenkins.io/folder-auth/)
 * [Role-based Authorization Strategy](https://plugins.jenkins.io/role-strategy/)
 
-Just keep in mind that the Jenkins ID format will be used and not the `DisplayName (Object ID)` format of this plugin.
-
 The following can normally be used:
 
-* Object ID of group
+* Object ID of user or group
 * Display name of group (Only if Graph API permissions granted)
 * `preferred_username` claim which is normally the 'User principal name', but not always.
 * User principal name (Rest API authentication only)
