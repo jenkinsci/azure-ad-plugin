@@ -2,7 +2,7 @@ package com.microsoft.jenkins.azuread;
 
 import com.cloudbees.hudson.plugins.folder.AbstractFolder;
 import com.cloudbees.hudson.plugins.folder.AbstractFolderPropertyDescriptor;
-import com.cloudbees.hudson.plugins.folder.properties.AuthorizationMatrixProperty;
+import com.microsoft.jenkins.azuread.folder.properties.AuthorizationMatrixProperty;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.model.AutoCompletionCandidates;
@@ -14,12 +14,8 @@ import hudson.util.FormValidation;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
 import org.jenkinsci.Symbol;
-import org.jenkinsci.plugins.matrixauth.AbstractAuthorizationPropertyConverter;
-import org.jenkinsci.plugins.matrixauth.AuthorizationPropertyDescriptor;
-import org.jenkinsci.plugins.matrixauth.PermissionEntry;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
-import org.kohsuke.accmod.restrictions.suppressions.SuppressRestrictedWarnings;
 import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
@@ -69,7 +65,6 @@ public class AzureAdAuthorizationMatrixFolderProperty extends AuthorizationMatri
 
     @Extension(optional = true)
     @Symbol("azureAdAuthorizationMatrix")
-    @SuppressRestrictedWarnings(AuthorizationPropertyDescriptor.class)
     public static class DescriptorImpl extends AbstractFolderPropertyDescriptor implements
             AuthorizationPropertyDescriptor<AzureAdAuthorizationMatrixFolderProperty> {
 
@@ -126,7 +121,6 @@ public class AzureAdAuthorizationMatrixFolderProperty extends AuthorizationMatri
     }
 
     @SuppressWarnings("unused")
-    @SuppressRestrictedWarnings(AbstractAuthorizationPropertyConverter.class)
     public static class ConverterImpl extends AbstractAuthorizationPropertyConverter<AzureAdAuthorizationMatrixFolderProperty> {
 
         @Override

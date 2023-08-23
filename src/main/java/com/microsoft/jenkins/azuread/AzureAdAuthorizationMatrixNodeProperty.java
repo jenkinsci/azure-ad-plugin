@@ -15,14 +15,9 @@ import jenkins.model.Jenkins;
 import jenkins.model.NodeListener;
 import net.sf.json.JSONObject;
 import org.jenkinsci.Symbol;
-import org.jenkinsci.plugins.matrixauth.AbstractAuthorizationPropertyConverter;
-import org.jenkinsci.plugins.matrixauth.AuthorizationMatrixNodeProperty;
-import org.jenkinsci.plugins.matrixauth.AuthorizationPropertyDescriptor;
-import org.jenkinsci.plugins.matrixauth.PermissionEntry;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.DoNotUse;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
-import org.kohsuke.accmod.restrictions.suppressions.SuppressRestrictedWarnings;
 import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
@@ -76,7 +71,6 @@ public class AzureAdAuthorizationMatrixNodeProperty extends AuthorizationMatrixN
      */
     @SuppressWarnings("unused")
     @Restricted(NoExternalUse.class)
-    @SuppressRestrictedWarnings(AbstractAuthorizationPropertyConverter.class)
     public static final class ConverterImpl extends
             AbstractAuthorizationPropertyConverter<AzureAdAuthorizationMatrixNodeProperty> {
         public boolean canConvert(Class type) {
@@ -90,7 +84,6 @@ public class AzureAdAuthorizationMatrixNodeProperty extends AuthorizationMatrixN
 
     @Extension
     @Symbol("azureAdAuthorizationMatrix")
-    @SuppressRestrictedWarnings(AuthorizationPropertyDescriptor.class)
     public static class DescriptorImpl extends NodePropertyDescriptor
             implements AuthorizationPropertyDescriptor<AzureAdAuthorizationMatrixNodeProperty> {
 

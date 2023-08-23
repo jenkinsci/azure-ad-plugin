@@ -6,7 +6,6 @@ import hudson.model.Item;
 import hudson.model.Job;
 import hudson.model.JobProperty;
 import hudson.model.JobPropertyDescriptor;
-import hudson.security.AuthorizationMatrixProperty;
 import hudson.security.Permission;
 import hudson.security.PermissionScope;
 import hudson.security.SecurityRealm;
@@ -14,15 +13,10 @@ import hudson.util.FormValidation;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
 import org.jenkinsci.Symbol;
-import org.jenkinsci.plugins.matrixauth.AbstractAuthorizationPropertyConverter;
-import org.jenkinsci.plugins.matrixauth.AuthorizationProperty;
-import org.jenkinsci.plugins.matrixauth.AuthorizationPropertyDescriptor;
-import org.jenkinsci.plugins.matrixauth.PermissionEntry;
 import org.jenkinsci.plugins.matrixauth.inheritance.InheritGlobalStrategy;
 import org.jenkinsci.plugins.matrixauth.inheritance.InheritanceStrategy;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
-import org.kohsuke.accmod.restrictions.suppressions.SuppressRestrictedWarnings;
 import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
@@ -92,7 +86,6 @@ public class AzureAdAuthorizationMatrixProperty extends AuthorizationMatrixPrope
 
     @Extension
     @Symbol("azureAdAuthorizationMatrix")
-    @SuppressRestrictedWarnings(AuthorizationPropertyDescriptor.class)
     public static class DescriptorImpl extends JobPropertyDescriptor implements
             AuthorizationPropertyDescriptor<AzureAdAuthorizationMatrixProperty> {
 
@@ -143,7 +136,6 @@ public class AzureAdAuthorizationMatrixProperty extends AuthorizationMatrixPrope
         }
     }
 
-    @SuppressRestrictedWarnings(AbstractAuthorizationPropertyConverter.class)
     public static class ConverterImpl extends AbstractAuthorizationPropertyConverter {
 
         @Override
