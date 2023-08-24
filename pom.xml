@@ -39,7 +39,7 @@
         <jenkins.version>2.387.3</jenkins.version>
         <node.version>18.12.1</node.version>
         <npm.version>8.19.2</npm.version>
-        <hpi.compatibleSinceVersion>336.vd05b_01358644</hpi.compatibleSinceVersion>
+        <hpi.compatibleSinceVersion>391.v252da_e1dd39c</hpi.compatibleSinceVersion>
 
         <checkstyle.skip>true</checkstyle.skip>
     </properties>
