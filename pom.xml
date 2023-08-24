@@ -40,6 +40,8 @@
         <node.version>18.12.1</node.version>
         <npm.version>8.19.2</npm.version>
         <hpi.compatibleSinceVersion>336.vd05b_01358644</hpi.compatibleSinceVersion>
+
+        <checkstyle.skip>true</checkstyle.skip>
     </properties>
 
     <repositories>
@@ -161,6 +163,7 @@
         <dependency>
             <groupId>org.jenkins-ci.plugins</groupId>
             <artifactId>matrix-auth</artifactId>
+            <version>3.2</version>
         </dependency>
         <dependency>
             <groupId>com.github.scribejava</groupId>

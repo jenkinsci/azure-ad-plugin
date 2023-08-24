@@ -29,12 +29,10 @@ import hudson.Extension;
 import io.jenkins.plugins.casc.Attribute;
 import io.jenkins.plugins.casc.BaseConfigurator;
 import io.jenkins.plugins.casc.ConfigurationContext;
-import io.jenkins.plugins.casc.ConfiguratorException;
 import io.jenkins.plugins.casc.impl.attributes.DescribableAttribute;
 import io.jenkins.plugins.casc.impl.attributes.MultivaluedAttribute;
 import io.jenkins.plugins.casc.model.Mapping;
 import org.jenkinsci.plugins.matrixauth.inheritance.InheritanceStrategy;
-import org.jenkinsci.plugins.matrixauth.integrations.casc.MatrixAuthorizationStrategyConfigurator;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 
@@ -53,8 +51,7 @@ public class AzureAdAuthorizationMatrixNodePropertyConfigurator
     }
 
     @Override
-    protected AzureAdAuthorizationMatrixNodeProperty instance(Mapping mapping, ConfigurationContext context)
-            throws ConfiguratorException {
+    protected AzureAdAuthorizationMatrixNodeProperty instance(Mapping mapping, ConfigurationContext context) {
         return new AzureAdAuthorizationMatrixNodeProperty();
     }
 
@@ -62,13 +59,14 @@ public class AzureAdAuthorizationMatrixNodePropertyConfigurator
     @NonNull
     public Set<Attribute<AzureAdAuthorizationMatrixNodeProperty, ?>> describe() {
         return new HashSet<>(Arrays.asList(
-                new MultivaluedAttribute<AzureAdAuthorizationMatrixNodeProperty, String>(
-                        "permissions",
-                        String.class
-                )
-                        .getter(MatrixAuthorizationStrategyConfigurator::getPermissions)
-                        .setter(MatrixAuthorizationStrategyConfigurator::setPermissions),
-                new DescribableAttribute<AzureAdAuthorizationMatrixNodeProperty,
-                        InheritanceStrategy>("inheritanceStrategy", InheritanceStrategy.class)));
+                new MultivaluedAttribute<AzureAdAuthorizationMatrixNodeProperty, String>("permissions", String.class)
+                        .getter(unused -> null)
+                        .setter(MatrixAuthorizationStrategyConfigurator::setLegacyPermissions),
+                new MultivaluedAttribute<AzureAdAuthorizationMatrixNodeProperty, DefinitionEntry>(
+                        "entries", DefinitionEntry.class)
+                        .getter(MatrixAuthorizationStrategyConfigurator::getEntries)
+                        .setter(MatrixAuthorizationStrategyConfigurator::setEntries),
+                new DescribableAttribute<AzureAdAuthorizationMatrixNodeProperty, InheritanceStrategy>(
+                        "inheritanceStrategy", InheritanceStrategy.class)));
     }
 }

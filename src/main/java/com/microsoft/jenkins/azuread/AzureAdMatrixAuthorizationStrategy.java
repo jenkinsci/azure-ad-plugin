@@ -14,7 +14,6 @@ import com.microsoft.graph.options.QueryOption;
 import com.microsoft.graph.requests.GraphServiceClient;
 import com.microsoft.graph.requests.GroupCollectionPage;
 import com.microsoft.graph.requests.UserCollectionPage;
-import com.microsoft.jenkins.azuread.utils.ValidationUtil;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.Functions;
@@ -28,7 +27,6 @@ import hudson.model.Job;
 import hudson.model.Node;
 import hudson.security.ACL;
 import hudson.security.AccessControlled;
-import hudson.security.GlobalMatrixAuthorizationStrategy;
 import hudson.security.Permission;
 import hudson.security.SecurityRealm;
 import hudson.security.SidACL;
@@ -36,14 +34,10 @@ import hudson.util.FormValidation;
 import jenkins.model.Jenkins;
 import okhttp3.Request;
 import org.apache.commons.lang.StringUtils;
-import org.jenkinsci.plugins.matrixauth.AuthorizationContainer;
-import org.jenkinsci.plugins.matrixauth.AuthorizationType;
-import org.jenkinsci.plugins.matrixauth.PermissionEntry;
-import org.jenkinsci.plugins.matrixauth.AuthorizationMatrixNodeProperty;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.DoNotUse;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
-import org.kohsuke.accmod.restrictions.suppressions.SuppressRestrictedWarnings;
+import org.kohsuke.stapler.DataBoundConstructor;
 import org.springframework.security.core.Authentication;
 
 import java.util.ArrayList;
@@ -54,15 +48,18 @@ import java.util.TreeSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static com.microsoft.jenkins.azuread.utils.ValidationUtil.formatNonExistentUserGroupValidationResponse;
-import static com.microsoft.jenkins.azuread.utils.ValidationUtil.formatUserGroupValidationResponse;
-
+import static com.microsoft.jenkins.azuread.ValidationUtil.formatNonExistentUserGroupValidationResponse;
+import static com.microsoft.jenkins.azuread.ValidationUtil.formatUserGroupValidationResponse;
 
 public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizationStrategy {
 
     private static final Logger LOGGER = Logger.getLogger(AzureAdMatrixAuthorizationStrategy.class.getName());
 
     private final transient ObjId2FullSidMap objId2FullSidMap = new ObjId2FullSidMap();
+
+    @DataBoundConstructor
+    public AzureAdMatrixAuthorizationStrategy() {
+    }
 
     //
     // Inheriting from ProjectMatrixAuthorizationStrategy will lead to conflict
@@ -128,7 +125,6 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
 
     @Override
     @NonNull
-    @SuppressRestrictedWarnings(value = {IdStrategyComparator.class, AuthorizationContainer.class})
     public Set<String> getGroups() {
         Set<String> r = new TreeSet<>(new IdStrategyComparator());
         r.addAll(super.getGroups());
@@ -376,7 +372,6 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
     }
 
     @Restricted(DoNotUse.class)
-    @SuppressRestrictedWarnings(GlobalMatrixAuthorizationStrategy.ConverterImpl.class)
     public static class ConverterImpl extends GlobalMatrixAuthorizationStrategy.ConverterImpl {
         @Override
         public GlobalMatrixAuthorizationStrategy create() {

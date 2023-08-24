@@ -21,9 +21,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.microsoft.jenkins.azuread.utils;
+package com.microsoft.jenkins.azuread;
 
-import com.microsoft.jenkins.azuread.AzureAdUser;
+import com.microsoft.jenkins.azuread.AuthorizationType;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Functions;
 import hudson.Util;
@@ -34,35 +34,32 @@ import hudson.util.FormValidation;
 import org.apache.commons.lang.StringUtils;
 import org.jenkins.ui.symbol.Symbol;
 import org.jenkins.ui.symbol.SymbolRequest;
-import org.jenkinsci.plugins.matrixauth.AuthorizationType;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
-import static org.jenkinsci.plugins.matrixauth.AuthorizationType.EITHER;
-import static org.jenkinsci.plugins.matrixauth.AuthorizationType.GROUP;
-import static org.jenkinsci.plugins.matrixauth.AuthorizationType.USER;
+import static com.microsoft.jenkins.azuread.AuthorizationType.EITHER;
+import static com.microsoft.jenkins.azuread.AuthorizationType.GROUP;
+import static com.microsoft.jenkins.azuread.AuthorizationType.USER;
 
 @Restricted(NoExternalUse.class)
-public final class ValidationUtil {
-
-    private static final int MAX_WIDTH = 50;
-
-    private static final String USER_SYMBOL;
-    private static final String GROUP_SYMBOL;
-    private static final String WARNING_SYMBOL;
-    private static final String ALERT_SYMBOL;
+class ValidationUtil {
+    private static final String userSymbol;
+    private static final String groupSymbol;
+    private static final String warningSymbol;
+    private static final String alertSymbol;
 
     private ValidationUtil() {
         // do not use
     }
 
     static {
-        USER_SYMBOL = getSymbol("person", "icon-sm");
-        GROUP_SYMBOL = getSymbol("people", "icon-sm");
-        ALERT_SYMBOL = getSymbol("alert-circle", "icon-md mas-table__icon-alert");
-        WARNING_SYMBOL = getSymbol("warning", "icon-md mas-table__icon-warning");
+        userSymbol = getSymbol("person", "icon-sm");
+        groupSymbol = getSymbol("people", "icon-sm");
+        alertSymbol = getSymbol("alert-circle", "icon-md mas-table__icon-alert");
+        warningSymbol = getSymbol("warning", "icon-md mas-table__icon-warning");
     }
 
     private static String getSymbol(String symbol, String classes) {
@@ -73,20 +70,20 @@ public final class ValidationUtil {
                 .build());
     }
 
-    public static String formatNonExistentUserGroupValidationResponse(String user, String tooltip) {
+    static String formatNonExistentUserGroupValidationResponse(String user, String tooltip) {
         return formatNonExistentUserGroupValidationResponse(user, tooltip, false);
     }
 
-   public static String formatNonExistentUserGroupValidationResponse(String user, String tooltip, boolean warning) {
+    static String formatNonExistentUserGroupValidationResponse(String user, String tooltip, boolean warning) {
         return formatUserGroupValidationResponse(
                 "alert", "<span class='mas-table__cell--not-found'>" + user + "</span>", tooltip, warning);
     }
 
-    public static String formatUserGroupValidationResponse(@NonNull AuthorizationType type, String user, String tooltip) {
+    static String formatUserGroupValidationResponse(@NonNull AuthorizationType type, String user, String tooltip) {
         return formatUserGroupValidationResponse(type.toString(), user, tooltip, false);
     }
 
-    public static String formatUserGroupValidationResponse(
+    static String formatUserGroupValidationResponse(
             @NonNull AuthorizationType type, String user, String tooltip, boolean warning) {
         return formatUserGroupValidationResponse(type.toString(), user, tooltip, warning);
     }
@@ -96,13 +93,13 @@ public final class ValidationUtil {
         String symbol;
         switch (type) {
             case "GROUP":
-                symbol = GROUP_SYMBOL;
+                symbol = groupSymbol;
                 break;
             case "alert":
-                symbol = ALERT_SYMBOL;
+                symbol = alertSymbol;
                 break;
             case "USER":
-                symbol = USER_SYMBOL;
+                symbol = userSymbol;
                 break;
             case "EITHER":
             default:
@@ -112,12 +109,12 @@ public final class ValidationUtil {
         if (warning) {
             return String.format(
                     "<div tooltip='%s' class='mas-table__cell mas-table__cell-warning'>%s%s%s</div>",
-                    tooltip, WARNING_SYMBOL, symbol, user);
+                    tooltip, warningSymbol, symbol, user);
         }
         return String.format("<div tooltip='%s' class='mas-table__cell'>%s%s</div>", tooltip, symbol, user);
     }
 
-    public static FormValidation validateGroup(String groupName, SecurityRealm sr, boolean ambiguous) {
+    static FormValidation validateGroup(String groupName, SecurityRealm sr, boolean ambiguous) {
         String escapedSid = Functions.escape(groupName);
         try {
             sr.loadGroupByGroupname2(groupName, false);
@@ -155,7 +152,7 @@ public final class ValidationUtil {
         return null;
     }
 
-    public static FormValidation validateUser(String userName, SecurityRealm sr, boolean ambiguous) {
+    static FormValidation validateUser(String userName, SecurityRealm sr, boolean ambiguous) {
         String escapedSid = Functions.escape(userName);
         try {
             AzureAdUser userDetails = (AzureAdUser) sr.loadUserByUsername2(userName);
@@ -167,12 +164,12 @@ public final class ValidationUtil {
                             FormValidation.Kind.WARNING,
                             formatUserGroupValidationResponse(
                                     USER,
-                                    userDetails.getUniqueName(),
+                                    userDetails.getName(),
                                     "User found; but permissions would also be granted to a group of this name",
                                     true));
                 } else {
                     return FormValidation.respond(
-                            FormValidation.Kind.OK, formatUserGroupValidationResponse(USER, userDetails.getUniqueName(), "User"));
+                            FormValidation.Kind.OK, formatUserGroupValidationResponse(USER, userDetails.getName(), "User"));
                 }
             }
             if (ambiguous) {
@@ -180,15 +177,15 @@ public final class ValidationUtil {
                         FormValidation.Kind.WARNING,
                         formatUserGroupValidationResponse(
                                 USER,
-                                Util.escape(StringUtils.abbreviate(u.getFullName(), MAX_WIDTH)),
-                                "User " + escapedSid
+                                Util.escape(StringUtils.abbreviate(userDetails.getName(), 50)),
+                                "User " + userDetails.getName()
                                         + " found; but permissions would also be granted to a group of this name",
                                 true));
             } else {
                 return FormValidation.respond(
                         FormValidation.Kind.OK,
                         formatUserGroupValidationResponse(
-                                USER, Util.escape(StringUtils.abbreviate(u.getFullName(), MAX_WIDTH)), "User " + escapedSid));
+                                USER, Util.escape(StringUtils.abbreviate(userDetails.getName(), 50)), "User " + escapedSid));
             }
         } catch (UserMayOrMayNotExistException2 e) {
             // undecidable, meaning the user may exist
