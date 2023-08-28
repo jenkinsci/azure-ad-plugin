@@ -153,7 +153,7 @@ public class AuthorizationMatrixProperty extends AbstractFolderProperty<Abstract
     }
 
     @Extension(optional = true)
-    @Symbol("authorizationMatrix")
+    @Symbol("authorizationMatrixFork")
     public static class DescriptorImpl extends AbstractFolderPropertyDescriptor
             implements AuthorizationPropertyDescriptor<AuthorizationMatrixProperty> {
 
