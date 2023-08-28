@@ -189,7 +189,7 @@ public class AuthorizationMatrixProperty extends JobProperty<Job<?, ?>> implemen
     }
 
     @Extension
-    @Symbol("authorizationMatrix")
+    @Symbol("authorizationMatrixFork")
     public static class DescriptorImpl extends JobPropertyDescriptor
             implements AuthorizationPropertyDescriptor<AuthorizationMatrixProperty> {
 
