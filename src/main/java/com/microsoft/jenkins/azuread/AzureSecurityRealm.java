@@ -82,6 +82,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.Proxy;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -108,7 +109,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     private static final String TIMESTAMP_ATTRIBUTE = AzureSecurityRealm.class.getName() + ".beginTime";
     private static final String NONCE_ATTRIBUTE = AzureSecurityRealm.class.getName() + ".nonce";
     private static final Logger LOGGER = Logger.getLogger(AzureSecurityRealm.class.getName());
-    private static final int NONCE_LENGTH = 10;
+    private static final int NONCE_LENGTH = 16;
     public static final String CALLBACK_URL = "/securityRealm/finishLogin";
     private static final String CONVERTER_NODE_CLIENT_ID = "clientid";
     private static final String CONVERTER_NODE_CLIENT_SECRET = "clientsecret";
@@ -458,7 +459,12 @@ public class AzureSecurityRealm extends SecurityRealm {
     JwtClaims validateIdToken(String expectedNonce, String idToken) throws InvalidJwtException {
         JwtClaims claims = getJwtConsumer().processToClaims(idToken);
         final String responseNonce = (String) claims.getClaimValue("nonce");
-        if (StringUtils.isAnyEmpty(expectedNonce, responseNonce) || !expectedNonce.equals(responseNonce)) {
+        if (StringUtils.isAnyEmpty(expectedNonce, responseNonce)
+                || !MessageDigest.isEqual(
+                        expectedNonce.getBytes(StandardCharsets.UTF_8),
+                        responseNonce.getBytes(StandardCharsets.UTF_8)
+                )
+        ) {
             throw new IllegalStateException(String.format("Invalid nonce in the response, "
                     + "expected: %s actual: %s", expectedNonce, responseNonce));
         }
