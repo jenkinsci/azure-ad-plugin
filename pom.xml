@@ -9,7 +9,7 @@
     </parent>
 
     <artifactId>azure-ad</artifactId>
-    <version>${changelist}</version>
+    <version>378.${changelist}</version>
 
     <name>Azure AD Plugin</name>
     <url>https://github.com/jenkinsci/azure-ad-plugin</url>
