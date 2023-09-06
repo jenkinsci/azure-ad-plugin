@@ -85,7 +85,7 @@ Behaviour.specify(".azure-ad-add-button", 'AzureAdMatrixAuthorizationStrategy', 
                 }
             });
             table.appendChild(copy);
-            Behaviour.applySubtree(findAncestor(table,"TABLE"),true);
+            Behaviour.applySubtree(table.closest("TABLE"),true);
         })
 
 
@@ -102,7 +102,7 @@ Behaviour.specify(".azure-ad-add-button", 'AzureAdMatrixAuthorizationStrategy', 
  */
 Behaviour.specify(".global-matrix-authorization-strategy-table TD.stop A.remove", 'AzureAdMatrixAuthorizationStrategy', 0, function(e) {
     e.onclick = function() {
-        var tr = findAncestor(this,"TR");
+        var tr = this.closest("TR");
         tr.parentNode.removeChild(tr);
         return false;
     }
@@ -114,12 +114,12 @@ Behaviour.specify(".global-matrix-authorization-strategy-table TD.stop A.remove"
  */
 Behaviour.specify(".global-matrix-authorization-strategy-table TD.stop A.selectall", 'AzureAdMatrixAuthorizationStrategy', 0, function(e) {
     e.onclick = function() {
-        var tr = findAncestor(this,"TR");
+        var tr = this.closest("TR");
         var inputs = tr.getElementsByTagName("INPUT");
         for(var i=0; i < inputs.length; i++){
             if(inputs[i].type == "checkbox") inputs[i].checked = true;
         }
-        Behaviour.applySubtree(findAncestor(this,"TABLE"),true);
+        Behaviour.applySubtree(this.closest("TABLE"),true);
         return false;
     };
     e = null; // avoid memory leak
@@ -130,12 +130,12 @@ Behaviour.specify(".global-matrix-authorization-strategy-table TD.stop A.selecta
  */
 Behaviour.specify(".global-matrix-authorization-strategy-table TD.stop A.unselectall", 'AzureAdMatrixAuthorizationStrategy', 0, function(e) {
     e.onclick = function() {
-        var tr = findAncestor(this,"TR");
+        var tr = this.closest("TR");
         var inputs = tr.getElementsByTagName("INPUT");
         for(var i=0; i < inputs.length; i++){
             if(inputs[i].type == "checkbox") inputs[i].checked = false;
         }
-        Behaviour.applySubtree(findAncestor(this,"TABLE"),true);
+        Behaviour.applySubtree(this.closest("TABLE"),true);
         return false;
     };
     e = null; // avoid memory leak
@@ -145,11 +145,11 @@ Behaviour.specify(".global-matrix-authorization-strategy-table TD.stop A.unselec
  * Whenever permission assignments change, this ensures that implied permissions get their checkboxes disabled.
  */
 Behaviour.specify(".global-matrix-authorization-strategy-table td input", 'AzureAdMatrixAuthorizationStrategy', 0, function(e) {
-    var impliedByString = findAncestor(e, "TD").getAttribute('data-implied-by-list');
+    var impliedByString = e.closest("TD").getAttribute('data-implied-by-list');
     var impliedByList = impliedByString.split(" ");
-    var tr = findAncestor(e,"TR");
+    var tr = e.closest("TR");
     e.disabled = false;
-    var enabledTooltip = YAHOO.lang.escapeHTML(findAncestor(e, "TD").getAttribute('data-tooltip-enabled'));
+    var enabledTooltip = YAHOO.lang.escapeHTML(e.closest("TD").getAttribute('data-tooltip-enabled'));
     e.setAttribute('data-html-tooltip', enabledTooltip);
     e.nextSibling.setAttribute('data-html-tooltip', enabledTooltip); // 2.335+
 
@@ -159,13 +159,13 @@ Behaviour.specify(".global-matrix-authorization-strategy-table td input", 'Azure
         if (reference !== null) {
             if (reference.checked) {
                 e.disabled = true;
-                var tooltip = YAHOO.lang.escapeHTML(findAncestor(e, "TD").getAttribute('data-tooltip-disabled'));
+                var tooltip = YAHOO.lang.escapeHTML(e.closest("TD").getAttribute('data-tooltip-disabled'));
                 e.nextSibling.setAttribute('data-html-tooltip', tooltip);
             }
         }
     }
     e.onchange = function() {
-        Behaviour.applySubtree(findAncestor(this,"TABLE"),true);
+        Behaviour.applySubtree(this.closest("TABLE"),true);
         return true;
     };
     e = null; // avoid memory leak
