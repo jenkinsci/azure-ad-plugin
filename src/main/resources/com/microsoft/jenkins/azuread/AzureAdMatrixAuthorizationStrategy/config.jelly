@@ -191,13 +191,13 @@ THE SOFTWARE.
                      data-table-id="${id}"
                      data-type="USER"
                      data-type-label="${%user}"
-                     data-message-error="${%userError}"
+                     data-message-user-error="${%userError}"
               >${%Add user}</button>
               <button type="button" class="jenkins-button azure-ad-add-button" id="${id}GroupButton"
                      data-table-id="${id}"
                      data-type="GROUP"
                      data-type-label="${%group}"
-                     data-message-error="${%groupError}"
+                     data-message-group-error="${%groupError}"
               >${%Add group}</button>
             </div>
           </j:when>
@@ -209,7 +209,8 @@ THE SOFTWARE.
               <button type="button" class="jenkins-button azure-ad-add-button" id="${id}button"
                      data-table-id="${id}"
                      data-message-empty="${%empty}"
-                     data-message-error="${%error}"
+                     data-message-user-error="${%userError}"
+                     data-message-group-error="${%groupError}"
                      data-type-user-label="${%user}"
                      data-type-group-label="${%user}"
               >${%Add}</button>
