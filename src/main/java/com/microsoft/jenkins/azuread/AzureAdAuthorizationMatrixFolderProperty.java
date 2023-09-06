@@ -33,10 +33,8 @@ public class AzureAdAuthorizationMatrixFolderProperty extends AuthorizationMatri
 
     @DataBoundConstructor
     @Restricted(NoExternalUse.class)
-    public AzureAdAuthorizationMatrixFolderProperty(List<String> permissions) {
-        for (String permission : permissions) {
-            add(permission);
-        }
+    public AzureAdAuthorizationMatrixFolderProperty(List<DslEntry> entries) {
+        setEntries(entries);
     }
 
     @Override

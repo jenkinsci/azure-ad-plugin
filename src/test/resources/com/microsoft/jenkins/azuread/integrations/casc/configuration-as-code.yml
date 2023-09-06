@@ -73,3 +73,24 @@ jenkins:
                       - "Agent/Disconnect"
         remoteFS: "/opt/jenkins"
         retentionStrategy: "always"
+jobs:
+  - script: >
+      folder('generated') {
+        properties {
+          azureAdAuthorizationMatrix {
+            inheritanceStrategy {
+                nonInheriting()
+            }
+            entries {
+              group {
+                name('Some group (7fe913e8-6c9f-40f8-913e-7178b7768cc5)')
+                permissions([ 'Job/Build', 'Job/Configure', 'Job/Delete', 'Job/Read' ])
+              }
+              user {
+                name('c411116f-cfa6-472c-8ccf-d0cb6053c9aa')
+                permissions([ 'Job/Build', 'Job/Configure' ])
+              }
+            }
+          }
+        }
+      }

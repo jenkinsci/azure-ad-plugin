@@ -46,11 +46,9 @@ public class AzureAdAuthorizationMatrixProperty extends AuthorizationMatrixPrope
 
     @DataBoundConstructor
     @Restricted(NoExternalUse.class)
-    public AzureAdAuthorizationMatrixProperty(List<String> permissions) {
+    public AzureAdAuthorizationMatrixProperty(List<DslEntry> entries) {
         this();
-        for (String permission : permissions) {
-            add(permission);
-        }
+        setEntries(entries);
     }
 
     void refreshMap() {
