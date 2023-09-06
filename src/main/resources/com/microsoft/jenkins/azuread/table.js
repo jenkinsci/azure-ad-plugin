@@ -44,8 +44,10 @@ Behaviour.specify(".azure-ad-add-button", 'AzureAdMatrixAuthorizationStrategy', 
                 type = dataReference.getAttribute('data-type')
             }
 
-            if(findElementsBySelector(table,"TR").find(function(n){return n.getAttribute("name")=='['+name+']';})!=null) {
-                alert(dataReference.getAttribute('data-message-error') + ": " + name);
+            if (findElementsBySelector(table, "TR").find(function (n) {
+                return n.getAttribute("name") === '[' + type + ':' + name + ']';
+            }) != null) {
+                alert(dataReference.getAttribute(`data-message-${type.toLowerCase()}-error`) + ": " + name);
                 return;
             }
 
