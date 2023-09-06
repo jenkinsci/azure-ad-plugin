@@ -1,5 +1,7 @@
 package com.microsoft.jenkins.azuread.integrations.casc;
 
+import com.cloudbees.hudson.plugins.folder.Folder;
+import com.microsoft.jenkins.azuread.AzureAdAuthorizationMatrixFolderProperty;
 import com.microsoft.jenkins.azuread.AzureAdAuthorizationMatrixNodeProperty;
 import com.microsoft.jenkins.azuread.AzureAdMatrixAuthorizationStrategy;
 import com.microsoft.jenkins.azuread.AzureSecurityRealm;
@@ -32,7 +34,9 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 public class ConfigAsCodeTest {
@@ -86,6 +90,23 @@ public class ConfigAsCodeTest {
                                     Computer.BUILD),
                     is(true)
             );
+        }
+
+        {
+            Folder folder = (Folder) j.jenkins.getItem("generated");
+            assertNotNull(folder);
+            AzureAdAuthorizationMatrixFolderProperty property = folder.getProperties()
+                    .get(AzureAdAuthorizationMatrixFolderProperty.class);
+            assertTrue("folder property inherits", property.getInheritanceStrategy() instanceof NonInheritingStrategy);
+            String groupSid = "Some group (7fe913e8-6c9f-40f8-913e-7178b7768cc5)";
+            assertTrue(property.hasExplicitPermission(PermissionEntry.group(groupSid), Item.BUILD));
+            assertTrue(property.hasExplicitPermission(PermissionEntry.group(groupSid), Item.READ));
+            assertFalse(property.hasExplicitPermission(PermissionEntry.user("anonymous"), Item.READ));
+            assertTrue(property.hasExplicitPermission(PermissionEntry.group(groupSid), Item.CONFIGURE));
+            assertTrue(property.hasExplicitPermission(PermissionEntry.group(groupSid), Item.DELETE));
+
+            String userSid = "c411116f-cfa6-472c-8ccf-d0cb6053c9aa";
+            assertTrue(property.hasExplicitPermission(PermissionEntry.user(userSid), Item.BUILD));
         }
     }
 

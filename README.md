@@ -87,6 +87,11 @@ The following can normally be used:
 * `preferred_username` claim which is normally the 'User principal name', but not always.
 * User principal name (Rest API authentication only)
 
+## Configuration as Code and Job DSL support
+The plugin has full support for use in Configuration as Code and Job DSL.
+
+For an example combining the two, see the [configuration-as-code.yml](./src/test/resources/com/microsoft/jenkins/azuread/integrations/casc/configuration-as-code.yml) test resource.
+
 ## FAQ
 #### Q: How to recover if Jenkins keeps failing during the login phase?
 A: You can disable the security from the config file (see [https://www.jenkins.io/doc/book/security/access-control/disable/](https://www.jenkins.io/doc/book/security/access-control/disable/))
