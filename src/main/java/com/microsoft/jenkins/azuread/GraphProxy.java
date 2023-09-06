@@ -36,7 +36,7 @@ import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static com.microsoft.jenkins.azuread.AzureSecurityRealm.addProxyToHttpClientIfRequired;
+import static com.microsoft.jenkins.azuread.GraphClientCache.addProxyToHttpClientIfRequired;
 
 /**
  * Proxies calls to the Microsoft Graph API.

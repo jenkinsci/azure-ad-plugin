@@ -2,8 +2,8 @@
  * This handles the addition of new users/groups to the list.
  */
 Behaviour.specify(".azure-ad-add-button", 'AzureAdMatrixAuthorizationStrategy', 0, function(e) {
-    makeButton(e, function (e) {
-        var dataReference = e.target;
+    e.addEventListener('click', function(event) {
+        var dataReference = event.target;
         var dataTableId = dataReference.getAttribute('data-table-id');
         var master = document.getElementById(dataTableId);
         var table = master.parentNode;
@@ -65,22 +65,27 @@ Behaviour.specify(".azure-ad-add-button", 'AzureAdMatrixAuthorizationStrategy', 
                     child.setAttribute("data-tooltip-disabled", child.getAttribute("data-tooltip-disabled").replace("__SID__", name).replace("__TYPE__", typeLabel));
                 }
             }
-            findElementsBySelector(copy, ".stop img").each(function(item) {
-                item.setAttribute("title", item.getAttribute("title").replace("__SID__", name).replace("__TYPE__", typeLabel));
+
+            findElementsBySelector(copy, ".stop a").forEach(function(item) {
+                let oldTitle = item.getAttribute("title");
+                if (oldTitle !== null) {
+                    item.setAttribute("title", oldTitle.replace("__SID__", name).replace("__TYPE__", typeLabel));
+                }
+
+                item.setAttribute('data-html-tooltip', item.getAttribute('data-html-tooltip').replace("__SID__", name).replace("__TYPE__", typeLabel));
             });
 
-            var tooltipAttributeName = getTooltipAttributeName();
 
-            findElementsBySelector(copy, "input[type=checkbox]").each(function(item) {
-                const tooltip = item.getAttribute(tooltipAttributeName);
+            findElementsBySelector(copy, "input[type=checkbox]").forEach(function(item) {
+                const tooltip = item.getAttribute('data-html-tooltip');
                 if (tooltip) {
-                    item.setAttribute(tooltipAttributeName, tooltip.replace("__SID__", name).replace("__TYPE__", typeLabel));
+                    item.setAttribute('data-html-tooltip', tooltip.replace("__SID__", name).replace("__TYPE__", typeLabel));
                 } else {
                     item.setAttribute("title", item.getAttribute("title").replace("__SID__", name).replace("__TYPE__", typeLabel));
                 }
             });
             table.appendChild(copy);
-            Behaviour.applySubtree(findAncestor(table,"TABLE"),true);
+            Behaviour.applySubtree(table.closest("TABLE"),true);
         })
 
 
@@ -92,17 +97,12 @@ Behaviour.specify(".azure-ad-add-button", 'AzureAdMatrixAuthorizationStrategy', 
     });
 });
 
-function getTooltipAttributeName() {
-    var tippySupported = window.registerTooltips !== undefined;
-    return tippySupported ? 'html-tooltip' : 'tooltip';
-}
-
 /*
  * Behavior for the element removing a permission assignment row for a user/group
  */
 Behaviour.specify(".global-matrix-authorization-strategy-table TD.stop A.remove", 'AzureAdMatrixAuthorizationStrategy', 0, function(e) {
     e.onclick = function() {
-        var tr = findAncestor(this,"TR");
+        var tr = this.closest("TR");
         tr.parentNode.removeChild(tr);
         return false;
     }
@@ -114,12 +114,12 @@ Behaviour.specify(".global-matrix-authorization-strategy-table TD.stop A.remove"
  */
 Behaviour.specify(".global-matrix-authorization-strategy-table TD.stop A.selectall", 'AzureAdMatrixAuthorizationStrategy', 0, function(e) {
     e.onclick = function() {
-        var tr = findAncestor(this,"TR");
+        var tr = this.closest("TR");
         var inputs = tr.getElementsByTagName("INPUT");
         for(var i=0; i < inputs.length; i++){
             if(inputs[i].type == "checkbox") inputs[i].checked = true;
         }
-        Behaviour.applySubtree(findAncestor(this,"TABLE"),true);
+        Behaviour.applySubtree(this.closest("TABLE"),true);
         return false;
     };
     e = null; // avoid memory leak
@@ -130,12 +130,12 @@ Behaviour.specify(".global-matrix-authorization-strategy-table TD.stop A.selecta
  */
 Behaviour.specify(".global-matrix-authorization-strategy-table TD.stop A.unselectall", 'AzureAdMatrixAuthorizationStrategy', 0, function(e) {
     e.onclick = function() {
-        var tr = findAncestor(this,"TR");
+        var tr = this.closest("TR");
         var inputs = tr.getElementsByTagName("INPUT");
         for(var i=0; i < inputs.length; i++){
             if(inputs[i].type == "checkbox") inputs[i].checked = false;
         }
-        Behaviour.applySubtree(findAncestor(this,"TABLE"),true);
+        Behaviour.applySubtree(this.closest("TABLE"),true);
         return false;
     };
     e = null; // avoid memory leak
@@ -145,14 +145,13 @@ Behaviour.specify(".global-matrix-authorization-strategy-table TD.stop A.unselec
  * Whenever permission assignments change, this ensures that implied permissions get their checkboxes disabled.
  */
 Behaviour.specify(".global-matrix-authorization-strategy-table td input", 'AzureAdMatrixAuthorizationStrategy', 0, function(e) {
-    var tooltipAttributeName = getTooltipAttributeName();
-    var impliedByString = findAncestor(e, "TD").getAttribute('data-implied-by-list');
+    var impliedByString = e.closest("TD").getAttribute('data-implied-by-list');
     var impliedByList = impliedByString.split(" ");
-    var tr = findAncestor(e,"TR");
+    var tr = e.closest("TR");
     e.disabled = false;
-    var enabledTooltip = YAHOO.lang.escapeHTML(findAncestor(e, "TD").getAttribute('data-tooltip-enabled'));
-    e.setAttribute(tooltipAttributeName, enabledTooltip);
-    e.nextSibling.setAttribute(tooltipAttributeName, enabledTooltip); // 2.335+
+    var enabledTooltip = YAHOO.lang.escapeHTML(e.closest("TD").getAttribute('data-tooltip-enabled'));
+    e.setAttribute('data-html-tooltip', enabledTooltip);
+    e.nextSibling.setAttribute('data-html-tooltip', enabledTooltip); // 2.335+
 
     for (var i = 0; i < impliedByList.length; i++) {
         var permissionId = impliedByList[i];
@@ -160,14 +159,13 @@ Behaviour.specify(".global-matrix-authorization-strategy-table td input", 'Azure
         if (reference !== null) {
             if (reference.checked) {
                 e.disabled = true;
-                var tooltip = YAHOO.lang.escapeHTML(findAncestor(e, "TD").getAttribute('data-tooltip-disabled'));
-                e.setAttribute(tooltipAttributeName, tooltip); // before 2.335 -- TODO remove once baseline is new enough
-                e.nextSibling.setAttribute(tooltipAttributeName, tooltip); // 2.335+
+                var tooltip = YAHOO.lang.escapeHTML(e.closest("TD").getAttribute('data-tooltip-disabled'));
+                e.nextSibling.setAttribute('data-html-tooltip', tooltip);
             }
         }
     }
     e.onchange = function() {
-        Behaviour.applySubtree(findAncestor(this,"TABLE"),true);
+        Behaviour.applySubtree(this.closest("TABLE"),true);
         return true;
     };
     e = null; // avoid memory leak

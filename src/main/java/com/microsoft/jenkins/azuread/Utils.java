@@ -71,11 +71,12 @@ public final class Utils {
 
     public static class JwtUtil {
         public static final long DEFAULT_CACHE_DURATION = TimeUnit.HOURS.toSeconds(24);
-        public static final String KEYSTORE_URL = "https://login.microsoftonline.com/common/discovery/keys";
-
         public static JwtConsumer jwt(final String clientId, final String tenantId) {
+            String keyDiscoveryUrl = String.format(
+                    "https://login.microsoftonline.com/%s/discovery/keys?appId=%s", tenantId, clientId
+            );
             final String expectedIssuer = String.format("https://login.microsoftonline.com/%s/v2.0", tenantId);
-            HttpsJwks httpsJwks = new HttpsJwks(KEYSTORE_URL);
+            HttpsJwks httpsJwks = new HttpsJwks(keyDiscoveryUrl);
             httpsJwks.setDefaultCacheDuration(DEFAULT_CACHE_DURATION);
             ProxyConfiguration proxy = Jenkins.get().getProxy();
             if (proxy != null) {

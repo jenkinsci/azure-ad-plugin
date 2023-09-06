@@ -14,9 +14,9 @@ A Jenkins Plugin that supports authentication & authorization via Azure Active D
 
 1. Click `Certificates & secrets`, under Client secrets click `New client secret` to generate a new key, copy the `value`, it will be used as `Client Secret` in Jenkins.
 
-1. Click `Authentication`, under 'Implicit grant', enable `ID tokens`.
+1. Click `Authentication`, under 'Implicit grant and hybrid flows', enable `ID tokens`.
 
-1. (optional) To enable AzureAD group support: Click `Manifest` and modify the `"groupMembershipClaims": "None"` value to `"groupMembershipClaims": "SecurityGroup"`, then 'Save' it.
+1. (optional) To enable AzureAD group support: Click `Manifest` and modify the `"groupMembershipClaims": null` value to `"groupMembershipClaims": "SecurityGroup"`, then 'Save' it.
 
 ### Setup Azure AD permissions (optional, but recommended)
 
@@ -24,7 +24,7 @@ In order for Jenkins to be able to lookup data from Azure AD it needs some Graph
 
 This is used for:
 
-* Autocompleting users and groups on the 'Configure Global Security' page
+* Autocompleting users and groups on the 'Security' page
 * Jenkins looking up the user, e.g. when you use the Rest API
 * Group display name support (rather than just object ID)
 
@@ -38,13 +38,13 @@ _Note: You can skip this part and just use the claims returned when authenticati
 
 1. Application permissions
 
-1. Add 'User.Read.All', 'Group.Read.All' and 'People.Read'
+1. Add 'User.Read.All', 'Group.Read.All' and 'People.Read.All'
 
 1. Click `Grant admin consent`. If you are not an admin in your tenant, please contact an admin to grant the permissions.
 
 ## Setup In Jenkins
 
-Click `Manage Jenkins` in the left menu, then click `Configure Global Security`
+Click `Manage Jenkins` in the left menu, then click `Security`
 
 ## Authentication
 
@@ -56,7 +56,7 @@ Click `Manage Jenkins` in the left menu, then click `Configure Global Security`
 
 1. Log in with Azure AD
 
-1. Return to 'Configure Global Security' to configure authorization
+1. Return to 'Security' to configure authorization
 
 _Note: if you haven't setup Graph API permissions, verify application will fail, skip over this step_
 
@@ -66,14 +66,13 @@ Jenkins will match permissions based on the Object ID of a user or group.
 
 This plugin extends the traditional [Matrix Authorization Strategy](https://plugins.jenkins.io/matrix-auth/)
 with the ability to search by users / groups by display name when configuring the authorization rules.
-It will also include the display name in the authorization rule.
 
 To use this feature:
 
-1. click `Azure Active Directory Matrix-based security`
-1. search for user in 'Azure User/group to add' and click Add
-1. select the permission(s) in the table
-1. click 'Apply'
+1. Click `Azure Active Directory Matrix-based security`
+1. Search for user in 'Azure User/group to add' and click Add
+1. Select the permission(s) in the table
+1. Click 'Apply'
 
 You can still use other authorization strategies such as:
 
@@ -81,11 +80,9 @@ You can still use other authorization strategies such as:
 * [Folder-based Authorization Strategy](https://plugins.jenkins.io/folder-auth/)
 * [Role-based Authorization Strategy](https://plugins.jenkins.io/role-strategy/)
 
-Just keep in mind that the Jenkins ID format will be used and not the `DisplayName (Object ID)` format of this plugin.
-
 The following can normally be used:
 
-* Object ID of group
+* Object ID of user or group
 * Display name of group (Only if Graph API permissions granted)
 * `preferred_username` claim which is normally the 'User principal name', but not always.
 * User principal name (Rest API authentication only)

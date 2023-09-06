@@ -19,7 +19,6 @@ import com.microsoft.graph.authentication.TokenCredentialAuthProvider;
 import com.microsoft.graph.http.GraphServiceException;
 import com.microsoft.graph.httpcore.HttpClients;
 import com.microsoft.graph.models.Group;
-import com.microsoft.graph.options.HeaderOption;
 import com.microsoft.graph.options.Option;
 import com.microsoft.graph.options.QueryOption;
 import com.microsoft.graph.requests.GraphServiceClient;
@@ -48,7 +47,9 @@ import hudson.util.FormValidation;
 import hudson.util.ListBoxModel;
 import hudson.util.Secret;
 import io.jenkins.plugins.azuresdk.HttpClientRetriever;
+
 import javax.servlet.http.HttpSession;
+
 import jenkins.model.Jenkins;
 import jenkins.security.SecurityListener;
 import jenkins.util.JenkinsJVM;
@@ -83,6 +84,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.Proxy;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -109,7 +111,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     private static final String TIMESTAMP_ATTRIBUTE = AzureSecurityRealm.class.getName() + ".beginTime";
     private static final String NONCE_ATTRIBUTE = AzureSecurityRealm.class.getName() + ".nonce";
     private static final Logger LOGGER = Logger.getLogger(AzureSecurityRealm.class.getName());
-    private static final int NONCE_LENGTH = 10;
+    private static final int NONCE_LENGTH = 16;
     public static final String CALLBACK_URL = "/securityRealm/finishLogin";
     private static final String CONVERTER_NODE_CLIENT_ID = "clientid";
     private static final String CONVERTER_NODE_CLIENT_SECRET = "clientsecret";
@@ -134,31 +136,6 @@ public class AzureSecurityRealm extends SecurityRealm {
     private boolean disableGraphIntegration;
     private String azureEnvironmentName = "Azure";
 
-    private final transient Supplier<GraphServiceClient<Request>> cachedAzureClient = Suppliers.memoize(() -> {
-
-        String azureEnv = getAzureEnvironmentName();
-        final ClientSecretCredential clientSecretCredential = getClientSecretCredential();
-
-        final TokenCredentialAuthProvider authProvider = new TokenCredentialAuthProvider(clientSecretCredential);
-
-        OkHttpClient.Builder builder = HttpClients.createDefault(authProvider)
-                .newBuilder();
-
-        builder = addProxyToHttpClientIfRequired(builder);
-        final OkHttpClient graphHttpClient = builder.build();
-
-        GraphServiceClient<Request> graphServiceClient = GraphServiceClient
-                .builder()
-                .httpClient(graphHttpClient)
-                .buildClient();
-
-        if (!azureEnv.equals(AZURE_PUBLIC_CLOUD)) {
-            graphServiceClient.setServiceRoot(getServiceRoot(azureEnv));
-        }
-        return graphServiceClient;
-
-    });
-
     public AccessToken getAccessToken() {
         ClientSecretCredential clientSecretCredential = getClientSecretCredential();
 
@@ -174,7 +151,7 @@ public class AzureSecurityRealm extends SecurityRealm {
         return accessToken;
     }
 
-    private ClientSecretCredential getClientSecretCredential() {
+    ClientSecretCredential getClientSecretCredential() {
         String azureEnv = getAzureEnvironmentName();
         return new ClientSecretCredentialBuilder()
                 .clientId(clientId.getPlainText())
@@ -183,28 +160,6 @@ public class AzureSecurityRealm extends SecurityRealm {
                 .authorityHost(getAuthorityHost(azureEnv))
                 .httpClient(HttpClientRetriever.get())
                 .build();
-    }
-
-    public static OkHttpClient.Builder addProxyToHttpClientIfRequired(OkHttpClient.Builder builder) {
-        if (JenkinsJVM.isJenkinsJVM()) {
-            ProxyConfiguration proxyConfiguration = Jenkins.get().getProxy();
-            if (proxyConfiguration != null && StringUtils.isNotBlank(proxyConfiguration.getName())) {
-                Proxy proxy = proxyConfiguration.createProxy("graph.microsoft.com");
-
-                builder = builder.proxy(proxy);
-                if (StringUtils.isNotBlank(proxyConfiguration.getUserName())) {
-                    builder = builder.proxyAuthenticator((route, response) -> {
-                        String credential = Credentials.basic(
-                                proxyConfiguration.getUserName(),
-                                proxyConfiguration.getSecretPassword().getPlainText()
-                        );
-                        return response.request().newBuilder().header("Authorization", credential).build();
-                    });
-                }
-            }
-        }
-
-        return builder;
     }
 
 
@@ -234,9 +189,9 @@ public class AzureSecurityRealm extends SecurityRealm {
 
     String getCredentialCacheKey() {
         return Util.getDigestOf(clientId.getPlainText()
-                        + clientSecret.getPlainText()
-                        + tenant.getPlainText()
-                        + azureEnvironmentName
+                + clientSecret.getPlainText()
+                + tenant.getPlainText()
+                + azureEnvironmentName
         );
     }
 
@@ -321,7 +276,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     }
 
     GraphServiceClient<Request> getAzureClient() {
-        return cachedAzureClient.get();
+        return GraphClientCache.getClient(this);
     }
 
 
@@ -350,7 +305,9 @@ public class AzureSecurityRealm extends SecurityRealm {
 
     @SuppressWarnings("unused") // used by stapler
     public HttpResponse doCommenceLogin(StaplerRequest request, @Header("Referer") final String referer) {
-        request.getSession().setAttribute(REFERER_ATTRIBUTE, referer);
+        String trimmedReferrer = getReferer(referer);
+
+        request.getSession().setAttribute(REFERER_ATTRIBUTE, trimmedReferrer);
         OAuth20Service service = getOAuthService();
         request.getSession().setAttribute(TIMESTAMP_ATTRIBUTE, System.currentTimeMillis());
         String nonce = RandomStringUtils.randomAlphanumeric(NONCE_LENGTH);
@@ -361,6 +318,18 @@ public class AzureSecurityRealm extends SecurityRealm {
         additionalParams.put("response_mode", "form_post");
 
         return new HttpRedirect(service.getAuthorizationUrl(additionalParams));
+    }
+
+    /**
+     * Logged out page shows a login button which just sends you back to the logged out page
+     * which is a bit silly, so we override it to send you to the root page.
+     */
+    private static String getReferer(String referer) {
+        String trimmedReferrer = referer;
+        if (referer != null && referer.endsWith("azureAdLogout/")) {
+            trimmedReferrer = referer.replace("azureAdLogout/", "");
+        }
+        return trimmedReferrer;
     }
 
     /**
@@ -459,7 +428,12 @@ public class AzureSecurityRealm extends SecurityRealm {
     JwtClaims validateIdToken(String expectedNonce, String idToken) throws InvalidJwtException {
         JwtClaims claims = getJwtConsumer().processToClaims(idToken);
         final String responseNonce = (String) claims.getClaimValue("nonce");
-        if (StringUtils.isAnyEmpty(expectedNonce, responseNonce) || !expectedNonce.equals(responseNonce)) {
+        if (StringUtils.isAnyEmpty(expectedNonce, responseNonce) ||
+                !MessageDigest.isEqual(
+                        expectedNonce.getBytes(StandardCharsets.UTF_8),
+                        responseNonce.getBytes(StandardCharsets.UTF_8)
+                )
+        ) {
             throw new IllegalStateException(String.format("Invalid nonce in the response, "
                     + "expected: %s actual: %s", expectedNonce, responseNonce));
         }
@@ -592,10 +566,9 @@ public class AzureSecurityRealm extends SecurityRealm {
             LOGGER.log(Level.WARNING, "Failed to url encode query, group name was: " + groupName);
         }
 
-        String query = String.format("\"displayName:%s\"", encodedGroupName);
+        String query = String.format("displayName eq '%s'", encodedGroupName);
 
-        requestOptions.add(new QueryOption("$search", query));
-        requestOptions.add(new HeaderOption("ConsistencyLevel", "eventual"));
+        requestOptions.add(new QueryOption("$filter", query));
 
         GroupCollectionPage groupCollectionPage = getAzureClient().groups()
                 .buildRequest(requestOptions)
@@ -613,7 +586,7 @@ public class AzureSecurityRealm extends SecurityRealm {
             throw new UsernameNotFoundException("Multiple matches found for group display name, "
                     + "this must be unique: " + groupIds);
         } else if (currentPage.size() == 1) {
-             group = currentPage.get(0);
+            group = currentPage.get(0);
         }
         return group;
     }
@@ -771,26 +744,14 @@ public class AzureSecurityRealm extends SecurityRealm {
                 return FormValidation.error("Please set a test user principal name or object ID");
             }
 
-            final ClientSecretCredential clientSecretCredential = new ClientSecretCredentialBuilder()
-                    .clientId(clientId)
-                    .clientSecret(clientSecret.getPlainText())
-                    .tenantId(tenant)
-                    .httpClient(HttpClientRetriever.get())
-                    .authorityHost(getAuthorityHost(azureEnvironmentName))
-                    .build();
-
-            final TokenCredentialAuthProvider authProvider = new TokenCredentialAuthProvider(clientSecretCredential);
-
-            OkHttpClient.Builder builder = HttpClients.createDefault(authProvider)
-                    .newBuilder();
-
-            builder = addProxyToHttpClientIfRequired(builder);
-            OkHttpClient httpClient = builder.build();
-
-            GraphServiceClient<Request> graphServiceClient = GraphServiceClient
-                    .builder()
-                    .httpClient(httpClient)
-                    .buildClient();
+            GraphServiceClient<Request> graphServiceClient = GraphClientCache.getClient(
+                    new GraphClientCacheKey(
+                            clientId,
+                            Secret.toString(clientSecret),
+                            tenant,
+                            azureEnvironmentName
+                    )
+            );
             try {
                 com.microsoft.graph.models.User user = graphServiceClient.users(testObject).buildRequest().get();
 
