@@ -428,19 +428,7 @@ public class AzureSecurityRealm extends SecurityRealm {
 
             // Enforce updating current identity
             SecurityContextHolder.getContext().setAuthentication(auth);
-            User u = User.current();
-            if (u != null) {
-                String description = generateDescription(auth);
-                u.setDescription(description);
-                u.setFullName(auth.getAzureAdUser().getName());
-                if (StringUtils.isNotBlank(auth.getAzureAdUser().getEmail())) {
-                    UserProperty existing = u.getProperty(UserProperty.class);
-                    if (existing == null || !existing.hasExplicitlyConfiguredAddress()) {
-                        u.addProperty(new Mailer.UserProperty(auth.getAzureAdUser().getEmail()));
-                    }
-                }
-            }
-
+            updateIdentity(auth.getAzureAdUser(), User.current());
 
             SecurityListener.fireAuthenticated2(userDetails);
         } catch (Exception ex) {
@@ -521,6 +509,10 @@ public class AzureSecurityRealm extends SecurityRealm {
                             .getBelongingGroupsByOid(user.getObjectID());
 
                     user.setAuthorities(groups, user.getUniqueName());
+
+                    // Enforce updating added identity
+                    updateIdentity(user, User.getById(user.getObjectID(), true));
+
                     return user;
                 } catch (GraphServiceException e) {
                     if (e.getResponseCode() == NOT_FOUND) {
@@ -799,16 +791,30 @@ public class AzureSecurityRealm extends SecurityRealm {
         }
     }
 
-    private String generateDescription(Authentication auth) {
-        if (auth instanceof AzureAuthenticationToken) {
-            AzureAdUser user = ((AzureAuthenticationToken) auth).getAzureAdUser();
-            return "Azure Active Directory User\n"
-                    + "\nUnique Principal Name: " + user.getUniqueName()
-                    + "\nEmail: " + user.getEmail()
-                    + "\nObject ID: " + user.getObjectID()
-                    + "\nTenant ID: " + user.getTenantID();
+    private void updateIdentity(final AzureAdUser azureAdUser, final User u) {
+        if (azureAdUser != null && u != null) {
+            try {
+                String description = generateDescription(azureAdUser);
+                u.setDescription(description);
+                u.setFullName(azureAdUser.getName());
+                if (StringUtils.isNotBlank(azureAdUser.getEmail())) {
+                    UserProperty existing = u.getProperty(UserProperty.class);
+                    if (existing == null || !existing.hasExplicitlyConfiguredAddress()) {
+                            u.addProperty(new Mailer.UserProperty(azureAdUser.getEmail()));
+                    }
+                }
+            } catch (IOException e) {
+                LOGGER.log(Level.WARNING, "Failed to update user mail with userid: " + azureAdUser.getObjectID(), e);
+            }
         }
-        return "";
+    }
+
+    private String generateDescription(AzureAdUser user) {
+        return "Azure Active Directory User\n"
+                + "\nUnique Principal Name: " + user.getUniqueName()
+                + "\nEmail: " + user.getEmail()
+                + "\nObject ID: " + user.getObjectID()
+                + "\nTenant ID: " + user.getTenantID();
     }
 
 }
