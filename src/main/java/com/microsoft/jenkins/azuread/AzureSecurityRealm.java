@@ -307,6 +307,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     public HttpResponse doCommenceLogin(StaplerRequest request, @Header("Referer") final String referer) {
         String trimmedReferrer = getReferer(referer);
 
+        recreateSession(request);
         request.getSession().setAttribute(REFERER_ATTRIBUTE, trimmedReferrer);
         OAuth20Service service = getOAuthService();
         request.getSession().setAttribute(TIMESTAMP_ATTRIBUTE, System.currentTimeMillis());
@@ -351,8 +352,6 @@ public class AzureSecurityRealm extends SecurityRealm {
         try {
             final Long beginTime = (Long) request.getSession().getAttribute(TIMESTAMP_ATTRIBUTE);
             final String expectedNonce = (String) request.getSession().getAttribute(NONCE_ATTRIBUTE);
-
-            recreateSession(request);
 
             if (expectedNonce == null) {
                 // no nonce, probably some issue with an old session, force the user to re-auth
