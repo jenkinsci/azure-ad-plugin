@@ -1,4 +1,4 @@
 <?jelly escape-by-default='true'?>
 <div>
-  A Jenkins authentication &amp; authorization plugin for Azure Active Directory
+  A Jenkins authentication &amp; authorization plugin for Microsoft Entra ID
 </div>
