@@ -1,12 +1,12 @@
-# Azure Active Directory Plugin
+# Microsoft Entra ID Plugin (previously Azure Active Directory Plugin)
 
 > ***Important***: This plug-in is maintained by the Jenkins community and won’t be supported by Microsoft as of February 29, 2024.
 
-A Jenkins Plugin that supports authentication & authorization via Azure Active Directory.
+A Jenkins Plugin that supports authentication & authorization via Microsoft Entra ID ([previously known as Azure Active Directory](https://learn.microsoft.com/entra/fundamentals/new-name)).
 
-## Setup In Azure Active Directory
+## Setup In Microsoft Entra ID
 
-1. Open `Azure Active Directory`, click `App registrations`
+1. Open `Microsoft Entra ID`, click `App registrations`
 
 1. Click `New registration`
 
@@ -16,11 +16,11 @@ A Jenkins Plugin that supports authentication & authorization via Azure Active D
 
 1. Click `Authentication`, under 'Implicit grant and hybrid flows', enable `ID tokens`.
 
-1. (optional) To enable AzureAD group support: Click `Manifest` and modify the `"groupMembershipClaims": null` value to `"groupMembershipClaims": "SecurityGroup"`, then 'Save' it.
+1. (optional) To enable Microsoft Entra ID group support: Click `Manifest` and modify the `"groupMembershipClaims": null` value to `"groupMembershipClaims": "SecurityGroup"`, then 'Save' it.
 
-### Setup Azure AD permissions (optional, but recommended)
+### Setup Microsoft Entra ID permissions (optional, but recommended)
 
-In order for Jenkins to be able to lookup data from Azure AD it needs some Graph API permissions.
+In order for Jenkins to be able to lookup data from Microsoft Entra ID it needs some Graph API permissions.
 
 This is used for:
 
@@ -54,7 +54,7 @@ Click `Manage Jenkins` in the left menu, then click `Security`
 
 1. Save the configuration, (logged-in users will have permission to do anything)
 
-1. Log in with Azure AD
+1. Log in with Microsoft Entra ID
 
 1. Return to 'Security' to configure authorization
 
