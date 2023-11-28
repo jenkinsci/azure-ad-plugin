@@ -1,4 +1,4 @@
-# Azure Active Directory Plugin
+# Microsoft Entra ID Plugin (previously Azure Active Directory Plugin)
 
 > ***Important***: This plug-in is maintained by the Jenkins community and won’t be supported by Microsoft as of February 29, 2024.
 
@@ -44,7 +44,7 @@ _Note: You can skip this part and just use the claims returned when authenticati
 
 ## Setup In Jenkins
 
-Click `Manage Jenkins` in the left menu, then click `Configure Global Security`
+Click `Manage Jenkins` in the left menu, then click `Security`
 
 ## Authentication
 

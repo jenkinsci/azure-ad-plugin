@@ -11,7 +11,7 @@
     <artifactId>azure-ad</artifactId>
     <version>${changelist}</version>
 
-    <name>Azure AD Plugin</name>
+    <name>Microsoft Entra ID (previously Azure AD) Plugin</name>
     <url>https://github.com/jenkinsci/azure-ad-plugin</url>
 
     <packaging>hpi</packaging>
