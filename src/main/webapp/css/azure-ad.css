@@ -2,11 +2,6 @@ td.azure-ad-controls {
     text-align: left;
 }
 
-.mgmt-people-picker-wrapper {
-    border: 1px solid var(--input-border);
-    border-radius: 3px
-}
-
 .no-graph-integration-wrapper {
     margin-top: 1rem;
 }
