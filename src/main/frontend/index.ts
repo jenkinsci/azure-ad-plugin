@@ -28,12 +28,15 @@ document.addEventListener('DOMContentLoaded', () => {
 })
 const currentUrl = window.location.href
 
-// GraphProxy is either a root action or at the job level
+// GraphProxy is either a root action or at an item level
 const endStrippedCurrentUrl = currentUrl
     .replace('configureSecurity/', '')
     .replace('configure', '')
     .replace('pipeline-syntax/', '')
+    .replace('manage/cloud/create', '')
+    .replace('cloud/create', '')
     .replace('computer/createItem', '');
+
 
 Providers.globalProvider = new ProxyProvider(`${endStrippedCurrentUrl}/GraphProxy`, async () => {
     return {
