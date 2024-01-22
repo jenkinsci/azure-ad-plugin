@@ -73,7 +73,7 @@
         <dependency>
             <groupId>com.microsoft.graph</groupId>
             <artifactId>microsoft-graph</artifactId>
-            <version>5.77.0</version>
+            <version>5.79.0</version>
             <exclusions>
                 <exclusion>
                     <groupId>com.azure</groupId>
