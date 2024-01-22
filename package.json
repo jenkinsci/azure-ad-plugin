@@ -21,7 +21,7 @@
   },
   "homepage": "https://github.com/jenkinsci/azure-ad-plugin#readme",
   "devDependencies": {
-    "source-map-loader": "^4.0.1",
+    "source-map-loader": "^5.0.0",
     "ts-loader": "^9.4.2",
     "typescript": "^5.0.0",
     "webpack": "^5.76.3",
