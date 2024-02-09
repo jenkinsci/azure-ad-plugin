@@ -30,6 +30,10 @@
             <f:checkbox />
         </f:entry>
 
+        <f:entry title="${%Prompt for user account on each login}" field="promptAccount">
+            <f:checkbox />
+        </f:entry>
+
         <f:entry title="${%Enable Single Logout}" field="singleLogout">
             <f:checkbox />
         </f:entry>

@@ -123,6 +123,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     private static final int BAD_REQUEST = 400;
     public static final String CONVERTER_DISABLE_GRAPH_INTEGRATION = "disableGraphIntegration";
     public static final String CONVERTER_SINGLE_LOGOUT = "singleLogout";
+    public static final String CONVERTER_PROMPT_ACCOUNT = "promptAccount";
     public static final String CONVERTER_ENVIRONMENT_NAME = "environmentName";
 
     private Cache<String, AzureAdUser> caches;
@@ -132,6 +133,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     private Secret tenant;
     private int cacheDuration;
     private boolean fromRequest = false;
+    private boolean promptAccount;
     private boolean singleLogout;
     private boolean disableGraphIntegration;
     private String azureEnvironmentName = "Azure";
@@ -162,6 +164,14 @@ public class AzureSecurityRealm extends SecurityRealm {
                 .build();
     }
 
+    public boolean isPromptAccount() {
+        return promptAccount;
+    }
+
+    @DataBoundSetter
+    public void setPromptAccount(boolean promptAccount) {
+        this.promptAccount = promptAccount;
+    }
 
     public boolean isSingleLogout() {
         return singleLogout;
@@ -317,6 +327,9 @@ public class AzureSecurityRealm extends SecurityRealm {
         Map<String, String> additionalParams = new HashMap<>();
         additionalParams.put("nonce", nonce);
         additionalParams.put("response_mode", "form_post");
+        if (promptAccount) {
+            additionalParams.put("prompt", "select_account");
+        }
 
         return new HttpRedirect(service.getAuthorizationUrl(additionalParams));
     }
@@ -631,6 +644,10 @@ public class AzureSecurityRealm extends SecurityRealm {
             writer.setValue(String.valueOf(realm.isDisableGraphIntegration()));
             writer.endNode();
 
+            writer.startNode(CONVERTER_PROMPT_ACCOUNT);
+            writer.setValue(String.valueOf(realm.isPromptAccount()));
+            writer.endNode();
+
             writer.startNode(CONVERTER_SINGLE_LOGOUT);
             writer.setValue(String.valueOf(realm.isSingleLogout()));
             writer.endNode();
@@ -664,6 +681,9 @@ public class AzureSecurityRealm extends SecurityRealm {
                         break;
                     case CONVERTER_DISABLE_GRAPH_INTEGRATION:
                         realm.setDisableGraphIntegration(Boolean.parseBoolean(value));
+                        break;
+                    case CONVERTER_PROMPT_ACCOUNT:
+                        realm.setPromptAccount(Boolean.parseBoolean(value));
                         break;
                     case CONVERTER_SINGLE_LOGOUT:
                         realm.setSingleLogout(Boolean.parseBoolean(value));
