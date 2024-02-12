@@ -29,8 +29,8 @@
     "webpack-merge": "^5.8.0"
   },
   "dependencies": {
-    "@microsoft/mgt-components": "^3.0.0",
-    "@microsoft/mgt-element": "^3.0.0",
-    "@microsoft/mgt-proxy-provider": "^3.0.0"
+    "@microsoft/mgt-components": "^4.0.0",
+    "@microsoft/mgt-element": "^4.0.0",
+    "@microsoft/mgt-proxy-provider": "^4.0.0"
   }
 }
