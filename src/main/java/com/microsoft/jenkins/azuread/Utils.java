@@ -12,6 +12,8 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import hudson.Functions;
 import hudson.ProxyConfiguration;
 import hudson.util.FormValidation;
+import java.net.URI;
+import java.net.URISyntaxException;
 import jenkins.model.Jenkins;
 import org.jose4j.http.Get;
 import org.jose4j.jwk.HttpsJwks;
@@ -71,17 +73,21 @@ public final class Utils {
 
     public static class JwtUtil {
         public static final long DEFAULT_CACHE_DURATION = TimeUnit.HOURS.toSeconds(24);
-        public static JwtConsumer jwt(final String clientId, final String tenantId) {
+        public static JwtConsumer jwt(final String authorityHost, final String clientId, final String tenantId) {
             String keyDiscoveryUrl = String.format(
-                    "https://login.microsoftonline.com/%s/discovery/keys?appId=%s", tenantId, clientId
+                    "%s%s/discovery/keys?appId=%s", authorityHost, tenantId, clientId
             );
-            final String expectedIssuer = String.format("https://login.microsoftonline.com/%s/v2.0", tenantId);
+            final String expectedIssuer = String.format("%s%s/v2.0", authorityHost, tenantId);
             HttpsJwks httpsJwks = new HttpsJwks(keyDiscoveryUrl);
             httpsJwks.setDefaultCacheDuration(DEFAULT_CACHE_DURATION);
             ProxyConfiguration proxy = Jenkins.get().getProxy();
             if (proxy != null) {
                 Get get = new Get();
-                get.setHttpProxy(proxy.createProxy("login.microsoftonline.com"));
+                try {
+                    get.setHttpProxy(proxy.createProxy(new URI(authorityHost).getHost()));
+                } catch (URISyntaxException e) {
+                    throw new RuntimeException(e);
+                }
                 httpsJwks.setSimpleHttpGet(get);
             }
 
