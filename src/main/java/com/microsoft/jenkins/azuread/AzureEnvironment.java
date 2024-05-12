@@ -9,7 +9,6 @@ public final class AzureEnvironment {
 
     public static final String AZURE_PUBLIC_CLOUD = "Azure";
     public static final String AZURE_CHINA = "Azure China";
-    public static final String AZURE_GERMANY = "Azure Germany";
     public static final String AZURE_US_GOVERNMENT_L4 = "Azure US Government L4";
     public static final String AZURE_US_GOVERNMENT_L5 = "Azure US Government L5 (DOD)";
 

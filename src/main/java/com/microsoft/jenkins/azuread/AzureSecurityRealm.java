@@ -95,12 +95,10 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_CHINA;
-import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_GERMANY;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_PUBLIC_CLOUD;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_US_GOVERNMENT_L4;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_US_GOVERNMENT_L5;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.getAuthorityHost;
-import static com.microsoft.jenkins.azuread.AzureEnvironment.getServiceRoot;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.Objects.requireNonNull;
@@ -183,7 +181,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     }
 
     private final Supplier<JwtConsumer> jwtConsumer = Suppliers.memoize(() ->
-            Utils.JwtUtil.jwt(getClientId(), getTenant()));
+            Utils.JwtUtil.jwt(getAuthorityHost(getAzureEnvironmentName()), getClientId(), getTenant()));
 
     public String getClientIdSecret() {
         return clientId.getEncryptedValue();
@@ -740,7 +738,6 @@ public class AzureSecurityRealm extends SecurityRealm {
 
             model.add(AZURE_PUBLIC_CLOUD);
             model.add(AZURE_CHINA);
-            model.add(AZURE_GERMANY);
             model.add(AZURE_US_GOVERNMENT_L4);
             model.add(AZURE_US_GOVERNMENT_L5);
             return model;
