@@ -42,7 +42,7 @@ jenkins:
             permissions:
               - Overall/Read
   securityRealm:
-    azureSecurityRealm:
+    azure:
       clientid: "clientId"
       clientsecret: "clientSecret"
       tenant: "tenantId"
