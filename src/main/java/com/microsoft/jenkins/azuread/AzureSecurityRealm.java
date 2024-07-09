@@ -139,7 +139,7 @@
      private boolean promptAccount;
      private boolean singleLogout;
      private boolean disableGraphIntegration;
-     private boolean useClientCertificate;
+     private static boolean useClientCertificate;
      private String azureEnvironmentName = "Azure";
  
      public AccessToken getAccessToken() {
@@ -817,7 +817,7 @@
                              Secret.toString(pemCertificate),
                              tenant,
                              azureEnvironmentName,
-                             this.useClientCertificate
+                             useClientCertificate
                      )
              );
              try {
