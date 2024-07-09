@@ -256,6 +256,7 @@
          this.disableGraphIntegration = disableGraphIntegration;
      }
  
+     @DataBoundSetter
      public void setUseClientCertificate(boolean useClientCertificate) {
          this.useClientCertificate = useClientCertificate;
      }
