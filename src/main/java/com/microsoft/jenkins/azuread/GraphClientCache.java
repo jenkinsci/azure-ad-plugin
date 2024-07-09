@@ -2,6 +2,8 @@ package com.microsoft.jenkins.azuread;
 
 import com.azure.identity.ClientSecretCredential;
 import com.azure.identity.ClientSecretCredentialBuilder;
+import com.azure.identity.ClientCertificateCredential;
+import com.azure.identity.ClientCertificateCredentialBuilder;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.microsoft.graph.authentication.TokenCredentialAuthProvider;
@@ -31,9 +33,16 @@ public class GraphClientCache {
             .build(GraphClientCache::createGraphClient);
 
     private static GraphServiceClient<Request> createGraphClient(GraphClientCacheKey key) {
-        final ClientSecretCredential clientSecretCredential = getClientSecretCredential(key);
 
-        final TokenCredentialAuthProvider authProvider = new TokenCredentialAuthProvider(clientSecretCredential);
+        TokenCredentialAuthProvider authProvider;
+        
+        if (key.useClientCertificate()) {
+            ClientCertificateCredential clientCertificateCredential = getClientCertificateCredential(key);
+            authProvider = new TokenCredentialAuthProvider(clientCertificateCredential);
+        } else {
+            ClientSecretCredential clientSecretCredential = getClientSecretCredential(key);
+            authProvider = new TokenCredentialAuthProvider(clientSecretCredential);
+        }
 
         OkHttpClient.Builder builder = HttpClients.createDefault(authProvider)
                 .newBuilder();
@@ -52,6 +61,17 @@ public class GraphClientCache {
             graphServiceClient.setServiceRoot(getServiceRoot(azureEnv));
         }
         return graphServiceClient;
+    }
+
+    static ClientCertificateCredential getClientCertificateCredential(GraphClientCacheKey key) {
+        return new ClientCertificateCredentialBuilder()
+                .clientId(key.getClientId())
+                .pemCertificate(key.pemCertificate())
+                .tenantId(key.getTenantId())
+                .sendCertificateChain(true)
+                .authorityHost(getAuthorityHost(key.getAzureEnvironmentName()))
+                .httpClient(HttpClientRetriever.get())
+                .build();
     }
 
     static ClientSecretCredential getClientSecretCredential(GraphClientCacheKey key) {
