@@ -817,7 +817,7 @@
                              Secret.toString(pemCertificate),
                              tenant,
                              azureEnvironmentName,
-                             useClientCertificate
+                             this.useClientCertificate
                      )
              );
              try {
