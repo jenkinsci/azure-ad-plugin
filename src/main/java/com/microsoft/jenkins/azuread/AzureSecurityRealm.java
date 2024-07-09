@@ -335,12 +335,12 @@
      }
  
      @DataBoundConstructor
-     public AzureSecurityRealm(String tenant, String clientId, Secret clientSecret, Secret pemCertificate, boolean enableClientCertificate, int cacheDuration) {
+     public AzureSecurityRealm(String tenant, String clientId, Secret clientSecret, Secret pemCertificate, boolean useClientCertificate, int cacheDuration) {
          super();
          this.clientId = Secret.fromString(clientId);
          this.clientSecret = clientSecret;
          this.pemCertificate = pemCertificate;
-         this.enableClientCertificate = useClientCertificate;
+         this.useClientCertificate = useClientCertificate;
          this.tenant = Secret.fromString(tenant);
          this.cacheDuration = cacheDuration;
          caches = Caffeine.newBuilder()
