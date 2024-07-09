@@ -25,6 +25,10 @@ import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_PUBLIC_CLOUD;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.getAuthorityHost;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.getServiceRoot;
 
+import hudson.security.SecurityRealm;
+import jenkins.model.Jenkins;
+import jenkins.model.TransientActionFactory;
+
 public class GraphClientCache {
 
     private static final int TEN = 10;
@@ -120,10 +124,7 @@ public class GraphClientCache {
             }
         }
 
-        return builder;
-    }
-
-    public boolean isEnableClientCertificate() {
+    public static boolean isEnableClientCertificate() {
         SecurityRealm securityRealm = Jenkins.get().getSecurityRealm();
         if (securityRealm instanceof AzureSecurityRealm) {
             AzureSecurityRealm azureSecurityRealm = (AzureSecurityRealm) securityRealm;
@@ -131,5 +132,8 @@ public class GraphClientCache {
         }
 
         return true;
+    }
+
+        return builder;
     }
 }
