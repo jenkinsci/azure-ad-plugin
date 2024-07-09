@@ -124,6 +124,9 @@ public class GraphClientCache {
             }
         }
 
+        return builder;
+    }
+    
     public static boolean isEnableClientCertificate() {
         SecurityRealm securityRealm = Jenkins.get().getSecurityRealm();
         if (securityRealm instanceof AzureSecurityRealm) {
@@ -132,8 +135,5 @@ public class GraphClientCache {
         }
 
         return true;
-    }
-
-        return builder;
     }
 }
