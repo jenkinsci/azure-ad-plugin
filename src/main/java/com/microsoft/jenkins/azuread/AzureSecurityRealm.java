@@ -340,7 +340,7 @@
          this.clientId = Secret.fromString(clientId);
          this.clientSecret = clientSecret;
          this.pemCertificate = pemCertificate;
-         this.enableClientCertificate = enableClientCertificate;
+         this.enableClientCertificate = useClientCertificate;
          this.tenant = Secret.fromString(tenant);
          this.cacheDuration = cacheDuration;
          caches = Caffeine.newBuilder()
@@ -688,6 +688,10 @@
              writer.setValue(String.valueOf(realm.isDisableGraphIntegration()));
              writer.endNode();
  
+             writer.startNode(CONVERTER_ENABLE_CLIENT_CERTIFICATE_AUTH);
+             writer.setValue(String.valueOf(realm.isEnableClientCertificate()));
+             writer.endNode();
+
              writer.startNode(CONVERTER_PROMPT_ACCOUNT);
              writer.setValue(String.valueOf(realm.isPromptAccount()));
              writer.endNode();
@@ -812,7 +816,7 @@
                              Secret.toString(pemCertificate),
                              tenant,
                              azureEnvironmentName,
-                             isEnableClientCertificate()
+                             useClientCertificate
                      )
              );
              try {
