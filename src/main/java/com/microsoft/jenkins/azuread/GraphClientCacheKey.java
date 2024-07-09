@@ -8,13 +8,15 @@ class GraphClientCacheKey {
     private final String pemCertificate;
     private final String tenantId;
     private final String azureEnvironmentName;
+    private final boolean isEnableClientCertificate;
 
-    public GraphClientCacheKey(String clientId, String clientSecret, String pemCertificate, String tenantId, String azureEnvironmentName) {
+    public GraphClientCacheKey(String clientId, String clientSecret, String pemCertificate, String tenantId, String azureEnvironmentName, boolean isEnableClientCertificate) {
         this.clientId = clientId;
         this.clientSecret = clientSecret;
         this.pemCertificate = pemCertificate;
         this.tenantId = tenantId;
         this.azureEnvironmentName = azureEnvironmentName;
+        this.isEnableClientCertificate = isEnableClientCertificate;
     }
 
     @Override
@@ -22,7 +24,8 @@ class GraphClientCacheKey {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         GraphClientCacheKey cacheKey = (GraphClientCacheKey) o;
-        return  Objects.equals(clientId, cacheKey.clientId) &&
+        return isEnableClientCertificate == cacheKey.isEnableClientCertificate &&
+                Objects.equals(clientId, cacheKey.clientId) &&
                 Objects.equals(clientSecret, cacheKey.clientSecret) &&
                 Objects.equals(pemCertificate, cacheKey.pemCertificate) &&
                 Objects.equals(tenantId, cacheKey.tenantId) &&
@@ -31,7 +34,7 @@ class GraphClientCacheKey {
 
     @Override
     public int hashCode() {
-        return Objects.hash(clientId, clientSecret, pemCertificate, tenantId, azureEnvironmentName);
+        return Objects.hash(clientId, clientSecret, pemCertificate, tenantId, azureEnvironmentName, isEnableClientCertificate);
     }
 
     public String getClientId() {
@@ -52,5 +55,9 @@ class GraphClientCacheKey {
 
     public String getAzureEnvironmentName() {
         return azureEnvironmentName;
+    }
+
+    public boolean isEnableClientCertificate() {
+        return isEnableClientCertificate;
     }
 }
