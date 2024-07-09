@@ -218,12 +218,13 @@
      }
  
      String getCredentialCacheKey() {
-         return Util.getDigestOf(clientId.getPlainText()
-                 + useClientCertificate ? pemCertificate.getPlainText() : clientSecret.getPlainText()
-                 + tenant.getPlainText()
-                 + azureEnvironmentName
-         );
-     }
+        String credentialComponent = clientId.getPlainText()
+                + (useClientCertificate ? pemCertificate.getPlainText() : clientSecret.getPlainText())
+                + tenant.getPlainText()
+                + azureEnvironmentName;
+    
+        return Util.getDigestOf(credentialComponent);
+    }
  
      public String getClientId() {
          return clientId.getPlainText();
