@@ -36,7 +36,7 @@ public class GraphClientCache {
 
         TokenCredentialAuthProvider authProvider;
         
-        if (key.isEnableClientCertificate()) {
+        if (isEnableClientCertificate()) {
             ClientCertificateCredential clientCertificateCredential = getClientCertificateCredential(key);
             authProvider = new TokenCredentialAuthProvider(clientCertificateCredential);
         } else {
@@ -121,5 +121,15 @@ public class GraphClientCache {
         }
 
         return builder;
+    }
+
+    public boolean isEnableClientCertificate() {
+        SecurityRealm securityRealm = Jenkins.get().getSecurityRealm();
+        if (securityRealm instanceof AzureSecurityRealm) {
+            AzureSecurityRealm azureSecurityRealm = (AzureSecurityRealm) securityRealm;
+            return azureSecurityRealm.isEnableClientCertificate();
+        }
+
+        return true;
     }
 }
