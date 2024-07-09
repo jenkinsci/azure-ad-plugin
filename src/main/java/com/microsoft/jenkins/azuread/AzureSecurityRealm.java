@@ -801,7 +801,7 @@
          public FormValidation doVerifyConfiguration(@QueryParameter final String clientId,
                                                      @QueryParameter final Secret clientSecret,
                                                      @QueryParameter final Secret pemCertificate,
-                                                     @QueryParameter final boolean enableClientCertificate,
+                                                     @QueryParameter final boolean useClientCertificate,
                                                      @QueryParameter final String tenant,
                                                      @QueryParameter final String testObject,
                                                      @QueryParameter final String azureEnvironmentName) {
@@ -815,7 +815,8 @@
                              Secret.toString(clientSecret),
                              Secret.toString(pemCertificate),
                              tenant,
-                             azureEnvironmentName
+                             azureEnvironmentName,
+                             useClientCertificate
                      )
              );
              try {
