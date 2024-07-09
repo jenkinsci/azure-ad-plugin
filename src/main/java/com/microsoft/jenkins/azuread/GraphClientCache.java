@@ -94,7 +94,8 @@ public class GraphClientCache {
                 Secret.toString(azureSecurityRealm.getClientSecret()),
                 Secret.toString(azureSecurityRealm.getPemCertificate()),
                 azureSecurityRealm.getTenant(),
-                azureSecurityRealm.getAzureEnvironmentName()
+                azureSecurityRealm.getAzureEnvironmentName(),
+                azureSecurityRealm.isEnableClientCertificate()
         );
 
         return TOKEN_CACHE.get(key);
