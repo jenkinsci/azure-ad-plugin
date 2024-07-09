@@ -139,7 +139,7 @@
      private boolean promptAccount;
      private boolean singleLogout;
      private boolean disableGraphIntegration;
-     private static boolean useClientCertificate;
+     private boolean useClientCertificate;
      private String azureEnvironmentName = "Azure";
  
      public AccessToken getAccessToken() {
