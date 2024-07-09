@@ -45,6 +45,7 @@ jenkins:
     azure:
       clientid: "clientId"
       clientsecret: "clientSecret"
+      pemcertificate: "pemCertificate"
       tenant: "tenantId"
       cacheduration: 0
       fromrequest: true
