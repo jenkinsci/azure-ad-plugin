@@ -56,7 +56,7 @@ public class ConfigAsCodeTest {
         AzureSecurityRealm azureSecurityRealm = (AzureSecurityRealm) securityRealm;
         assertNotEquals("clientId", azureSecurityRealm.getClientIdSecret());
         assertNotEquals("clientSecret", azureSecurityRealm.getClientSecretSecret());
-        assertNotEquals("pemCertificate", azureSecurityRealm.getPemCertificate());
+        assertNotEquals("pemCertificate", azureSecurityRealm.getClientPemCertificate());
         assertNotEquals("tenantId", azureSecurityRealm.getTenantSecret());
         assertEquals("clientId", azureSecurityRealm.getClientId());
         assertEquals("clientSecret", azureSecurityRealm.getClientSecret().getPlainText());

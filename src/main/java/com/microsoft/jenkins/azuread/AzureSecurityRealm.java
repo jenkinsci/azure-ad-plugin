@@ -209,7 +209,7 @@
          return clientSecret.getEncryptedValue();
      }
  
-     public String getPemCertificate() {
+     public String getClientPemCertificate() {
          return pemCertificate.getEncryptedValue();
      }
  
@@ -657,7 +657,7 @@
              writer.endNode();
  
              writer.startNode(CONVERTER_NODE_PEM_CERTIFICATE);
-             writer.setValue(realm.getPemCertificate());
+             writer.setValue(realm.getClientPemCertificate());
              writer.endNode();
  
              writer.startNode(CONVERTER_NODE_TENANT);
