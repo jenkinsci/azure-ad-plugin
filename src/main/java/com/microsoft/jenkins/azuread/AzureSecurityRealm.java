@@ -806,6 +806,7 @@
                      new GraphClientCacheKey(
                              clientId,
                              Secret.toString(clientSecret),
+                             Secret.toString(pemCertificate),
                              tenant,
                              azureEnvironmentName
                      )
