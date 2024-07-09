@@ -93,7 +93,7 @@ public class GraphClientCache {
                 azureSecurityRealm.getClientId(),
                 Secret.toString(azureSecurityRealm.getClientSecret()),
                 azureSecurityRealm.getTenant(),
-                azureSecurityRealm.getAzureEnvironmentName()
+                azureSecurityRealm.getAzureEnvironmentName(),
                 azureSecurityRealm.useClientCertificate()
         );
 
