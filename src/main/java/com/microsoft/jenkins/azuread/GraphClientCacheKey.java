@@ -2,39 +2,39 @@ package com.microsoft.jenkins.azuread;
 
 import java.util.Objects;
 
-class GraphClientCacheKey {
+public class GraphClientCacheKey {
     private final String clientId;
     private final String clientSecret;
     private final String pemCertificate;
     private final String tenantId;
     private final String azureEnvironmentName;
-    private final boolean isEnableClientCertificate;
+    private final boolean enableClientCertificate;
 
-    public GraphClientCacheKey(String clientId, String clientSecret, String pemCertificate, String tenantId, String azureEnvironmentName, boolean isEnableClientCertificate) {
+    public GraphClientCacheKey(String clientId, String clientSecret, String pemCertificate, String tenantId, String azureEnvironmentName, boolean enableClientCertificate) {
         this.clientId = clientId;
         this.clientSecret = clientSecret;
         this.pemCertificate = pemCertificate;
         this.tenantId = tenantId;
         this.azureEnvironmentName = azureEnvironmentName;
-        this.isEnableClientCertificate = isEnableClientCertificate;
+        this.enableClientCertificate = enableClientCertificate;
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        GraphClientCacheKey cacheKey = (GraphClientCacheKey) o;
-        return isEnableClientCertificate == cacheKey.isEnableClientCertificate &&
-                Objects.equals(clientId, cacheKey.clientId) &&
-                Objects.equals(clientSecret, cacheKey.clientSecret) &&
-                Objects.equals(pemCertificate, cacheKey.pemCertificate) &&
-                Objects.equals(tenantId, cacheKey.tenantId) &&
-                Objects.equals(azureEnvironmentName, cacheKey.azureEnvironmentName);
+        GraphClientCacheKey that = (GraphClientCacheKey) o;
+        return enableClientCertificate == that.enableClientCertificate &&
+                Objects.equals(clientId, that.clientId) &&
+                Objects.equals(clientSecret, that.clientSecret) &&
+                Objects.equals(pemCertificate, that.pemCertificate) &&
+                Objects.equals(tenantId, that.tenantId) &&
+                Objects.equals(azureEnvironmentName, that.azureEnvironmentName);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(clientId, clientSecret, pemCertificate, tenantId, azureEnvironmentName, isEnableClientCertificate);
+        return Objects.hash(clientId, clientSecret, pemCertificate, tenantId, azureEnvironmentName, enableClientCertificate);
     }
 
     public String getClientId() {
@@ -58,6 +58,6 @@ class GraphClientCacheKey {
     }
 
     public boolean isEnableClientCertificate() {
-        return isEnableClientCertificate;
+        return enableClientCertificate;
     }
 }
