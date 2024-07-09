@@ -246,6 +246,10 @@
      public boolean isDisableGraphIntegration() {
          return disableGraphIntegration;
      }
+
+     public boolean isEnableClientCertificate() {
+        return useClientCertificate;
+    }
  
      @DataBoundSetter
      public void setDisableGraphIntegration(boolean disableGraphIntegration) {

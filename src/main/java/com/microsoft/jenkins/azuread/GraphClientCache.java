@@ -36,7 +36,7 @@ public class GraphClientCache {
 
         TokenCredentialAuthProvider authProvider;
         
-        if (key.useClientCertificate()) {
+        if (key.isEnableClientCertificate()) {
             ClientCertificateCredential clientCertificateCredential = getClientCertificateCredential(key);
             authProvider = new TokenCredentialAuthProvider(clientCertificateCredential);
         } else {
@@ -66,7 +66,7 @@ public class GraphClientCache {
     static ClientCertificateCredential getClientCertificateCredential(GraphClientCacheKey key) {
         return new ClientCertificateCredentialBuilder()
                 .clientId(key.getClientId())
-                .pemCertificate(key.pemCertificate())
+                .pemCertificate(key.getPemCertificate())
                 .tenantId(key.getTenantId())
                 .sendCertificateChain(true)
                 .authorityHost(getAuthorityHost(key.getAzureEnvironmentName()))
@@ -92,9 +92,10 @@ public class GraphClientCache {
         GraphClientCacheKey key = new GraphClientCacheKey(
                 azureSecurityRealm.getClientId(),
                 Secret.toString(azureSecurityRealm.getClientSecret()),
+                Secret.toString(azureSecurityRealm.getPemCertificate()),
                 azureSecurityRealm.getTenant(),
                 azureSecurityRealm.getAzureEnvironmentName(),
-                azureSecurityRealm.useClientCertificate()
+                azureSecurityRealm.isEnableClientCertificate()
         );
 
         return TOKEN_CACHE.get(key);
