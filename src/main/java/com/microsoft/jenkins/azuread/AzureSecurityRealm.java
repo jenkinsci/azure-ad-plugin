@@ -335,7 +335,7 @@
      }
  
      @DataBoundConstructor
-     public AzureSecurityRealm(String tenant, String clientId, Secret clientSecret, Secret pemCertificate, boolean isEnableClientCertificate int cacheDuration) {
+     public AzureSecurityRealm(String tenant, String clientId, Secret clientSecret, Secret pemCertificate, boolean isEnableClientCertificate, int cacheDuration) {
          super();
          this.clientId = Secret.fromString(clientId);
          this.clientSecret = clientSecret;
