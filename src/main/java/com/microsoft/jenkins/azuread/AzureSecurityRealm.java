@@ -6,10 +6,12 @@
  package com.microsoft.jenkins.azuread;
 
  import com.azure.core.credential.AccessToken;
- import com.azure.core.credential.TokenRequestContext;
+import com.azure.core.credential.TokenCredential;
+import com.azure.core.credential.TokenRequestContext;
  import com.azure.identity.ClientSecretCredential;
  import com.azure.identity.ClientSecretCredentialBuilder;
- import com.azure.identity.ClientCertificateCredential;
+import com.azure.security.keyvault.secrets.models.KeyVaultSecret;
+import com.azure.identity.ClientCertificateCredential;
  import com.azure.identity.ClientCertificateCredentialBuilder;
  import com.github.benmanes.caffeine.cache.Cache;
  import com.github.benmanes.caffeine.cache.Caffeine;
@@ -81,8 +83,11 @@
  import javax.servlet.ServletException;
  import javax.servlet.http.HttpServletRequest;
  import javax.servlet.http.HttpServletResponse;
- import java.io.IOException;
- import java.io.UnsupportedEncodingException;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
  import java.net.Proxy;
  import java.net.URLEncoder;
  import java.nio.charset.StandardCharsets;
@@ -157,6 +162,13 @@
          return accessToken;
      }
  
+     InputStream getCertificate() {
+
+        String secretString = pemCertificate.getPlainText();
+
+        return new ByteArrayInputStream(secretString.getBytes(StandardCharsets.UTF_8));
+    }
+
      ClientSecretCredential getClientSecretCredential() {
          String azureEnv = getAzureEnvironmentName();
          return new ClientSecretCredentialBuilder()
@@ -172,7 +184,7 @@
          String azureEnv = getAzureEnvironmentName();
          return new ClientCertificateCredentialBuilder()
                  .clientId(clientId.getPlainText())
-                 .pemCertificate(pemCertificate.getPlainText())
+                 .pemCertificate(getCertificate())
                  .tenantId(tenant.getPlainText())
                  .sendCertificateChain(true)
                  .authorityHost(getAuthorityHost(azureEnv))

@@ -1,15 +1,27 @@
 package com.microsoft.jenkins.azuread;
 
-import com.azure.identity.ClientSecretCredential;
-import com.azure.identity.ClientSecretCredentialBuilder;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.net.Proxy;
+import java.nio.charset.StandardCharsets;
+
+import org.apache.commons.lang3.StringUtils;
+
 import com.azure.identity.ClientCertificateCredential;
 import com.azure.identity.ClientCertificateCredentialBuilder;
+import com.azure.identity.ClientSecretCredential;
+import com.azure.identity.ClientSecretCredentialBuilder;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.microsoft.graph.authentication.TokenCredentialAuthProvider;
 import com.microsoft.graph.httpcore.HttpClients;
 import com.microsoft.graph.requests.GraphServiceClient;
+import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_PUBLIC_CLOUD;
+import static com.microsoft.jenkins.azuread.AzureEnvironment.getAuthorityHost;
+import static com.microsoft.jenkins.azuread.AzureEnvironment.getServiceRoot;
+
 import hudson.ProxyConfiguration;
+import hudson.security.SecurityRealm;
 import hudson.util.Secret;
 import io.jenkins.plugins.azuresdk.HttpClientRetriever;
 import jenkins.model.Jenkins;
@@ -17,17 +29,6 @@ import jenkins.util.JenkinsJVM;
 import okhttp3.Credentials;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
-import org.apache.commons.lang3.StringUtils;
-
-import java.net.Proxy;
-
-import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_PUBLIC_CLOUD;
-import static com.microsoft.jenkins.azuread.AzureEnvironment.getAuthorityHost;
-import static com.microsoft.jenkins.azuread.AzureEnvironment.getServiceRoot;
-
-import hudson.security.SecurityRealm;
-import jenkins.model.Jenkins;
-import jenkins.model.TransientActionFactory;
 
 public class GraphClientCache {
 
@@ -70,7 +71,7 @@ public class GraphClientCache {
     static ClientCertificateCredential getClientCertificateCredential(GraphClientCacheKey key) {
         return new ClientCertificateCredentialBuilder()
                 .clientId(key.getClientId())
-                .pemCertificate(key.getPemCertificate())
+                .pemCertificate(getCertificate(key))
                 .tenantId(key.getTenantId())
                 .sendCertificateChain(true)
                 .authorityHost(getAuthorityHost(key.getAzureEnvironmentName()))
@@ -86,6 +87,13 @@ public class GraphClientCache {
                 .authorityHost(getAuthorityHost(key.getAzureEnvironmentName()))
                 .httpClient(HttpClientRetriever.get())
                 .build();
+    }
+
+    static InputStream getCertificate(GraphClientCacheKey key) {
+
+        String secretString = key.getPemCertificate();
+
+        return new ByteArrayInputStream(secretString.getBytes(StandardCharsets.UTF_8));
     }
 
     static GraphServiceClient<Request> getClient(GraphClientCacheKey key) {
