@@ -820,7 +820,7 @@ import java.io.UnsupportedEncodingException;
              if (testObject.equals("")) {
                  return FormValidation.error("Please set a test user principal name or object ID");
              }
- 
+
              GraphServiceClient<Request> graphServiceClient = GraphClientCache.getClient(
                      new GraphClientCacheKey(
                              clientId,

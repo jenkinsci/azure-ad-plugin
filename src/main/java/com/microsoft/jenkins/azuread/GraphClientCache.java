@@ -20,6 +20,9 @@ import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_PUBLIC_CLOUD;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.getAuthorityHost;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.getServiceRoot;
 
+import java.util.Arrays;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import hudson.ProxyConfiguration;
 import hudson.security.SecurityRealm;
 import hudson.util.Secret;
@@ -33,6 +36,7 @@ import okhttp3.Request;
 public class GraphClientCache {
 
     private static final int TEN = 10;
+    private static final Logger LOGGER = Logger.getLogger(GraphClientCache.class.getName());
     private static final LoadingCache<GraphClientCacheKey, GraphServiceClient<Request>> TOKEN_CACHE = Caffeine.newBuilder()
             .maximumSize(TEN)
             .build(GraphClientCache::createGraphClient);
@@ -41,7 +45,7 @@ public class GraphClientCache {
 
         TokenCredentialAuthProvider authProvider;
         
-        if (isEnableClientCertificate()) {
+        if (isEnableClientCertificate(key)) {
             ClientCertificateCredential clientCertificateCredential = getClientCertificateCredential(key);
             authProvider = new TokenCredentialAuthProvider(clientCertificateCredential);
         } else {
@@ -92,7 +96,8 @@ public class GraphClientCache {
     static InputStream getCertificate(GraphClientCacheKey key) {
 
         String secretString = key.getPemCertificate();
-
+        LOGGER.log(Level.FINE, "Itzik 1 : " + secretString);
+        LOGGER.log(Level.FINE, "Itzik 2 : " + Arrays.toString(secretString.getBytes(StandardCharsets.UTF_8)));
         return new ByteArrayInputStream(secretString.getBytes(StandardCharsets.UTF_8));
     }
 
@@ -135,12 +140,12 @@ public class GraphClientCache {
         return builder;
     }
 
-    public static boolean isEnableClientCertificate() {
+    public static boolean isEnableClientCertificate(GraphClientCacheKey key) {
         SecurityRealm securityRealm = Jenkins.get().getSecurityRealm();
         if (securityRealm instanceof AzureSecurityRealm) {
             AzureSecurityRealm azureSecurityRealm = (AzureSecurityRealm) securityRealm;
             return azureSecurityRealm.isEnableClientCertificate();
         }
-        return false;
+        else return key.isEnableClientCertificate();
     }
 }
