@@ -331,7 +331,7 @@ import java.io.UnsupportedEncodingException;
  
      OAuth20Service getOAuthService() {
          return new ServiceBuilder(clientId.getPlainText())
-                 .apiSecret(clientSecret.getPlainText())
+                 .apiSecret(isEnableClientCertificateAuth() ? pemCertificate.getPlainText() : clientSecret.getPlainText())
                  .responseType("id_token")
                  .defaultScope("openid profile email")
                  .callback(getRootUrl() + CALLBACK_URL)
