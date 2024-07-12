@@ -14,10 +14,6 @@
             <f:password />
         </f:entry>
 
-        <f:entry title="${%Enable client certificate}" field="useClientCertificate">
-            <f:checkbox />
-        </f:entry>
-
         <f:entry title="PEM Certificate" field="pemCertificate" help="/plugin/azure-ad/help/help-client-certificate.html">
             <f:secretTextarea />
         </f:entry>
@@ -34,6 +30,10 @@
             <f:number default="3600" />
         </f:entry>
 
+        <f:entry title="${%Enable Client Certificate Authentication}" field="enableClientCertificateAuth">
+            <f:checkbox />
+        </f:entry>
+
         <f:entry title="Callback URL from request" field="fromRequest" help="/plugin/azure-ad/help/help-from-request.html">
             <f:checkbox />
         </f:entry>
@@ -41,6 +41,7 @@
         <f:entry title="${%Prompt for user account on each login}" field="promptAccount">
             <f:checkbox />
         </f:entry>
+
 
         <f:entry title="${%Enable Single Logout}" field="singleLogout">
             <f:checkbox />
@@ -55,7 +56,7 @@
         </f:entry>
         <p>${%Save any configuration changes before configuring authorization settings}</p>
 
-        <f:validateButton title="Verify configuration" method="verifyConfiguration" progress="Verifying..." with="clientId,clientSecret,pemCertificate,tenant,testObject,azureEnvironmentName,useClientCertificate"/>
+        <f:validateButton title="Verify configuration" method="verifyConfiguration" progress="Verifying..." with="clientId,clientSecret,pemCertificate,tenant,testObject,azureEnvironmentName,enableClientCertificateAuth"/>
 
     </f:block>
 </j:jelly>

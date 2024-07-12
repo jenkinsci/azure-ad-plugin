@@ -8,15 +8,15 @@ public class GraphClientCacheKey {
     private final String pemCertificate;
     private final String tenantId;
     private final String azureEnvironmentName;
-    private final boolean enableClientCertificate;
+    private final boolean enableClientCertificateAuth;
 
-    public GraphClientCacheKey(String clientId, String clientSecret, String pemCertificate, String tenantId, String azureEnvironmentName, boolean enableClientCertificate) {
+    public GraphClientCacheKey(String clientId, String clientSecret, String pemCertificate, String tenantId, String azureEnvironmentName, boolean enableClientCertificateAuth) {
         this.clientId = clientId;
         this.clientSecret = clientSecret;
         this.pemCertificate = pemCertificate;
         this.tenantId = tenantId;
         this.azureEnvironmentName = azureEnvironmentName;
-        this.enableClientCertificate = enableClientCertificate;
+        this.enableClientCertificateAuth = enableClientCertificateAuth;
     }
 
     @Override
@@ -24,7 +24,7 @@ public class GraphClientCacheKey {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         GraphClientCacheKey that = (GraphClientCacheKey) o;
-        return enableClientCertificate == that.enableClientCertificate &&
+        return enableClientCertificateAuth == that.enableClientCertificateAuth &&
                 Objects.equals(clientId, that.clientId) &&
                 Objects.equals(clientSecret, that.clientSecret) &&
                 Objects.equals(pemCertificate, that.pemCertificate) &&
@@ -34,7 +34,7 @@ public class GraphClientCacheKey {
 
     @Override
     public int hashCode() {
-        return Objects.hash(clientId, clientSecret, pemCertificate, tenantId, azureEnvironmentName, enableClientCertificate);
+        return Objects.hash(clientId, clientSecret, pemCertificate, tenantId, azureEnvironmentName, enableClientCertificateAuth);
     }
 
     public String getClientId() {
@@ -57,7 +57,7 @@ public class GraphClientCacheKey {
         return azureEnvironmentName;
     }
 
-    public boolean isEnableClientCertificate() {
-        return enableClientCertificate;
+    public boolean isEnableClientCertificateAuth() {
+        return enableClientCertificateAuth;
     }
 }

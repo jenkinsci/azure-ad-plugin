@@ -128,9 +128,11 @@ import java.io.UnsupportedEncodingException;
      private static final int NOT_FOUND = 404;
      private static final int BAD_REQUEST = 400;
      public static final String CONVERTER_DISABLE_GRAPH_INTEGRATION = "disableGraphIntegration";
-     public static final String CONVERTER_ENABLE_CLIENT_CERTIFICATE_AUTH = "useClientCertificate";
      public static final String CONVERTER_SINGLE_LOGOUT = "singleLogout";
      public static final String CONVERTER_PROMPT_ACCOUNT = "promptAccount";
+
+     public static final String CONVERTER_ENABLE_CLIENT_CERT_AUTH = "enableClientCertificateAuth";
+
      public static final String CONVERTER_ENVIRONMENT_NAME = "environmentName";
  
      private Cache<String, AzureAdUser> caches;
@@ -142,16 +144,17 @@ import java.io.UnsupportedEncodingException;
      private int cacheDuration;
      private boolean fromRequest = false;
      private boolean promptAccount;
+
+     private boolean enableClientCertificateAuth;
      private boolean singleLogout;
      private boolean disableGraphIntegration;
-     private boolean useClientCertificate;
      private String azureEnvironmentName = "Azure";
  
      public AccessToken getAccessToken() {
          TokenRequestContext tokenRequestContext = new TokenRequestContext();
          tokenRequestContext.setScopes(singletonList("https://graph.microsoft.com/.default"));
  
-         AccessToken accessToken = (useClientCertificate ? getClientCertificateCredential() : getClientSecretCredential())
+         AccessToken accessToken = (enableClientCertificateAuth ? getClientCertificateCredential() : getClientSecretCredential())
                  .getToken(tokenRequestContext)
                  .block();
  
@@ -195,12 +198,21 @@ import java.io.UnsupportedEncodingException;
      public boolean isPromptAccount() {
          return promptAccount;
      }
- 
+
+    public boolean isEnableClientCertificateAuth() {
+         return enableClientCertificateAuth;
+     }
+
      @DataBoundSetter
      public void setPromptAccount(boolean promptAccount) {
          this.promptAccount = promptAccount;
      }
  
+    @DataBoundSetter
+     public void setEnableClientCertificateAuth(boolean enableClientCertificateAuth) {
+         this.enableClientCertificateAuth = enableClientCertificateAuth;
+     }
+
      public boolean isSingleLogout() {
          return singleLogout;
      }
@@ -231,7 +243,7 @@ import java.io.UnsupportedEncodingException;
  
      String getCredentialCacheKey() {
         String credentialComponent = clientId.getPlainText()
-                + (useClientCertificate ? pemCertificate.getPlainText() : clientSecret.getPlainText())
+                + (enableClientCertificateAuth ? pemCertificate.getPlainText() : clientSecret.getPlainText())
                 + tenant.getPlainText()
                 + azureEnvironmentName;
     
@@ -258,19 +270,10 @@ import java.io.UnsupportedEncodingException;
      public boolean isDisableGraphIntegration() {
          return disableGraphIntegration;
      }
-
-     public boolean isEnableClientCertificate() {
-        return useClientCertificate;
-    }
  
      @DataBoundSetter
      public void setDisableGraphIntegration(boolean disableGraphIntegration) {
          this.disableGraphIntegration = disableGraphIntegration;
-     }
- 
-     @DataBoundSetter
-     public void setUseClientCertificate(boolean useClientCertificate) {
-         this.useClientCertificate = useClientCertificate;
      }
  
      public void setClientId(String clientId) {
@@ -698,15 +701,15 @@ import java.io.UnsupportedEncodingException;
              writer.startNode(CONVERTER_DISABLE_GRAPH_INTEGRATION);
              writer.setValue(String.valueOf(realm.isDisableGraphIntegration()));
              writer.endNode();
- 
-             writer.startNode(CONVERTER_ENABLE_CLIENT_CERTIFICATE_AUTH);
-             writer.setValue(String.valueOf(realm.isEnableClientCertificate()));
-             writer.endNode();
 
              writer.startNode(CONVERTER_PROMPT_ACCOUNT);
              writer.setValue(String.valueOf(realm.isPromptAccount()));
              writer.endNode();
- 
+
+             writer.startNode(CONVERTER_ENABLE_CLIENT_CERT_AUTH);
+             writer.setValue(String.valueOf(realm.isEnableClientCertificateAuth()));
+             writer.endNode();
+
              writer.startNode(CONVERTER_SINGLE_LOGOUT);
              writer.setValue(String.valueOf(realm.isSingleLogout()));
              writer.endNode();
@@ -744,11 +747,11 @@ import java.io.UnsupportedEncodingException;
                      case CONVERTER_DISABLE_GRAPH_INTEGRATION:
                          realm.setDisableGraphIntegration(Boolean.parseBoolean(value));
                          break;
-                     case CONVERTER_ENABLE_CLIENT_CERTIFICATE_AUTH:
-                         realm.setUseClientCertificate(Boolean.parseBoolean(value));
-                         break;
                      case CONVERTER_PROMPT_ACCOUNT:
                          realm.setPromptAccount(Boolean.parseBoolean(value));
+                         break;
+                     case CONVERTER_ENABLE_CLIENT_CERT_AUTH:
+                         realm.setEnableClientCertificateAuth(Boolean.parseBoolean(value));
                          break;
                      case CONVERTER_SINGLE_LOGOUT:
                          realm.setSingleLogout(Boolean.parseBoolean(value));
@@ -813,7 +816,7 @@ import java.io.UnsupportedEncodingException;
          public FormValidation doVerifyConfiguration(@QueryParameter final String clientId,
                                                      @QueryParameter final Secret clientSecret,
                                                      @QueryParameter final Secret pemCertificate,
-                                                     @QueryParameter final boolean useClientCertificate,
+                                                     @QueryParameter final boolean enableClientCertificateAuth,
                                                      @QueryParameter final String tenant,
                                                      @QueryParameter final String testObject,
                                                      @QueryParameter final String azureEnvironmentName) {
@@ -828,7 +831,7 @@ import java.io.UnsupportedEncodingException;
                              Secret.toString(pemCertificate),
                              tenant,
                              azureEnvironmentName,
-                             useClientCertificate
+                             enableClientCertificateAuth
                      )
              );
              try {
