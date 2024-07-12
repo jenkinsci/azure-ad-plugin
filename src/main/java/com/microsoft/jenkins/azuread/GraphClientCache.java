@@ -11,6 +11,7 @@ import hudson.ProxyConfiguration;
 import hudson.util.Secret;
 import io.jenkins.plugins.azuresdk.HttpClientRetriever;
 import java.net.URI;
+import java.util.Collections;
 import jenkins.model.Jenkins;
 import jenkins.util.JenkinsJVM;
 import okhttp3.Credentials;
@@ -24,6 +25,7 @@ import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_PUBLIC_CLOUD;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.getAuthorityHost;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.getGraphResource;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.getServiceRoot;
+import static java.util.Collections.singletonList;
 
 public class GraphClientCache {
 
@@ -35,7 +37,12 @@ public class GraphClientCache {
     private static GraphServiceClient<Request> createGraphClient(GraphClientCacheKey key) {
         final ClientSecretCredential clientSecretCredential = getClientSecretCredential(key);
 
-        final TokenCredentialAuthProvider authProvider = new TokenCredentialAuthProvider(clientSecretCredential);
+        String graphResource = AzureEnvironment.getGraphResource(key.getAzureEnvironmentName());
+
+        final TokenCredentialAuthProvider authProvider = new TokenCredentialAuthProvider(
+                singletonList(graphResource + ".default"),
+                clientSecretCredential
+        );
 
         OkHttpClient.Builder builder = HttpClients.createDefault(authProvider)
                 .newBuilder();
