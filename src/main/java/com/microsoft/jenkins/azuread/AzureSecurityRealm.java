@@ -120,6 +120,10 @@ import java.io.UnsupportedEncodingException;
      public static final String CALLBACK_URL = "/securityRealm/finishLogin";
      private static final String CONVERTER_NODE_CLIENT_ID = "clientid";
      private static final String CONVERTER_NODE_CLIENT_SECRET = "clientsecret";
+
+     private static final String CONVERTER_NODE_AAD_APP_SECRET = "aadAppSecret";
+
+     private static final String CONVERTER_NODE_AAD_APP_CERTIFICATE = "aadAppCertificate";
      private static final String CONVERTER_NODE_PEM_CERTIFICATE = "pemCertificate";
      private static final String CONVERTER_NODE_TENANT = "tenant";
      private static final String CONVERTER_NODE_CACHE_DURATION = "cacheduration";
@@ -133,12 +137,20 @@ import java.io.UnsupportedEncodingException;
 
      public static final String CONVERTER_ENABLE_CLIENT_CERT_AUTH = "enableClientCertificateAuth";
 
+     public static final String CONVERTER_AUTHENTICATION_TYPE = "authenticationType";
+
      public static final String CONVERTER_ENVIRONMENT_NAME = "environmentName";
  
      private Cache<String, AzureAdUser> caches;
  
      private Secret clientId;
+
      private Secret clientSecret;
+
+     private Secret aadAppSecret;
+
+     private Secret aadAppCertificate;
+     private String authenticationType;
      private Secret pemCertificate;
      private Secret tenant;
      private int cacheDuration;
@@ -262,6 +274,10 @@ import java.io.UnsupportedEncodingException;
          return azureEnvironmentName;
      }
  
+    public String getAuthenticationType() {
+         return authenticationType;
+     }
+
      @DataBoundSetter
      public void setAzureEnvironmentName(String azureEnvironmentName) {
          this.azureEnvironmentName = azureEnvironmentName;
@@ -288,6 +304,13 @@ import java.io.UnsupportedEncodingException;
          return pemCertificate;
      }
  
+     public Secret getAadAppSecret() {
+         return aadAppSecret;
+     }
+
+     public Secret getAadAppCertificate() {
+         return aadAppCertificate;
+     }
      public void setClientSecret(String clientSecret) {
          this.clientSecret = Secret.fromString(clientSecret);
      }
@@ -295,7 +318,21 @@ import java.io.UnsupportedEncodingException;
      public void setPemCertificate(String pemCertificate) {
          this.pemCertificate = Secret.fromString(pemCertificate);
      }
- 
+
+    @DataBoundSetter
+     public void setAadAppSecret(String aadAppSecret) {
+         this.aadAppSecret = Secret.fromString(aadAppSecret);
+     }
+
+    @DataBoundSetter
+     public void setAadAppCertificate(String aadAppCertificate) {
+         this.aadAppCertificate = Secret.fromString(aadAppCertificate);
+     }
+
+    @DataBoundSetter
+     public void setAadAuthenticationType(String authenticationType) {
+         this.authenticationType = authenticationType;
+     }
      public String getTenant() {
          return tenant.getPlainText();
      }
@@ -367,6 +404,14 @@ import java.io.UnsupportedEncodingException;
          LOGGER.log(Level.FINE, "AzureSecurityRealm()");
      }
  
+    @SuppressWarnings("unused") // called by jelly
+    public Boolean isAuthenticationTypeEquals(String type) {
+        if (this.authenticationType == null && type.equalsIgnoreCase("secret")) {
+            return true;
+        }
+        return type != null && type.equalsIgnoreCase(this.authenticationType);
+    }
+
      @SuppressWarnings("unused") // used by stapler
      public HttpResponse doCommenceLogin(StaplerRequest request, @Header("Referer") final String referer) {
          String trimmedReferrer = getReferer(referer);
@@ -710,6 +755,10 @@ import java.io.UnsupportedEncodingException;
              writer.setValue(String.valueOf(realm.isEnableClientCertificateAuth()));
              writer.endNode();
 
+             writer.startNode(CONVERTER_AUTHENTICATION_TYPE);
+             writer.setValue(String.valueOf(realm.getAuthenticationType()));
+             writer.endNode();
+
              writer.startNode(CONVERTER_SINGLE_LOGOUT);
              writer.setValue(String.valueOf(realm.isSingleLogout()));
              writer.endNode();
@@ -729,8 +778,17 @@ import java.io.UnsupportedEncodingException;
                      case CONVERTER_NODE_CLIENT_SECRET:
                          realm.setClientSecret(value);
                          break;
+                     case CONVERTER_NODE_AAD_APP_SECRET:
+                         realm.setAadAppSecret(value);
+                         break;
+                     case CONVERTER_NODE_AAD_APP_CERTIFICATE:
+                         realm.setAadAppCertificate(value);
+                         break;
                      case CONVERTER_NODE_PEM_CERTIFICATE:
                          realm.setPemCertificate(value);
+                         break;
+                     case CONVERTER_AUTHENTICATION_TYPE:
+                         realm.setAadAuthenticationType(value);
                          break;
                      case CONVERTER_NODE_TENANT:
                          realm.setTenant(value);
@@ -815,15 +873,18 @@ import java.io.UnsupportedEncodingException;
  
          public FormValidation doVerifyConfiguration(@QueryParameter final String clientId,
                                                      @QueryParameter final Secret clientSecret,
+                                                     @QueryParameter final Secret aadAppSecret,
+                                                     @QueryParameter final Secret aadAppCertificate,
                                                      @QueryParameter final Secret pemCertificate,
                                                      @QueryParameter final boolean enableClientCertificateAuth,
                                                      @QueryParameter final String tenant,
                                                      @QueryParameter final String testObject,
-                                                     @QueryParameter final String azureEnvironmentName) {
+                                                     @QueryParameter final String azureEnvironmentName,
+                                                     @QueryParameter final String authenticationType) {
              if (testObject.equals("")) {
                  return FormValidation.error("Please set a test user principal name or object ID");
              }
-
+             LOGGER.log(Level.WARNING, authenticationType);
              GraphServiceClient<Request> graphServiceClient = GraphClientCache.getClient(
                      new GraphClientCacheKey(
                              clientId,

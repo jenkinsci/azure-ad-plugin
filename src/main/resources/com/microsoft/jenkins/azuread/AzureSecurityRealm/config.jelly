@@ -10,6 +10,22 @@
             <f:textbox />
         </f:entry>
 
+        <f:entry title="App Authentication Type">
+            <f:radioBlock name="authenticationType" value="Secret" title="Client Secret"
+                          checked="${instance == null || instance.isAuthenticationTypeEquals('Secret')}" inline="true">
+              <f:entry title="Value" field="aadAppSecret" help="">
+                <f:password/>
+              </f:entry>
+            </f:radioBlock>
+
+            <f:radioBlock name="authenticationType" value="Certificate" title="Client Certificate"
+                          checked="${instance.isAuthenticationTypeEquals('Certificate')}" inline="true">
+              <f:entry title="Value" field="aadAppCertificate" help="">
+                <f:secretTextarea/>
+              </f:entry>
+            </f:radioBlock>
+        </f:entry>
+
         <f:entry title="Client Secret" field="clientSecret" help="/plugin/azure-ad/help/help-client-secret.html">
             <f:password />
         </f:entry>
@@ -56,7 +72,7 @@
         </f:entry>
         <p>${%Save any configuration changes before configuring authorization settings}</p>
 
-        <f:validateButton title="Verify configuration" method="verifyConfiguration" progress="Verifying..." with="clientId,clientSecret,pemCertificate,tenant,testObject,azureEnvironmentName,enableClientCertificateAuth"/>
+        <f:validateButton title="Verify configuration" method="verifyConfiguration" progress="Verifying..." with="clientId,clientSecret,pemCertificate,tenant,testObject,azureEnvironmentName,enableClientCertificateAuth,aadAppSecret,aadAppCertificate,authenticationType"/>
 
     </f:block>
 </j:jelly>
