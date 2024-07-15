@@ -2,7 +2,7 @@ package com.microsoft.jenkins.azuread;
 
 import java.util.Objects;
 
-public class GraphClientCacheKey {
+ class GraphClientCacheKey {
     private final String clientId;
     private final String clientSecret;
     private final String clientCertificate;
