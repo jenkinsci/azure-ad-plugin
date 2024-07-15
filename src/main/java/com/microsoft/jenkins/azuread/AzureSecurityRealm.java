@@ -381,14 +381,13 @@ import java.io.UnsupportedEncodingException;
      }
  
      @DataBoundConstructor
-     public AzureSecurityRealm(String tenant, String clientId, Secret clientSecret, Secret pemCertificate, int cacheDuration, String credentialType) {
+     public AzureSecurityRealm(String tenant, String clientId, Secret clientSecret, Secret pemCertificate, int cacheDuration) {
          super();
          this.clientId = Secret.fromString(clientId);
          this.clientSecret = clientSecret;
          this.pemCertificate = pemCertificate;
          this.tenant = Secret.fromString(tenant);
          this.cacheDuration = cacheDuration;
-         this.credentialType = credentialType;
          caches = Caffeine.newBuilder()
                  .expireAfterWrite(cacheDuration, TimeUnit.SECONDS)
                  .build();
