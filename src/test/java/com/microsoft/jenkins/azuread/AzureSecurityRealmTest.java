@@ -8,16 +8,33 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 import org.jvnet.hudson.test.JenkinsRule;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Collection;
 
 import static org.junit.Assert.assertFalse;
 
+@RunWith(Parameterized.class)
 public class AzureSecurityRealmTest {
     @Rule
     public JenkinsRule j = new JenkinsRule();
+
+    @Parameterized.Parameter(0)
+    public String credentialType;
+
+    @Parameters(name = "{index}: credentialType={0}")
+    public static Collection<Object[]> data() {
+        return Arrays.asList(new Object[][] {
+                {"Secret"},
+                {"Certificate"}
+        });
+    }
 
     @Before
     public void init() throws Exception {
@@ -29,8 +46,9 @@ public class AzureSecurityRealmTest {
         BinaryStreamWriter writer = null;
         BinaryStreamReader reader = null;
         try {
-
-            AzureSecurityRealm securityRealm = new AzureSecurityRealm("tenant", "clientId", Secret.fromString("secret"), Secret.fromString("certificate") , "Secret", 0);
+            String secret = "secret";
+            String certificate = "certificate";
+            AzureSecurityRealm securityRealm = new AzureSecurityRealm("tenant", "clientId", Secret.fromString(secret), Secret.fromString(certificate), credentialType, 0);
             AzureSecurityRealm.ConverterImpl converter = new AzureSecurityRealm.ConverterImpl();
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             writer = new BinaryStreamWriter(outputStream);
@@ -43,7 +61,11 @@ public class AzureSecurityRealmTest {
 
             Assert.assertEquals(securityRealm.getTenant(), result.getTenant());
             Assert.assertEquals(securityRealm.getClientId(), result.getClientId());
-            Assert.assertEquals(securityRealm.getClientSecret().getPlainText(), result.getClientSecret().getPlainText());
+            if ("Secret".equals(credentialType)) {
+                Assert.assertEquals(securityRealm.getClientSecret().getPlainText(), result.getClientSecret().getPlainText());
+            } else if ("Certificate".equals(credentialType)) {
+                Assert.assertEquals(securityRealm.getClientCertificate().getPlainText(), result.getClientCertificate().getPlainText());
+            }
             Assert.assertEquals(securityRealm.getCacheDuration(), result.getCacheDuration());
         } finally {
             if (writer != null) {
@@ -61,13 +83,14 @@ public class AzureSecurityRealmTest {
         try {
             String secretString = "thisIsSpecialSecret";
             String certificateString = "thisIsSpecialCertificate";
-            AzureSecurityRealm securityRealm = new AzureSecurityRealm("tenant", "clientId", Secret.fromString(secretString), Secret.fromString(certificateString), "Secret", 0);
+            AzureSecurityRealm securityRealm = new AzureSecurityRealm("tenant", "clientId", Secret.fromString(secretString), Secret.fromString(certificateString), credentialType, 0);
 
             AzureSecurityRealm.ConverterImpl converter = new AzureSecurityRealm.ConverterImpl();
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             writer = new BinaryStreamWriter(outputStream);
             converter.marshal(securityRealm, writer, null);
             assertFalse(outputStream.toString(StandardCharsets.UTF_8).contains(secretString));
+            assertFalse(outputStream.toString(StandardCharsets.UTF_8).contains(certificateString));
         } finally {
             if (writer != null) {
                 writer.close();
