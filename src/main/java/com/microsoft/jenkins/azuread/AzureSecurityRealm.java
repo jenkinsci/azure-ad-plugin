@@ -137,8 +137,6 @@ import java.io.UnsupportedEncodingException;
 
      public static final String CONVERTER_ENABLE_CLIENT_CERT_AUTH = "enableClientCertificateAuth";
 
-     public static final String CONVERTER_AUTHENTICATION_TYPE = "authenticationType";
-
      public static final String CONVERTER_ENVIRONMENT_NAME = "environmentName";
  
      private Cache<String, AzureAdUser> caches;
@@ -150,7 +148,6 @@ import java.io.UnsupportedEncodingException;
      private Secret aadAppSecret;
 
      private Secret aadAppCertificate;
-     private String authenticationType;
      private Secret pemCertificate;
      private Secret tenant;
      private int cacheDuration;
@@ -161,6 +158,8 @@ import java.io.UnsupportedEncodingException;
      private boolean singleLogout;
      private boolean disableGraphIntegration;
      private String azureEnvironmentName = "Azure";
+
+     private String credentialType;
  
      public AccessToken getAccessToken() {
          TokenRequestContext tokenRequestContext = new TokenRequestContext();
@@ -240,6 +239,10 @@ import java.io.UnsupportedEncodingException;
      public String getClientIdSecret() {
          return clientId.getEncryptedValue();
      }
+
+    public String getCredentialType() {
+         return credentialType;
+     }
  
      public String getClientSecretSecret() {
          return clientSecret.getEncryptedValue();
@@ -272,10 +275,6 @@ import java.io.UnsupportedEncodingException;
          }
  
          return azureEnvironmentName;
-     }
- 
-    public String getAuthenticationType() {
-         return authenticationType;
      }
 
      @DataBoundSetter
@@ -327,11 +326,6 @@ import java.io.UnsupportedEncodingException;
     @DataBoundSetter
      public void setAadAppCertificate(String aadAppCertificate) {
          this.aadAppCertificate = Secret.fromString(aadAppCertificate);
-     }
-
-    @DataBoundSetter
-     public void setAadAuthenticationType(String authenticationType) {
-         this.authenticationType = authenticationType;
      }
      public String getTenant() {
          return tenant.getPlainText();
@@ -387,13 +381,14 @@ import java.io.UnsupportedEncodingException;
      }
  
      @DataBoundConstructor
-     public AzureSecurityRealm(String tenant, String clientId, Secret clientSecret, Secret pemCertificate, int cacheDuration) {
+     public AzureSecurityRealm(String tenant, String clientId, Secret clientSecret, Secret pemCertificate, int cacheDuration, String credentialType) {
          super();
          this.clientId = Secret.fromString(clientId);
          this.clientSecret = clientSecret;
          this.pemCertificate = pemCertificate;
          this.tenant = Secret.fromString(tenant);
          this.cacheDuration = cacheDuration;
+         this.credentialType = credentialType;
          caches = Caffeine.newBuilder()
                  .expireAfterWrite(cacheDuration, TimeUnit.SECONDS)
                  .build();
@@ -403,14 +398,6 @@ import java.io.UnsupportedEncodingException;
          super();
          LOGGER.log(Level.FINE, "AzureSecurityRealm()");
      }
- 
-    @SuppressWarnings("unused") // called by jelly
-    public Boolean isAuthenticationTypeEquals(String type) {
-        if (this.authenticationType == null && type.equalsIgnoreCase("secret")) {
-            return true;
-        }
-        return type != null && type.equalsIgnoreCase(this.authenticationType);
-    }
 
      @SuppressWarnings("unused") // used by stapler
      public HttpResponse doCommenceLogin(StaplerRequest request, @Header("Referer") final String referer) {
@@ -755,10 +742,6 @@ import java.io.UnsupportedEncodingException;
              writer.setValue(String.valueOf(realm.isEnableClientCertificateAuth()));
              writer.endNode();
 
-             writer.startNode(CONVERTER_AUTHENTICATION_TYPE);
-             writer.setValue(String.valueOf(realm.getAuthenticationType()));
-             writer.endNode();
-
              writer.startNode(CONVERTER_SINGLE_LOGOUT);
              writer.setValue(String.valueOf(realm.isSingleLogout()));
              writer.endNode();
@@ -786,9 +769,6 @@ import java.io.UnsupportedEncodingException;
                          break;
                      case CONVERTER_NODE_PEM_CERTIFICATE:
                          realm.setPemCertificate(value);
-                         break;
-                     case CONVERTER_AUTHENTICATION_TYPE:
-                         realm.setAadAuthenticationType(value);
                          break;
                      case CONVERTER_NODE_TENANT:
                          realm.setTenant(value);
@@ -875,16 +855,17 @@ import java.io.UnsupportedEncodingException;
                                                      @QueryParameter final Secret clientSecret,
                                                      @QueryParameter final Secret aadAppSecret,
                                                      @QueryParameter final Secret aadAppCertificate,
+                                                     @QueryParameter final String credentialType,
                                                      @QueryParameter final Secret pemCertificate,
                                                      @QueryParameter final boolean enableClientCertificateAuth,
                                                      @QueryParameter final String tenant,
                                                      @QueryParameter final String testObject,
-                                                     @QueryParameter final String azureEnvironmentName,
-                                                     @QueryParameter final String authenticationType) {
+                                                     @QueryParameter final String azureEnvironmentName) {
              if (testObject.equals("")) {
                  return FormValidation.error("Please set a test user principal name or object ID");
              }
-             LOGGER.log(Level.WARNING, authenticationType);
+
+             LOGGER.log(Level.WARNING, "Creds type: " + credentialType);
              GraphServiceClient<Request> graphServiceClient = GraphClientCache.getClient(
                      new GraphClientCacheKey(
                              clientId,

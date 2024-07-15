@@ -11,18 +11,17 @@
         </f:entry>
 
         <f:entry title="App Authentication Type">
-            <f:radioBlock name="authenticationType" value="Secret" title="Client Secret"
-                          checked="${instance == null || instance.isAuthenticationTypeEquals('Secret')}" inline="true">
-              <f:entry title="Value" field="aadAppSecret" help="">
-                <f:password/>
-              </f:entry>
+            <f:radioBlock name="credentialType" value="Secret" title="Client Secret"
+                          checked="${(instance.credentialType == null) ? 'true' : (instance.credentialType == 'Secret')}" inline="true">
+                <f:entry title="Client Secret" field="aadAppSecret" description="Application client secret">
+                    <f:password/>
+                </f:entry>
             </f:radioBlock>
-
-            <f:radioBlock name="authenticationType" value="Certificate" title="Client Certificate"
-                          checked="${instance.isAuthenticationTypeEquals('Certificate')}" inline="true">
-              <f:entry title="Value" field="aadAppCertificate" help="">
-                <f:secretTextarea/>
-              </f:entry>
+            <f:radioBlock name="credentialType" value="Certificate" title="Client Certificate"
+                          checked="${instance.credentialType == 'Certificate'}" inline="true">
+                <f:entry title="Client Certificate" field="aadAppCertificate" description="Application client certificate">
+                    <f:secretTextarea/>
+                </f:entry>
             </f:radioBlock>
         </f:entry>
 
@@ -72,7 +71,7 @@
         </f:entry>
         <p>${%Save any configuration changes before configuring authorization settings}</p>
 
-        <f:validateButton title="Verify configuration" method="verifyConfiguration" progress="Verifying..." with="clientId,clientSecret,pemCertificate,tenant,testObject,azureEnvironmentName,enableClientCertificateAuth,aadAppSecret,aadAppCertificate,authenticationType"/>
+        <f:validateButton title="Verify configuration" method="verifyConfiguration" progress="Verifying..." with="clientId,clientSecret,pemCertificate,tenant,testObject,azureEnvironmentName,enableClientCertificateAuth,aadAppSecret,aadAppCertificate,credentialType"/>
 
     </f:block>
 </j:jelly>
