@@ -15,6 +15,8 @@ public class AzureAdConfigurationSaveTest {
     public static final String CLIENT_ID = "clientId";
     public static final String CLIENT_SECRET = "thisIsSpecialSecret";
     public static final String CLIENT_CERTIFICATE= "thisIsSpecialCertificateSecret";
+
+    public static final String CREDENTIAL_TYPE= "Secret";
     public static final int CACHE_DURATION = 15;
     @Rule
     public final RestartableJenkinsRule r = new RestartableJenkinsRule();
@@ -28,6 +30,7 @@ public class AzureAdConfigurationSaveTest {
                     CLIENT_ID,
                     Secret.fromString(CLIENT_SECRET),
                     Secret.fromString(CLIENT_CERTIFICATE),
+                    CREDENTIAL_TYPE,
                     CACHE_DURATION);
             realm.setFromRequest(true);
             r.jenkins.setSecurityRealm(realm);
@@ -39,6 +42,7 @@ public class AzureAdConfigurationSaveTest {
             assertThat(result.getClientId(), is(CLIENT_ID));
             assertThat(result.getClientSecret().getPlainText(), is(CLIENT_SECRET));
             assertThat(result.getClientCertificate().getPlainText(), is(CLIENT_CERTIFICATE));
+            assertThat(result.getCredentialType(), is(CREDENTIAL_TYPE));
             assertThat(result.getCacheDuration(), is(CACHE_DURATION));
 
         });
@@ -50,6 +54,7 @@ public class AzureAdConfigurationSaveTest {
             assertThat(result.getClientId(), is(CLIENT_ID));
             assertThat(result.getClientSecret().getPlainText(), is(CLIENT_SECRET));
             assertThat(result.getClientCertificate().getPlainText(), is(CLIENT_CERTIFICATE));
+            assertThat(result.getCredentialType(), is(CREDENTIAL_TYPE));
             assertThat(result.getCacheDuration(), is(CACHE_DURATION));
 
         });

@@ -45,12 +45,14 @@ public class GraphClientCache {
 
         TokenCredentialAuthProvider authProvider;
         
-        if (key.getCredentialType().equals("Certificate")) {
+        if ("Secret".equals(key.getCredentialType())) {
+            ClientSecretCredential clientSecretCredential = getClientSecretCredential(key);
+            authProvider = new TokenCredentialAuthProvider(clientSecretCredential);
+        } else if ("Certificate".equals(key.getCredentialType())) {
             ClientCertificateCredential clientCertificateCredential = getClientCertificateCredential(key);
             authProvider = new TokenCredentialAuthProvider(clientCertificateCredential);
         } else {
-            ClientSecretCredential clientSecretCredential = getClientSecretCredential(key);
-            authProvider = new TokenCredentialAuthProvider(clientSecretCredential);
+            throw new IllegalArgumentException("Invalid credential type");
         }
 
         OkHttpClient.Builder builder = HttpClients.createDefault(authProvider)

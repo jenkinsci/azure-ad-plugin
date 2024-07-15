@@ -347,11 +347,12 @@ public class AzureSecurityRealm extends SecurityRealm {
     }
 
     @DataBoundConstructor
-    public AzureSecurityRealm(String tenant, String clientId, Secret clientSecret, Secret clientCertificate, int cacheDuration) {
+    public AzureSecurityRealm(String tenant, String clientId, Secret clientSecret, Secret clientCertificate, String credentialType, int cacheDuration) {
         super();
         this.clientId = Secret.fromString(clientId);
         this.clientSecret = clientSecret;
         this.clientCertificate = clientCertificate;
+        this.credentialType = credentialType;
         this.tenant = Secret.fromString(tenant);
         this.cacheDuration = cacheDuration;
         caches = Caffeine.newBuilder()
