@@ -10,8 +10,19 @@
             <f:textbox />
         </f:entry>
 
-        <f:entry title="Client Secret" field="clientSecret" help="/plugin/azure-ad/help/help-client-secret.html">
-            <f:password />
+        <f:entry title="Authentication Type">
+            <f:radioBlock name="credentialType" value="Secret" title="Client Secret"
+                          checked="${(instance.credentialType == null) ? 'true' : (instance.credentialType == 'Secret')}" inline="true">
+                <f:entry title="Client Secret" field="clientSecret" description="Application client secret" help="/plugin/azure-ad/help/help-client-secret.html">
+                    <f:password/>
+                </f:entry>
+            </f:radioBlock>
+            <f:radioBlock name="credentialType" value="Certificate" title="Client Certificate"
+                          checked="${instance.credentialType == 'Certificate'}" inline="true">
+                <f:entry title="Client Certificate" field="clientCertificate" description="Application client certificate" help="/plugin/azure-ad/help/help-client-certificate.html">
+                    <f:secretTextarea/>
+                </f:entry>
+            </f:radioBlock>
         </f:entry>
 
         <f:entry title="Tenant" field="tenant" help="/plugin/azure-ad/help/help-tenant.html">
@@ -34,6 +45,7 @@
             <f:checkbox />
         </f:entry>
 
+
         <f:entry title="${%Enable Single Logout}" field="singleLogout">
             <f:checkbox />
         </f:entry>
@@ -47,7 +59,7 @@
         </f:entry>
         <p>${%Save any configuration changes before configuring authorization settings}</p>
 
-        <f:validateButton title="Verify configuration" method="verifyConfiguration" progress="Verifying..." with="clientId,clientSecret,tenant,testObject,azureEnvironmentName"/>
+        <f:validateButton title="Verify configuration" method="verifyConfiguration" progress="Verifying..." with="clientId,clientSecret,clientCertificate,credentialType,azureEnvironmentName,tenant,testObject"/>
 
     </f:block>
 </j:jelly>

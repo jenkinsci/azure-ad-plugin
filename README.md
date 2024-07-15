@@ -12,7 +12,11 @@ A Jenkins Plugin that supports authentication & authorization via Microsoft Entr
 
 1. Add a new Reply URL `https://{your_jenkins_host}/securityRealm/finishLogin`. Make sure "Jenkins URL" (Manage Jenkins => Configure System) is set to the same value as `https://{your_jenkins_host}`.
 
-1. Click `Certificates & secrets`, under Client secrets click `New client secret` to generate a new key, copy the `value`, it will be used as `Client Secret` in Jenkins.
+1. Click `Certificates & secrets`
+
+   - To use a client secret: Under Client secrets, click `New client secret` to generate a new key. Copy the `value`, it will be used as `Client Secret` in Jenkins.
+
+   - To use a certificate: Under Certificates, click `Upload certificate` to upload your certificate. This certificate will be used for client certificate authentication in Jenkins. You will need to use the corresponding private key associated with this certificate in PEM format.
 
 1. Click `Authentication`, under 'Implicit grant and hybrid flows', enable `ID tokens`.
 

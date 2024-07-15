@@ -1,5 +1,14 @@
 package com.microsoft.jenkins.azuread;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.net.Proxy;
+import java.nio.charset.StandardCharsets;
+
+import org.apache.commons.lang3.StringUtils;
+
+import com.azure.identity.ClientCertificateCredential;
+import com.azure.identity.ClientCertificateCredentialBuilder;
 import com.azure.identity.ClientSecretCredential;
 import com.azure.identity.ClientSecretCredentialBuilder;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -7,7 +16,15 @@ import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.microsoft.graph.authentication.TokenCredentialAuthProvider;
 import com.microsoft.graph.httpcore.HttpClients;
 import com.microsoft.graph.requests.GraphServiceClient;
+import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_PUBLIC_CLOUD;
+import static com.microsoft.jenkins.azuread.AzureEnvironment.getAuthorityHost;
+import static com.microsoft.jenkins.azuread.AzureEnvironment.getServiceRoot;
+
+import java.util.Arrays;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import hudson.ProxyConfiguration;
+import hudson.security.SecurityRealm;
 import hudson.util.Secret;
 import io.jenkins.plugins.azuresdk.HttpClientRetriever;
 import java.net.URI;
@@ -30,19 +47,29 @@ import static java.util.Collections.singletonList;
 public class GraphClientCache {
 
     private static final int TEN = 10;
+    private static final Logger LOGGER = Logger.getLogger(GraphClientCache.class.getName());
     private static final LoadingCache<GraphClientCacheKey, GraphServiceClient<Request>> TOKEN_CACHE = Caffeine.newBuilder()
             .maximumSize(TEN)
             .build(GraphClientCache::createGraphClient);
 
     private static GraphServiceClient<Request> createGraphClient(GraphClientCacheKey key) {
-        final ClientSecretCredential clientSecretCredential = getClientSecretCredential(key);
 
+        TokenCredentialAuthProvider authProvider;
         String graphResource = AzureEnvironment.getGraphResource(key.getAzureEnvironmentName());
 
-        final TokenCredentialAuthProvider authProvider = new TokenCredentialAuthProvider(
-                singletonList(graphResource + ".default"),
-                clientSecretCredential
-        );
+        if ("Secret".equals(key.getCredentialType())) {
+            ClientSecretCredential clientSecretCredential = getClientSecretCredential(key);
+            authProvider = new TokenCredentialAuthProvider(
+                    singletonList(graphResource + ".default"),
+                    clientSecretCredential);
+        } else if ("Certificate".equals(key.getCredentialType())) {
+            ClientCertificateCredential clientCertificateCredential = getClientCertificateCredential(key);
+            authProvider = new TokenCredentialAuthProvider(
+                    singletonList(graphResource + ".default"),
+                    clientCertificateCredential);
+        } else {
+            throw new IllegalArgumentException("Invalid credential type");
+        }
 
         OkHttpClient.Builder builder = HttpClients.createDefault(authProvider)
                 .newBuilder();
@@ -63,6 +90,17 @@ public class GraphClientCache {
         return graphServiceClient;
     }
 
+    static ClientCertificateCredential getClientCertificateCredential(GraphClientCacheKey key) {
+        return new ClientCertificateCredentialBuilder()
+                .clientId(key.getClientId())
+                .pemCertificate(getCertificate(key))
+                .tenantId(key.getTenantId())
+                .sendCertificateChain(true)
+                .authorityHost(getAuthorityHost(key.getAzureEnvironmentName()))
+                .httpClient(HttpClientRetriever.get())
+                .build();
+    }
+
     static ClientSecretCredential getClientSecretCredential(GraphClientCacheKey key) {
         return new ClientSecretCredentialBuilder()
                 .clientId(key.getClientId())
@@ -73,6 +111,12 @@ public class GraphClientCache {
                 .build();
     }
 
+    static InputStream getCertificate(GraphClientCacheKey key) {
+
+        String secretString = key.getClientCertificate();
+        return new ByteArrayInputStream(secretString.getBytes(StandardCharsets.UTF_8));
+    }
+
     static GraphServiceClient<Request> getClient(GraphClientCacheKey key) {
         return TOKEN_CACHE.get(key);
     }
@@ -81,6 +125,8 @@ public class GraphClientCache {
         GraphClientCacheKey key = new GraphClientCacheKey(
                 azureSecurityRealm.getClientId(),
                 Secret.toString(azureSecurityRealm.getClientSecret()),
+                Secret.toString(azureSecurityRealm.getClientCertificate()),
+                azureSecurityRealm.getCredentialType(),
                 azureSecurityRealm.getTenant(),
                 azureSecurityRealm.getAzureEnvironmentName()
         );
