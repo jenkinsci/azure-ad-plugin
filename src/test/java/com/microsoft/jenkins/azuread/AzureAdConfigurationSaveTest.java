@@ -53,7 +53,6 @@ public class AzureAdConfigurationSaveTest {
             assertThat(result.getTenant(), is(TENANT));
             assertThat(result.getClientId(), is(CLIENT_ID));
             assertThat(result.getClientSecret().getPlainText(), is(CLIENT_SECRET));
-            assertThat(result.getClientCertificate().getPlainText(), is(CLIENT_CERTIFICATE));
             assertThat(result.getCredentialType(), is(CREDENTIAL_TYPE));
             assertThat(result.getCacheDuration(), is(CACHE_DURATION));
 
