@@ -36,22 +36,22 @@ class GraphClientCacheKey {
             public int hashCode() {
             return Objects.hash(clientId, clientSecret, clientCertificate, credentialType, tenantId, azureEnvironmentName);
         }
-        public String getClientId() {
-            return clientId;
-        }
-        public String getClientSecret() {
-            return clientSecret;
-        }
-        public String getClientCertificate() {
-            return clientCertificate;
-        }
-        public String getCredentialType() {
-            return credentialType;
-        }
-        public String getTenantId() {
-            return tenantId;
-        }
-        public String getAzureEnvironmentName() {
-            return azureEnvironmentName;
-        }
+    public String getClientId() {
+        return clientId;
+    }
+    public String getClientSecret() {
+        return clientSecret;
+    }
+    public String getClientCertificate() {
+        return clientCertificate;
+    }
+    public String getCredentialType() {
+        return credentialType;
+    }
+    public String getTenantId() {
+        return tenantId;
+    }
+    public String getAzureEnvironmentName() {
+        return azureEnvironmentName;
+    }
 }
