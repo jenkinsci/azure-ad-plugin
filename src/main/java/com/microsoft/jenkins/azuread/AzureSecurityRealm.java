@@ -151,7 +151,8 @@ public class AzureSecurityRealm extends SecurityRealm {
 
     public AccessToken getAccessToken() {
         TokenRequestContext tokenRequestContext = new TokenRequestContext();
-        tokenRequestContext.setScopes(singletonList("https://graph.microsoft.com/.default"));
+        String graphResource = AzureEnvironment.getGraphResource(getAzureEnvironmentName());
+        tokenRequestContext.setScopes(singletonList(graphResource + ".default"));
 
         AccessToken accessToken = (credentialType.equals("Certificate") ? getClientCertificateCredential() : getClientSecretCredential())
             .getToken(tokenRequestContext)
