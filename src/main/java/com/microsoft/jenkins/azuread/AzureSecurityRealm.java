@@ -844,9 +844,9 @@ public class AzureSecurityRealm extends SecurityRealm {
                     clientId,
                     Secret.toString(clientSecret),
                     Secret.toString(clientCertificate),
+                    credentialType,
                     tenant,
-                    azureEnvironmentName,
-                    credentialType
+                    azureEnvironmentName
                 )
             );
             try {

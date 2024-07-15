@@ -14,9 +14,9 @@ public class GraphClientCacheKey {
         this.clientId = clientId;
         this.clientSecret = clientSecret;
         this.clientCertificate = clientCertificate;
+        this.credentialType = credentialType;
         this.tenantId = tenantId;
         this.azureEnvironmentName = azureEnvironmentName;
-        this.credentialType = credentialType;
     }
 
     @Override
