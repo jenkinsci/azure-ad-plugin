@@ -44,13 +44,18 @@ public class GraphClientCache {
     private static GraphServiceClient<Request> createGraphClient(GraphClientCacheKey key) {
 
         TokenCredentialAuthProvider authProvider;
+        String graphResource = AzureEnvironment.getGraphResource(key.getAzureEnvironmentName());
         
         if ("Secret".equals(key.getCredentialType())) {
             ClientSecretCredential clientSecretCredential = getClientSecretCredential(key);
-            authProvider = new TokenCredentialAuthProvider(clientSecretCredential);
+            authProvider = new TokenCredentialAuthProvider(
+                    singletonList(graphResource + ".default"),
+                    clientSecretCredential);
         } else if ("Certificate".equals(key.getCredentialType())) {
             ClientCertificateCredential clientCertificateCredential = getClientCertificateCredential(key);
-            authProvider = new TokenCredentialAuthProvider(clientCertificateCredential);
+            authProvider = new TokenCredentialAuthProvider(
+                    singletonList(graphResource + ".default"),
+                    clientCertificateCredential);
         } else {
             throw new IllegalArgumentException("Invalid credential type");
         }
