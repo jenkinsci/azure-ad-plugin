@@ -33,12 +33,14 @@ class GraphClientCacheKey {
         }
 
         @Override
-            public int hashCode() {
+        public int hashCode() {
             return Objects.hash(clientId, clientSecret, clientCertificate, credentialType, tenantId, azureEnvironmentName);
         }
+
     public String getClientId() {
         return clientId;
     }
+
     public String getClientSecret() {
         return clientSecret;
     }
@@ -51,7 +53,9 @@ class GraphClientCacheKey {
     public String getTenantId() {
         return tenantId;
     }
+
     public String getAzureEnvironmentName() {
         return azureEnvironmentName;
     }
+    
 }

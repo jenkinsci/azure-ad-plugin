@@ -147,7 +147,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     private boolean singleLogout;
     private boolean disableGraphIntegration;
     private String azureEnvironmentName = "Azure";
-    private String credentialType;
+    private String credentialType = "Secret";
 
     public AccessToken getAccessToken() {
         TokenRequestContext tokenRequestContext = new TokenRequestContext();
@@ -214,7 +214,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     }
 
     private final Supplier<JwtConsumer> jwtConsumer = Suppliers.memoize(() ->
-        Utils.JwtUtil.jwt(getAuthorityHost(getAzureEnvironmentName()), getClientId(), getTenant()));
+            Utils.JwtUtil.jwt(getAuthorityHost(getAzureEnvironmentName()), getClientId(), getTenant()));
 
     public String getClientIdSecret() {
         return clientId.getEncryptedValue();
@@ -484,8 +484,8 @@ public class AzureSecurityRealm extends SecurityRealm {
         final String responseNonce = (String) claims.getClaimValue("nonce");
         if (StringUtils.isAnyEmpty(expectedNonce, responseNonce) ||
                 !MessageDigest.isEqual(
-                    expectedNonce.getBytes(StandardCharsets.UTF_8),
-                    responseNonce.getBytes(StandardCharsets.UTF_8)
+                        expectedNonce.getBytes(StandardCharsets.UTF_8),
+                        responseNonce.getBytes(StandardCharsets.UTF_8)
                 )
         ) {
             throw new IllegalStateException(String.format("Invalid nonce in the response, "
