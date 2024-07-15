@@ -10,7 +10,7 @@ public class GraphClientCacheKey {
     private final String azureEnvironmentName;
     private final String credentialType;
 
-    public GraphClientCacheKey(String clientId, String clientSecret, String clientCertificate, String tenantId, String azureEnvironmentName, String credentialType) {
+    public GraphClientCacheKey(String clientId, String clientSecret, String clientCertificate,String credentialType, String tenantId, String azureEnvironmentName) {
         this.clientId = clientId;
         this.clientSecret = clientSecret;
         this.clientCertificate = clientCertificate;
@@ -36,28 +36,22 @@ public class GraphClientCacheKey {
     public int hashCode() {
         return Objects.hash(clientId, clientSecret, clientCertificate, credentialType, tenantId, azureEnvironmentName);
     }
-
     public String getClientId() {
         return clientId;
     }
-
     public String getClientSecret() {
         return clientSecret;
     }
-
     public String getClientCertificate() {
         return clientCertificate;
     }
-
+    public String getCredentialType() {
+        return credentialType;
+    }
     public String getTenantId() {
         return tenantId;
     }
-
     public String getAzureEnvironmentName() {
         return azureEnvironmentName;
-    }
-
-    public String getCredentialType() {
-        return credentialType;
     }
 }
