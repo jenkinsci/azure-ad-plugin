@@ -45,7 +45,7 @@ public class GraphClientCache {
 
         TokenCredentialAuthProvider authProvider;
         
-        if (key.isEnableClientCertificateAuth()) {
+        if (key.getCredentialType().equals("Certificate")) {
             ClientCertificateCredential clientCertificateCredential = getClientCertificateCredential(key);
             authProvider = new TokenCredentialAuthProvider(clientCertificateCredential);
         } else {
@@ -95,9 +95,7 @@ public class GraphClientCache {
 
     static InputStream getCertificate(GraphClientCacheKey key) {
 
-        String secretString = key.getPemCertificate();
-        LOGGER.log(Level.FINE, "Itzik 1 : " + secretString);
-        LOGGER.log(Level.FINE, "Itzik 2 : " + Arrays.toString(secretString.getBytes(StandardCharsets.UTF_8)));
+        String secretString = key.getClientCertificate();
         return new ByteArrayInputStream(secretString.getBytes(StandardCharsets.UTF_8));
     }
 
@@ -109,10 +107,10 @@ public class GraphClientCache {
         GraphClientCacheKey key = new GraphClientCacheKey(
                 azureSecurityRealm.getClientId(),
                 Secret.toString(azureSecurityRealm.getClientSecret()),
-                Secret.toString(azureSecurityRealm.getPemCertificate()),
+                Secret.toString(azureSecurityRealm.getClientCertificate()),
                 azureSecurityRealm.getTenant(),
                 azureSecurityRealm.getAzureEnvironmentName(),
-                azureSecurityRealm.isEnableClientCertificateAuth()
+                azureSecurityRealm.getCredentialType()
         );
 
         return TOKEN_CACHE.get(key);

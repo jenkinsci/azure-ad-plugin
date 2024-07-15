@@ -10,27 +10,19 @@
             <f:textbox />
         </f:entry>
 
-        <f:entry title="App Authentication Type">
+        <f:entry title="Authentication Type">
             <f:radioBlock name="credentialType" value="Secret" title="Client Secret"
                           checked="${(instance.credentialType == null) ? 'true' : (instance.credentialType == 'Secret')}" inline="true">
-                <f:entry title="Client Secret" field="aadAppSecret" description="Application client secret">
+                <f:entry title="Client Secret" field="clientSecret" description="Application client secret">
                     <f:password/>
                 </f:entry>
             </f:radioBlock>
             <f:radioBlock name="credentialType" value="Certificate" title="Client Certificate"
                           checked="${instance.credentialType == 'Certificate'}" inline="true">
-                <f:entry title="Client Certificate" field="aadAppCertificate" description="Application client certificate">
+                <f:entry title="Client Certificate" field="clientCertificate" description="Application client certificate">
                     <f:secretTextarea/>
                 </f:entry>
             </f:radioBlock>
-        </f:entry>
-
-        <f:entry title="Client Secret" field="clientSecret" help="/plugin/azure-ad/help/help-client-secret.html">
-            <f:password />
-        </f:entry>
-
-        <f:entry title="PEM Certificate" field="pemCertificate" help="/plugin/azure-ad/help/help-client-certificate.html">
-            <f:secretTextarea />
         </f:entry>
 
         <f:entry title="Tenant" field="tenant" help="/plugin/azure-ad/help/help-tenant.html">
@@ -43,10 +35,6 @@
 
         <f:entry title="Cache Duration" field="cacheDuration" help="/plugin/azure-ad/help/help-cache-duration.html">
             <f:number default="3600" />
-        </f:entry>
-
-        <f:entry title="${%Enable Client Certificate Authentication}" field="enableClientCertificateAuth">
-            <f:checkbox />
         </f:entry>
 
         <f:entry title="Callback URL from request" field="fromRequest" help="/plugin/azure-ad/help/help-from-request.html">
@@ -71,7 +59,7 @@
         </f:entry>
         <p>${%Save any configuration changes before configuring authorization settings}</p>
 
-        <f:validateButton title="Verify configuration" method="verifyConfiguration" progress="Verifying..." with="clientId,clientSecret,pemCertificate,tenant,testObject,azureEnvironmentName,enableClientCertificateAuth,aadAppSecret,aadAppCertificate,credentialType"/>
+        <f:validateButton title="Verify configuration" method="verifyConfiguration" progress="Verifying..." with="clientId,credentialType,clientSecret,clientCertificate,tenant,testObject"/>
 
     </f:block>
 </j:jelly>
