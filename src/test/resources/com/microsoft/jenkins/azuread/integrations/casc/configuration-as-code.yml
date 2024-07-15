@@ -44,9 +44,9 @@ jenkins:
   securityRealm:
     azure:
       clientid: "clientId"
-      credentialtype: "credentialType"
       clientsecret: "clientSecret"
       clientcertificate: "clientCertificate"
+      credentialtype: "credentialType"
       tenant: "tenantId"
       cacheduration: 0
       fromrequest: true

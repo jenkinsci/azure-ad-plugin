@@ -13,13 +13,13 @@
         <f:entry title="Authentication Type">
             <f:radioBlock name="credentialType" value="Secret" title="Client Secret"
                           checked="${(instance.credentialType == null) ? 'true' : (instance.credentialType == 'Secret')}" inline="true">
-                <f:entry title="Client Secret" field="clientSecret" description="Application client secret">
+                <f:entry title="Client Secret" field="clientSecret" description="Application client secret" help="/plugin/azure-ad/help/help-client-secret.html">
                     <f:password/>
                 </f:entry>
             </f:radioBlock>
             <f:radioBlock name="credentialType" value="Certificate" title="Client Certificate"
                           checked="${instance.credentialType == 'Certificate'}" inline="true">
-                <f:entry title="Client Certificate" field="clientCertificate" description="Application client certificate">
+                <f:entry title="Client Certificate" field="clientCertificate" description="Application client certificate" help="/plugin/azure-ad/help/help-client-certificate.html">
                     <f:secretTextarea/>
                 </f:entry>
             </f:radioBlock>

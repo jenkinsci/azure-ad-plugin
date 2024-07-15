@@ -28,6 +28,8 @@
     <securityRealm class="com.microsoft.jenkins.azuread.AzureSecurityRealm">
         <clientid>clientId</clientid>
         <clientsecret>password</clientsecret>
+        <clientsecret>certificate</clientsecret>
+        <credentialtype>secret</credentialtype>
         <tenant>tenantId</tenant>
         <cacheduration>0</cacheduration>
         <fromrequest>true</fromrequest>
