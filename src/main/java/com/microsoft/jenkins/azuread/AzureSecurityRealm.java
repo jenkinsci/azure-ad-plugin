@@ -121,7 +121,6 @@ public class AzureSecurityRealm extends SecurityRealm {
     private static final String CONVERTER_NODE_CLIENT_ID = "clientid";
     private static final String CONVERTER_NODE_CLIENT_SECRET = "clientsecret";
     private static final String CONVERTER_NODE_CLIENT_CERTIFICATE = "clientCertificate";
-
     private static final String CONVERTER_NODE_CREDENTIAL_TYPE = "credentialType";
     private static final String CONVERTER_NODE_TENANT = "tenant";
     private static final String CONVERTER_NODE_CACHE_DURATION = "cacheduration";
@@ -148,7 +147,6 @@ public class AzureSecurityRealm extends SecurityRealm {
     private boolean singleLogout;
     private boolean disableGraphIntegration;
     private String azureEnvironmentName = "Azure";
-
     private String credentialType = "Secret";
 
     public AccessToken getAccessToken() {
@@ -673,17 +671,19 @@ public class AzureSecurityRealm extends SecurityRealm {
             writer.setValue(realm.getClientIdSecret());
             writer.endNode();
 
-            writer.startNode(CONVERTER_NODE_CLIENT_SECRET);
-            writer.setValue(realm.getClientSecretSecret());
-            writer.endNode();
-
-            writer.startNode(CONVERTER_NODE_CLIENT_CERTIFICATE);
-            writer.setValue(realm.getClientCertificateSecret());
-            writer.endNode();
-
             writer.startNode(CONVERTER_NODE_CREDENTIAL_TYPE);
             writer.setValue(realm.getCredentialType());
             writer.endNode();
+
+            if (realm.getCredentialType().equals("Secret")) {
+                writer.startNode(CONVERTER_NODE_CLIENT_SECRET);
+                writer.setValue(realm.getClientSecretSecret());
+                writer.endNode();
+            } else {
+                writer.startNode(CONVERTER_NODE_CLIENT_CERTIFICATE);
+                writer.setValue(realm.getClientCertificateSecret());
+                writer.endNode();
+            }
 
             writer.startNode(CONVERTER_NODE_TENANT);
             writer.setValue(realm.getTenantSecret());
