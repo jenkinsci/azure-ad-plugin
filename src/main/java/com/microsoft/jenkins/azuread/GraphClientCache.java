@@ -108,9 +108,9 @@ public class GraphClientCache {
                 azureSecurityRealm.getClientId(),
                 Secret.toString(azureSecurityRealm.getClientSecret()),
                 Secret.toString(azureSecurityRealm.getClientCertificate()),
+                azureSecurityRealm.getCredentialType(),
                 azureSecurityRealm.getTenant(),
-                azureSecurityRealm.getAzureEnvironmentName(),
-                azureSecurityRealm.getCredentialType()
+                azureSecurityRealm.getAzureEnvironmentName()
         );
 
         return TOKEN_CACHE.get(key);
