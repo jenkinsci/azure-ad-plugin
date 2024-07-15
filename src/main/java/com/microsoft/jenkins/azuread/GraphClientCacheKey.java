@@ -2,7 +2,7 @@ package com.microsoft.jenkins.azuread;
 
 import java.util.Objects;
 
- class GraphClientCacheKey {
+class GraphClientCacheKey {
     private final String clientId;
     private final String clientSecret;
     private final String clientCertificate;
@@ -20,7 +20,7 @@ import java.util.Objects;
     }
 
     @Override
-    public boolean equals(Object o) {
+        public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         GraphClientCacheKey that = (GraphClientCacheKey) o;
@@ -33,7 +33,7 @@ import java.util.Objects;
     }
 
     @Override
-    public int hashCode() {
+        public int hashCode() {
         return Objects.hash(clientId, clientSecret, clientCertificate, credentialType, tenantId, azureEnvironmentName);
     }
     public String getClientId() {
