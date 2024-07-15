@@ -10,6 +10,8 @@ import com.microsoft.graph.requests.GraphServiceClient;
 import hudson.ProxyConfiguration;
 import hudson.util.Secret;
 import io.jenkins.plugins.azuresdk.HttpClientRetriever;
+import java.net.URI;
+import java.util.Collections;
 import jenkins.model.Jenkins;
 import jenkins.util.JenkinsJVM;
 import okhttp3.Credentials;
@@ -21,7 +23,9 @@ import java.net.Proxy;
 
 import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_PUBLIC_CLOUD;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.getAuthorityHost;
+import static com.microsoft.jenkins.azuread.AzureEnvironment.getGraphResource;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.getServiceRoot;
+import static java.util.Collections.singletonList;
 
 public class GraphClientCache {
 
@@ -33,12 +37,17 @@ public class GraphClientCache {
     private static GraphServiceClient<Request> createGraphClient(GraphClientCacheKey key) {
         final ClientSecretCredential clientSecretCredential = getClientSecretCredential(key);
 
-        final TokenCredentialAuthProvider authProvider = new TokenCredentialAuthProvider(clientSecretCredential);
+        String graphResource = AzureEnvironment.getGraphResource(key.getAzureEnvironmentName());
+
+        final TokenCredentialAuthProvider authProvider = new TokenCredentialAuthProvider(
+                singletonList(graphResource + ".default"),
+                clientSecretCredential
+        );
 
         OkHttpClient.Builder builder = HttpClients.createDefault(authProvider)
                 .newBuilder();
 
-        builder = addProxyToHttpClientIfRequired(builder);
+        builder = addProxyToHttpClientIfRequired(builder, key.getAzureEnvironmentName());
         final OkHttpClient graphHttpClient = builder.build();
 
         GraphServiceClient<Request> graphServiceClient = GraphServiceClient
@@ -79,11 +88,13 @@ public class GraphClientCache {
         return TOKEN_CACHE.get(key);
     }
 
-    public static OkHttpClient.Builder addProxyToHttpClientIfRequired(OkHttpClient.Builder builder) {
+    public static OkHttpClient.Builder addProxyToHttpClientIfRequired(OkHttpClient.Builder builder, String azureEnvironmentName) {
         if (JenkinsJVM.isJenkinsJVM()) {
             ProxyConfiguration proxyConfiguration = Jenkins.get().getProxy();
             if (proxyConfiguration != null && StringUtils.isNotBlank(proxyConfiguration.getName())) {
-                Proxy proxy = proxyConfiguration.createProxy("graph.microsoft.com");
+
+                String graphHost = URI.create(getGraphResource(azureEnvironmentName)).getHost();
+                Proxy proxy = proxyConfiguration.createProxy(graphHost);
 
                 builder = builder.proxy(proxy);
                 if (StringUtils.isNotBlank(proxyConfiguration.getUserName())) {

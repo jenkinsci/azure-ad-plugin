@@ -165,7 +165,12 @@ public class GraphProxy implements RootAction, StaplerProxy {
     private OkHttpClient getClient() {
         ProxyConfiguration proxyConfiguration = Jenkins.get().getProxy();
         if (proxyConfiguration != null && StringUtils.isNotBlank(proxyConfiguration.getName())) {
-            return addProxyToHttpClientIfRequired(new OkHttpClient().newBuilder()).build();
+            SecurityRealm securityRealm = Jenkins.get().getSecurityRealm();
+            AzureSecurityRealm azureSecurityRealm = ((AzureSecurityRealm) securityRealm);
+
+            String azureEnvironmentName = azureSecurityRealm.getAzureEnvironmentName();
+
+            return addProxyToHttpClientIfRequired(new OkHttpClient().newBuilder(), azureEnvironmentName).build();
         }
         return DEFAULT_CLIENT;
     }
