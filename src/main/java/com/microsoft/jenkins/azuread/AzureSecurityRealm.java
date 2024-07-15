@@ -141,7 +141,6 @@ public class AzureSecurityRealm extends SecurityRealm {
 
     private Secret clientSecret;
     private Secret clientCertificate;
-    private String credentialType;
     private Secret tenant;
     private int cacheDuration;
     private boolean fromRequest = false;
@@ -149,6 +148,8 @@ public class AzureSecurityRealm extends SecurityRealm {
     private boolean singleLogout;
     private boolean disableGraphIntegration;
     private String azureEnvironmentName = "Azure";
+
+    private String credentialType = "Secret";
 
     public AccessToken getAccessToken() {
         TokenRequestContext tokenRequestContext = new TokenRequestContext();
