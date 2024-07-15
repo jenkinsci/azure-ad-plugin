@@ -1,30 +1,15 @@
 package com.microsoft.jenkins.azuread;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
-import java.net.Proxy;
-import java.nio.charset.StandardCharsets;
-
-import org.apache.commons.lang3.StringUtils;
-
-import com.azure.identity.ClientCertificateCredential;
-import com.azure.identity.ClientCertificateCredentialBuilder;
 import com.azure.identity.ClientSecretCredential;
 import com.azure.identity.ClientSecretCredentialBuilder;
+import com.azure.identity.ClientCertificateCredential;
+import com.azure.identity.ClientCertificateCredentialBuilder;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.microsoft.graph.authentication.TokenCredentialAuthProvider;
 import com.microsoft.graph.httpcore.HttpClients;
 import com.microsoft.graph.requests.GraphServiceClient;
-import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_PUBLIC_CLOUD;
-import static com.microsoft.jenkins.azuread.AzureEnvironment.getAuthorityHost;
-import static com.microsoft.jenkins.azuread.AzureEnvironment.getServiceRoot;
-
-import java.util.Arrays;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import hudson.ProxyConfiguration;
-import hudson.security.SecurityRealm;
 import hudson.util.Secret;
 import io.jenkins.plugins.azuresdk.HttpClientRetriever;
 import java.net.URI;
@@ -37,6 +22,9 @@ import okhttp3.Request;
 import org.apache.commons.lang3.StringUtils;
 
 import java.net.Proxy;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 
 import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_PUBLIC_CLOUD;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.getAuthorityHost;
@@ -47,7 +35,6 @@ import static java.util.Collections.singletonList;
 public class GraphClientCache {
 
     private static final int TEN = 10;
-    private static final Logger LOGGER = Logger.getLogger(GraphClientCache.class.getName());
     private static final LoadingCache<GraphClientCacheKey, GraphServiceClient<Request>> TOKEN_CACHE = Caffeine.newBuilder()
             .maximumSize(TEN)
             .build(GraphClientCache::createGraphClient);
