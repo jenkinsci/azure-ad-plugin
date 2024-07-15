@@ -147,14 +147,14 @@ public class AzureSecurityRealm extends SecurityRealm {
     private boolean singleLogout;
     private boolean disableGraphIntegration;
     private String azureEnvironmentName = "Azure";
-    private String credentialType = "Secret";
+    private String credentialType;
 
     public AccessToken getAccessToken() {
         TokenRequestContext tokenRequestContext = new TokenRequestContext();
         String graphResource = AzureEnvironment.getGraphResource(getAzureEnvironmentName());
         tokenRequestContext.setScopes(singletonList(graphResource + ".default"));
 
-        AccessToken accessToken = (credentialType.equals("Certificate") ? getClientCertificateCredential() : getClientSecretCredential())
+        AccessToken accessToken = ("Certificate".equals(credentialType) ? getClientCertificateCredential() : getClientSecretCredential())
             .getToken(tokenRequestContext)
             .block();
 
@@ -175,24 +175,24 @@ public class AzureSecurityRealm extends SecurityRealm {
     ClientSecretCredential getClientSecretCredential() {
         String azureEnv = getAzureEnvironmentName();
         return new ClientSecretCredentialBuilder()
-            .clientId(clientId.getPlainText())
-            .clientSecret(clientSecret.getPlainText())
-            .tenantId(tenant.getPlainText())
-            .authorityHost(getAuthorityHost(azureEnv))
-            .httpClient(HttpClientRetriever.get())
-            .build();
+                .clientId(clientId.getPlainText())
+                .clientSecret(clientSecret.getPlainText())
+                .tenantId(tenant.getPlainText())
+                .authorityHost(getAuthorityHost(azureEnv))
+                .httpClient(HttpClientRetriever.get())
+                .build();
     }
 
     ClientCertificateCredential getClientCertificateCredential() {
         String azureEnv = getAzureEnvironmentName();
         return new ClientCertificateCredentialBuilder()
-            .clientId(clientId.getPlainText())
-            .pemCertificate(getCertificate())
-            .tenantId(tenant.getPlainText())
-            .sendCertificateChain(true)
-            .authorityHost(getAuthorityHost(azureEnv))
-            .httpClient(HttpClientRetriever.get())
-            .build();
+                .clientId(clientId.getPlainText())
+                .pemCertificate(getCertificate())
+                .tenantId(tenant.getPlainText())
+                .sendCertificateChain(true)
+                .authorityHost(getAuthorityHost(azureEnv))
+                .httpClient(HttpClientRetriever.get())
+                .build();
     }
 
     public boolean isPromptAccount() {
@@ -203,6 +203,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     public void setPromptAccount(boolean promptAccount) {
         this.promptAccount = promptAccount;
     }
+
     public boolean isSingleLogout() {
         return singleLogout;
     }
@@ -236,9 +237,9 @@ public class AzureSecurityRealm extends SecurityRealm {
 
     String getCredentialCacheKey() {
         String credentialComponent = clientId.getPlainText()
-            + (credentialType.equals("Certificate") ? clientCertificate.getPlainText() : clientSecret.getPlainText())
-            + tenant.getPlainText()
-            + azureEnvironmentName;
+                + ("Certificate".equals(credentialType) ? clientCertificate.getPlainText() : clientSecret.getPlainText())
+                + tenant.getPlainText()
+                + azureEnvironmentName;
 
         return Util.getDigestOf(credentialComponent);
     }
@@ -329,11 +330,11 @@ public class AzureSecurityRealm extends SecurityRealm {
 
     OAuth20Service getOAuthService() {
         return new ServiceBuilder(clientId.getPlainText())
-            .apiSecret(credentialType.equals("Certificate") ? clientCertificate.getPlainText() : clientSecret.getPlainText())
-            .responseType("id_token")
-            .defaultScope("openid profile email")
-            .callback(getRootUrl() + CALLBACK_URL)
-            .build(AzureAdApi.custom(getTenant(), getAuthorityHost(getAzureEnvironmentName())));
+                .apiSecret("Certificate".equals(credentialType) ? clientCertificate.getPlainText() : clientSecret.getPlainText())
+                .responseType("id_token")
+                .defaultScope("openid profile email")
+                .callback(getRootUrl() + CALLBACK_URL)
+                .build(AzureAdApi.custom(getTenant(), getAuthorityHost(getAzureEnvironmentName())));
     }
 
     GraphServiceClient<Request> getAzureClient() {
@@ -357,8 +358,8 @@ public class AzureSecurityRealm extends SecurityRealm {
         this.tenant = Secret.fromString(tenant);
         this.cacheDuration = cacheDuration;
         caches = Caffeine.newBuilder()
-            .expireAfterWrite(cacheDuration, TimeUnit.SECONDS)
-            .build();
+                .expireAfterWrite(cacheDuration, TimeUnit.SECONDS)
+                .build();
     }
 
     public AzureSecurityRealm() {
@@ -413,7 +414,7 @@ public class AzureSecurityRealm extends SecurityRealm {
 
 
     public HttpResponse doFinishLogin(StaplerRequest request)
-        throws InvalidJwtException, IOException {
+            throws InvalidJwtException, IOException {
         String referer = (String) request.getSession().getAttribute(REFERER_ATTRIBUTE);
         try {
             final Long beginTime = (Long) request.getSession().getAttribute(TIMESTAMP_ATTRIBUTE);
@@ -433,7 +434,7 @@ public class AzureSecurityRealm extends SecurityRealm {
 
             if (StringUtils.isBlank(idToken)) {
                 LOGGER.info("No `id_token` found ensure you have enabled it on the 'Authentication' page of the "
-                    + "app registration");
+                        + "app registration");
                 return HttpResponses.redirectToContextRoot();
             }
             // validate the nonce to avoid CSRF
@@ -447,11 +448,11 @@ public class AzureSecurityRealm extends SecurityRealm {
                 List<AzureAdGroup> groups = emptyList();
                 if (!isDisableGraphIntegration()) {
                     groups = AzureCachePool.get(getAzureClient())
-                        .getBelongingGroupsByOid(user.getObjectID());
+                            .getBelongingGroupsByOid(user.getObjectID());
                 }
                 user.setAuthorities(groups, user.getUniqueName());
                 LOGGER.info(String.format("Fetch user details with sub: %s***",
-                    key.substring(0, CACHE_KEY_LOG_LENGTH)));
+                        key.substring(0, CACHE_KEY_LOG_LENGTH)));
                 return user;
             });
 
@@ -482,13 +483,13 @@ public class AzureSecurityRealm extends SecurityRealm {
         JwtClaims claims = getJwtConsumer().processToClaims(idToken);
         final String responseNonce = (String) claims.getClaimValue("nonce");
         if (StringUtils.isAnyEmpty(expectedNonce, responseNonce) ||
-            !MessageDigest.isEqual(
-                expectedNonce.getBytes(StandardCharsets.UTF_8),
-                responseNonce.getBytes(StandardCharsets.UTF_8)
-            )
+                !MessageDigest.isEqual(
+                    expectedNonce.getBytes(StandardCharsets.UTF_8),
+                    responseNonce.getBytes(StandardCharsets.UTF_8)
+                )
         ) {
             throw new IllegalStateException(String.format("Invalid nonce in the response, "
-                + "expected: %s actual: %s", expectedNonce, responseNonce));
+                    + "expected: %s actual: %s", expectedNonce, responseNonce));
         }
         return claims;
     }
@@ -537,7 +538,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                 try {
                     // TODO try https://docs.microsoft.com/en-us/answers/questions/42697/how-to-get-a-particular-azure-ad-guest-user-from-h.html
                     com.microsoft.graph.models.User activeDirectoryUser = azureClient.users(userId).buildRequest()
-                        .get();
+                            .get();
 
                     if (activeDirectoryUser != null & activeDirectoryUser.id == null) {
                         // known to happen when subject is a group with display name only and starts with a #
@@ -546,7 +547,7 @@ public class AzureSecurityRealm extends SecurityRealm {
 
                     AzureAdUser user = requireNonNull(AzureAdUser.createFromActiveDirectoryUser(activeDirectoryUser));
                     List<AzureAdGroup> groups = AzureCachePool.get(azureClient)
-                        .getBelongingGroupsByOid(user.getObjectID());
+                            .getBelongingGroupsByOid(user.getObjectID());
 
                     user.setAuthorities(groups, user.getUniqueName());
 
@@ -562,7 +563,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                             LOGGER.log(Level.FINE, "Failed to lookup user with userid '" + userId, e);
                         } else {
                             LOGGER.log(Level.WARNING, "Failed to lookup user with userid '" + userId + "'."
-                                + " Enable 'Fine' Logging for more information.");
+                                    + " Enable 'Fine' Logging for more information.");
                         }
                         return null;
                     }
@@ -599,8 +600,8 @@ public class AzureSecurityRealm extends SecurityRealm {
         Group group;
         if (UUIDValidator.isValidUUID(groupId)) {
             group = azureClient.groups(groupId)
-                .buildRequest()
-                .get();
+                    .buildRequest()
+                    .get();
         } else {
             group = loadGroupByDisplayName(groupName);
         }
@@ -616,7 +617,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     private Group loadGroupByDisplayName(String groupName) {
         LinkedList<Option> requestOptions = new LinkedList<>();
         String encodedGroupName = groupName
-            .replace("'", "''");
+                .replace("'", "''");
         try {
             encodedGroupName = URLEncoder.encode(encodedGroupName, StandardCharsets.UTF_8.name());
         } catch (UnsupportedEncodingException e) {
@@ -628,20 +629,20 @@ public class AzureSecurityRealm extends SecurityRealm {
         requestOptions.add(new QueryOption("$filter", query));
 
         GroupCollectionPage groupCollectionPage = getAzureClient().groups()
-            .buildRequest(requestOptions)
-            .select("id,displayName")
-            .get();
+                .buildRequest(requestOptions)
+                .select("id,displayName")
+                .get();
 
         assert groupCollectionPage != null;
         List<Group> currentPage = groupCollectionPage.getCurrentPage();
         Group group = null;
         if (currentPage.size() > 1) {
             String groupIds = currentPage
-                .stream()
-                .map(groupO -> groupO.id)
-                .collect(Collectors.joining(","));
+                    .stream()
+                    .map(groupO -> groupO.id)
+                    .collect(Collectors.joining(","));
             throw new UsernameNotFoundException("Multiple matches found for group display name, "
-                + "this must be unique: " + groupIds);
+                    + "this must be unique: " + groupIds);
         } else if (currentPage.size() == 1) {
             group = currentPage.get(0);
         }
@@ -677,7 +678,7 @@ public class AzureSecurityRealm extends SecurityRealm {
             writer.setValue(realm.getCredentialType());
             writer.endNode();
 
-            if (realm.getCredentialType().equals("Secret")) {
+            if ("Secret".equals(realm.getCredentialType())) {
                 writer.startNode(CONVERTER_NODE_CLIENT_SECRET);
                 writer.setValue(realm.getClientSecretSecret());
                 writer.endNode();
@@ -763,8 +764,8 @@ public class AzureSecurityRealm extends SecurityRealm {
                 reader.moveUp();
             }
             Cache<String, AzureAdUser> caches = Caffeine.newBuilder()
-                .expireAfterWrite(realm.getCacheDuration(), TimeUnit.SECONDS)
-                .build();
+                    .expireAfterWrite(realm.getCacheDuration(), TimeUnit.SECONDS)
+                    .build();
             realm.setCaches(caches);
             return realm;
         }
@@ -776,7 +777,7 @@ public class AzureSecurityRealm extends SecurityRealm {
 
         @Override
         public boolean process(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
-            throws IOException, ServletException {
+                throws IOException, ServletException {
             String pathInfo = request.getPathInfo();
             if (pathInfo != null && pathInfo.equals(CALLBACK_URL)) {
                 chain.doFilter(request, response);
@@ -840,16 +841,15 @@ public class AzureSecurityRealm extends SecurityRealm {
                 return FormValidation.error("Please set a test user principal name or object ID");
             }
 
-            LOGGER.log(Level.WARNING, "Creds type: " + credentialType);
             GraphServiceClient<Request> graphServiceClient = GraphClientCache.getClient(
-                new GraphClientCacheKey(
-                    clientId,
-                    Secret.toString(clientSecret),
-                    Secret.toString(clientCertificate),
-                    credentialType,
-                    tenant,
-                    azureEnvironmentName
-                )
+                    new GraphClientCacheKey(
+                            clientId,
+                            Secret.toString(clientSecret),
+                            Secret.toString(clientCertificate),
+                            credentialType,
+                            tenant,
+                            azureEnvironmentName
+                    )
             );
             try {
                 com.microsoft.graph.models.User user = graphServiceClient.users(testObject).buildRequest().get();
@@ -874,7 +874,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                 if (StringUtils.isNotBlank(azureAdUser.getEmail())) {
                     UserProperty existing = u.getProperty(UserProperty.class);
                     if (existing == null || !existing.hasExplicitlyConfiguredAddress()) {
-                        u.addProperty(new Mailer.UserProperty(azureAdUser.getEmail()));
+                            u.addProperty(new Mailer.UserProperty(azureAdUser.getEmail()));
                     }
                 }
             } catch (IOException e) {
@@ -885,10 +885,10 @@ public class AzureSecurityRealm extends SecurityRealm {
 
     private String generateDescription(AzureAdUser user) {
         return "Azure Active Directory User\n"
-            + "\nUnique Principal Name: " + user.getUniqueName()
-            + "\nEmail: " + user.getEmail()
-            + "\nObject ID: " + user.getObjectID()
-            + "\nTenant ID: " + user.getTenantID();
+                + "\nUnique Principal Name: " + user.getUniqueName()
+                + "\nEmail: " + user.getEmail()
+                + "\nObject ID: " + user.getObjectID()
+                + "\nTenant ID: " + user.getTenantID();
     }
 
 }
