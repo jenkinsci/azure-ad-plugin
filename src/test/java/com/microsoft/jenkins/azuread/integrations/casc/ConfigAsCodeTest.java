@@ -35,7 +35,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -43,36 +42,60 @@ public class ConfigAsCodeTest {
     private static final String TEST_UPN = "abc@jenkins.com";
 
     @ClassRule
-    @ConfiguredWithCode("configuration-as-code.yml")
-    public static JenkinsConfiguredWithCodeRule j = new JenkinsConfiguredWithCodeRule();
+    @ConfiguredWithCode("configuration-as-code-secret-auth.yml")
+    public static JenkinsConfiguredWithCodeRule jSecret = new JenkinsConfiguredWithCodeRule();
+
+    @ClassRule
+    @ConfiguredWithCode("configuration-as-code-certificate-auth.yml")
+    public static JenkinsConfiguredWithCodeRule jCertificate = new JenkinsConfiguredWithCodeRule();
 
     @Rule
-    public LoggerRule l = new LoggerRule().record(MatrixAuthorizationStrategyConfigurator.class, Level.WARNING).capture(20);
+    public LoggerRule l = new LoggerRule().record(AzureAdMatrixAuthorizationStrategy.class, Level.WARNING).capture(20);
 
     @Test
-    public void should_support_configuration_as_code() {
-        SecurityRealm securityRealm = j.jenkins.getSecurityRealm();
+    public void should_support_configuration_as_code_clientSecret() {
+        SecurityRealm securityRealm = jSecret.jenkins.getSecurityRealm();
         assertTrue("security realm", securityRealm instanceof AzureSecurityRealm);
         AzureSecurityRealm azureSecurityRealm = (AzureSecurityRealm) securityRealm;
-        assertNotEquals("clientId", azureSecurityRealm.getClientIdSecret());
-        assertNotEquals("clientSecret", azureSecurityRealm.getClientSecretSecret());
-        assertNotEquals("clientCertificate", azureSecurityRealm.getClientCertificateSecret());
-        assertNotEquals("tenantId", azureSecurityRealm.getTenantSecret());
+        assertNotNull(azureSecurityRealm.getClientIdSecret());
+        assertNotNull(azureSecurityRealm.getClientSecretSecret());
+        assertNotNull(azureSecurityRealm.getTenantSecret());
         assertEquals("clientId", azureSecurityRealm.getClientId());
-        assertEquals("credentialType", azureSecurityRealm.getCredentialType());
+        assertEquals("Secret", azureSecurityRealm.getCredentialType());
         assertEquals("clientSecret", azureSecurityRealm.getClientSecret().getPlainText());
+        assertEquals("tenantId", azureSecurityRealm.getTenant());
+        assertEquals(0, azureSecurityRealm.getCacheDuration());
+        assertTrue(azureSecurityRealm.isFromRequest());
+
+        validateCommonAssertions(jSecret);
+    }
+
+    @Test
+    public void should_support_configuration_as_code_clientCertificate() {
+        SecurityRealm securityRealm = jCertificate.jenkins.getSecurityRealm();
+        assertTrue("security realm", securityRealm instanceof AzureSecurityRealm);
+        AzureSecurityRealm azureSecurityRealm = (AzureSecurityRealm) securityRealm;
+        assertNotNull(azureSecurityRealm.getClientIdSecret());
+        assertNotNull(azureSecurityRealm.getClientCertificateSecret());
+        assertNotNull(azureSecurityRealm.getTenantSecret());
+        assertEquals("clientId", azureSecurityRealm.getClientId());
+        assertEquals("Certificate", azureSecurityRealm.getCredentialType());
         assertEquals("clientCertificate", azureSecurityRealm.getClientCertificate().getPlainText());
         assertEquals("tenantId", azureSecurityRealm.getTenant());
         assertEquals(0, azureSecurityRealm.getCacheDuration());
         assertTrue(azureSecurityRealm.isFromRequest());
 
+        validateCommonAssertions(jCertificate);
+    }
+
+    private void validateCommonAssertions(JenkinsConfiguredWithCodeRule j) {
         AuthorizationStrategy authorizationStrategy = j.jenkins.getAuthorizationStrategy();
         assertTrue("authorization strategy", authorizationStrategy instanceof AzureAdMatrixAuthorizationStrategy);
         AzureAdMatrixAuthorizationStrategy azureAdMatrixAuthorizationStrategy = (AzureAdMatrixAuthorizationStrategy) authorizationStrategy;
 
         assertEquals("one real user sid", 2, azureAdMatrixAuthorizationStrategy.getAllPermissionEntries().size());
         assertTrue("anon can read", azureAdMatrixAuthorizationStrategy.hasExplicitPermission(PermissionEntry.user("anonymous"), Jenkins.READ));
-        assertTrue("authenticated can read", azureAdMatrixAuthorizationStrategy.hasExplicitPermission(PermissionEntry.user(TEST_UPN), Jenkins.READ));
+        assertTrue("authenticated can read", azureAdMatrixAuthorizationStrategy.hasExplicitPermission(PermissionEntry.group("authenticated"), Jenkins.READ));
         assertTrue("authenticated can build", azureAdMatrixAuthorizationStrategy.hasExplicitPermission(PermissionEntry.group("authenticated"), Item.BUILD));
         assertTrue("authenticated can delete jobs", azureAdMatrixAuthorizationStrategy.hasExplicitPermission(PermissionEntry.user(TEST_UPN), Item.DELETE));
         assertTrue("authenticated can administer", azureAdMatrixAuthorizationStrategy.hasExplicitPermission(PermissionEntry.user(TEST_UPN), Jenkins.ADMINISTER));

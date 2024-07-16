@@ -21,7 +21,6 @@ public class AzureAdConfigurationSaveTest {
     public static final String CLIENT_ID = "clientId";
     public static final String CLIENT_SECRET = "thisIsSpecialSecret";
     public static final String CLIENT_CERTIFICATE = "thisIsSpecialCertificateSecret";
-
     public static final int CACHE_DURATION = 15;
 
     @Rule
@@ -45,38 +44,39 @@ public class AzureAdConfigurationSaveTest {
                     TENANT,
                     CLIENT_ID,
                     Secret.fromString(CLIENT_SECRET),
-                    Secret.fromString(CLIENT_CERTIFICATE),
-                    credentialType,
                     CACHE_DURATION);
             realm.setFromRequest(true);
             r.jenkins.setSecurityRealm(realm);
 
             AzureSecurityRealm result = (AzureSecurityRealm) r.jenkins.getSecurityRealm();
-            assertThat(result, is(notNullValue()));
-            assertThat(result.isFromRequest(), is(true));
-            assertThat(result.getTenant(), is(TENANT));
-            assertThat(result.getClientId(), is(CLIENT_ID));
-            if ("Secret".equals(credentialType)) {
-                assertThat(result.getClientSecret().getPlainText(), is(CLIENT_SECRET));
-            } else if ("Certificate".equals(credentialType)) {
-                assertThat(result.getClientCertificate().getPlainText(), is(CLIENT_CERTIFICATE));
+            result.setCredentialType(credentialType);
+            if ("Certificate".equals(credentialType)) {
+                result.setClientCertificate(CLIENT_CERTIFICATE);
             }
-            assertThat(result.getCredentialType(), is(credentialType));
-            assertThat(result.getCacheDuration(), is(CACHE_DURATION));
+            verifyRealm(result, credentialType);
         });
+
         r.then(r -> {
             AzureSecurityRealm result = (AzureSecurityRealm) r.jenkins.getSecurityRealm();
-            assertThat(result, is(notNullValue()));
-            assertThat(result.isFromRequest(), is(true));
-            assertThat(result.getTenant(), is(TENANT));
-            assertThat(result.getClientId(), is(CLIENT_ID));
-            if ("Secret".equals(credentialType)) {
-                assertThat(result.getClientSecret().getPlainText(), is(CLIENT_SECRET));
-            } else if ("Certificate".equals(credentialType)) {
-                assertThat(result.getClientCertificate().getPlainText(), is(CLIENT_CERTIFICATE));
+            result.setCredentialType(credentialType);
+            if ("Certificate".equals(credentialType)) {
+                result.setClientCertificate(CLIENT_CERTIFICATE);
             }
-            assertThat(result.getCredentialType(), is(credentialType));
-            assertThat(result.getCacheDuration(), is(CACHE_DURATION));
+            verifyRealm(result, credentialType);
         });
+    }
+
+    private void verifyRealm(AzureSecurityRealm realm, String credentialType) {
+        assertThat(realm, is(notNullValue()));
+        assertThat(realm.isFromRequest(), is(true));
+        assertThat(realm.getTenant(), is(TENANT));
+        assertThat(realm.getClientId(), is(CLIENT_ID));
+        if ("Secret".equals(credentialType)) {
+            assertThat(realm.getClientSecret().getPlainText(), is(CLIENT_SECRET));
+        } else if ("Certificate".equals(credentialType)) {
+            assertThat(realm.getClientCertificate().getPlainText(), is(CLIENT_CERTIFICATE));
+        }
+        assertThat(realm.getCredentialType(), is(credentialType));
+        assertThat(realm.getCacheDuration(), is(CACHE_DURATION));
     }
 }

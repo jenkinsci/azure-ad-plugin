@@ -1,3 +1,14 @@
 <div>
-    The <b>Client Certificate</b> represents a PEM certificate. The <b>OAuth consumer Client Certificate</b> should be a valid PEM certificate that includes both the certificate and the private key.
+    Input the private key and the client certificate with which Jenkins will authenticate itself to Microsoft Entra ID.
+    They must be in PEM format (<a href="https://www.rfc-editor.org/rfc/rfc7468">IETF RFC 7468</a> sections 10 and 5), concatenated together like this:
+<pre>
+-----BEGIN PRIVATE KEY-----
+[Base64 text not shown]
+-----END PRIVATE KEY-----
+-----BEGIN CERTIFICATE-----
+[Base64 text not shown]
+-----END CERTIFICATE-----
+</pre>
+    The private key must not be encrypted.
+    The certificate may be self-signed, but it must not have expired.
 </div>

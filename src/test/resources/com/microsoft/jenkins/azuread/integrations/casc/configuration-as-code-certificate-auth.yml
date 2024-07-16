@@ -1,0 +1,97 @@
+jenkins:
+  authorizationStrategy:
+    azureAdMatrix:
+      entries:
+        - group:
+            name: authenticated
+            permissions:
+              - Agent/Build
+              - Job/Build
+        - user:
+            name: abc (abc@jenkins.com)
+            permissions:
+              - Agent/Configure
+              - Agent/Connect
+              - Agent/Create
+              - Agent/Delete
+              - Agent/Disconnect
+              - Credentials/Create
+              - Credentials/Delete
+              - Credentials/ManageDomains
+              - Credentials/Update
+              - Credentials/View
+              - Job/Cancel
+              - Job/Configure
+              - Job/Create
+              - Job/Delete
+              - Job/Discover
+              - Job/Move
+              - Job/Read
+              - Job/Workspace
+              - Overall/Administer
+              - Overall/Read
+              - Run/Delete
+              - Run/Replay
+              - Run/Update
+              - View/Configure
+              - View/Create
+              - View/Delete
+              - View/Read
+        - user:
+            name: anonymous
+            permissions:
+              - Overall/Read
+  securityRealm:
+    azure:
+      clientid: "clientId"
+      clientcertificate: "clientCertificate"
+      credentialtype: "Certificate"
+      tenant: "tenantId"
+      cacheduration: 0
+      fromrequest: true
+  nodes:
+    - permanent:
+        labelString: "agent"
+        launcher:
+          jnlp:
+            webSocket: true
+            workDirSettings:
+              disabled: false
+              failIfWorkDirIsMissing: false
+              internalDir: "remoting"
+        name: "agent"
+        nodeProperties:
+          - azureAdAuthorizationMatrix:
+              inheritanceStrategy: "nonInheriting"
+              entries:
+                - user:
+                    name: Adele Vance (be674052-e519-4231-b5e7-2b390bff6346)
+                    permissions:
+                      - "Agent/Build"
+                - user:
+                    name: Lee Gu (7678bed6-0e7f-4a83-86d2-81d8e47614ee)
+                    permissions:
+                      - "Agent/Disconnect"
+        remoteFS: "/opt/jenkins"
+        retentionStrategy: "always"
+jobs:
+  - script: >
+      folder('generated') {
+        properties {
+          azureAdAuthorizationMatrix {
+            inheritanceStrategy {
+                nonInheriting()
+            }
+            entries {
+              group {
+                name('Some group (7fe913e8-6c9f-40f8-913e-7178b7768cc5)')
+                permissions([ 'Job/Build', 'Job/Configure', 'Job/Delete', 'Job/Read' ])
+              }
+              user {
+                name('c411116f-cfa6-472c-8ccf-d0cb6053c9aa')
+                permissions([ 'Job/Build', 'Job/Configure' ])
+              }
+            }
+          }
+        }
+      }

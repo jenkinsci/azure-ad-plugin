@@ -48,7 +48,9 @@ public class AzureSecurityRealmTest {
         try {
             String secret = "secret";
             String certificate = "certificate";
-            AzureSecurityRealm securityRealm = new AzureSecurityRealm("tenant", "clientId", Secret.fromString(secret), Secret.fromString(certificate), credentialType, 0);
+            AzureSecurityRealm securityRealm = new AzureSecurityRealm("tenant", "clientId", Secret.fromString(secret), 0);
+            securityRealm.setClientCertificate(certificate);
+            securityRealm.setCredentialType(credentialType);
             AzureSecurityRealm.ConverterImpl converter = new AzureSecurityRealm.ConverterImpl();
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             writer = new BinaryStreamWriter(outputStream);
@@ -83,7 +85,7 @@ public class AzureSecurityRealmTest {
         try {
             String secretString = "thisIsSpecialSecret";
             String certificateString = "thisIsSpecialCertificate";
-            AzureSecurityRealm securityRealm = new AzureSecurityRealm("tenant", "clientId", Secret.fromString(secretString), Secret.fromString(certificateString), credentialType, 0);
+            AzureSecurityRealm securityRealm = new AzureSecurityRealm("tenant", "clientId", Secret.fromString(secretString), 0);
 
             AzureSecurityRealm.ConverterImpl converter = new AzureSecurityRealm.ConverterImpl();
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
