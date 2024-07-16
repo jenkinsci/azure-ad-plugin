@@ -1,5 +1,6 @@
 package com.microsoft.jenkins.azuread;
 
+import com.azure.core.credential.TokenCredential;
 import com.azure.identity.ClientSecretCredential;
 import com.azure.identity.ClientSecretCredentialBuilder;
 import com.azure.identity.ClientCertificateCredential;
@@ -64,19 +65,17 @@ public class GraphClientCache {
     private static TokenCredentialAuthProvider getAuthProvider(GraphClientCacheKey key) {
         String graphResource = AzureEnvironment.getGraphResource(key.getAzureEnvironmentName());
 
+        TokenCredential tokenCredential;
         if ("Secret".equals(key.getCredentialType())) {
-            ClientSecretCredential clientSecretCredential = getClientSecretCredential(key);
-            return new TokenCredentialAuthProvider(
-                    singletonList(graphResource + ".default"),
-                    clientSecretCredential);
+            tokenCredential = getClientSecretCredential(key);
         } else if ("Certificate".equals(key.getCredentialType())) {
-            ClientCertificateCredential clientCertificateCredential = getClientCertificateCredential(key);
-            return new TokenCredentialAuthProvider(
-                    singletonList(graphResource + ".default"),
-                    clientCertificateCredential);
+            tokenCredential = getClientCertificateCredential(key);
         } else {
             throw new IllegalArgumentException("Invalid credential type");
         }
+        return new TokenCredentialAuthProvider(
+                singletonList(graphResource + ".default"),
+                tokenCredential);
     }
 
 
