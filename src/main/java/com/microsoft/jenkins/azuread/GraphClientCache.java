@@ -40,23 +40,7 @@ public class GraphClientCache {
             .build(GraphClientCache::createGraphClient);
 
     private static GraphServiceClient<Request> createGraphClient(GraphClientCacheKey key) {
-
-        TokenCredentialAuthProvider authProvider;
-        String graphResource = AzureEnvironment.getGraphResource(key.getAzureEnvironmentName());
-
-        if ("Secret".equals(key.getCredentialType())) {
-            ClientSecretCredential clientSecretCredential = getClientSecretCredential(key);
-            authProvider = new TokenCredentialAuthProvider(
-                    singletonList(graphResource + ".default"),
-                    clientSecretCredential);
-        } else if ("Certificate".equals(key.getCredentialType())) {
-            ClientCertificateCredential clientCertificateCredential = getClientCertificateCredential(key);
-            authProvider = new TokenCredentialAuthProvider(
-                    singletonList(graphResource + ".default"),
-                    clientCertificateCredential);
-        } else {
-            throw new IllegalArgumentException("Invalid credential type");
-        }
+        TokenCredentialAuthProvider authProvider = getAuthProvider(key);
 
         OkHttpClient.Builder builder = HttpClients.createDefault(authProvider)
                 .newBuilder();
@@ -76,6 +60,25 @@ public class GraphClientCache {
         }
         return graphServiceClient;
     }
+
+    private static TokenCredentialAuthProvider getAuthProvider(GraphClientCacheKey key) {
+        String graphResource = AzureEnvironment.getGraphResource(key.getAzureEnvironmentName());
+
+        if ("Secret".equals(key.getCredentialType())) {
+            ClientSecretCredential clientSecretCredential = getClientSecretCredential(key);
+            return new TokenCredentialAuthProvider(
+                    singletonList(graphResource + ".default"),
+                    clientSecretCredential);
+        } else if ("Certificate".equals(key.getCredentialType())) {
+            ClientCertificateCredential clientCertificateCredential = getClientCertificateCredential(key);
+            return new TokenCredentialAuthProvider(
+                    singletonList(graphResource + ".default"),
+                    clientCertificateCredential);
+        } else {
+            throw new IllegalArgumentException("Invalid credential type");
+        }
+    }
+
 
     static ClientCertificateCredential getClientCertificateCredential(GraphClientCacheKey key) {
         return new ClientCertificateCredentialBuilder()
