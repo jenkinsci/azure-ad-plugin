@@ -6,26 +6,27 @@
 
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
     <f:block>
-        <f:entry title="Client ID"  field="clientId" help="/plugin/azure-ad/help/help-client-id.html" >
+        <f:entry title="Client ID"  field="clientId" >
             <f:textbox />
         </f:entry>
 
         <f:entry title="Authentication Type">
-            <f:radioBlock name="credentialType" value="Secret" title="Client Secret"
+            <f:radioBlock name="credentialType" value="Secret" title="Client Secret" help="${null}"
                           checked="${(instance.credentialType == null) ? 'true' : (instance.credentialType == 'Secret')}" inline="true">
-                <f:entry title="Client Secret" field="clientSecret" description="Application client secret" help="/plugin/azure-ad/help/help-client-secret.html">
+                <f:entry title="Secret" field="clientSecret">
                     <f:password/>
                 </f:entry>
             </f:radioBlock>
             <f:radioBlock name="credentialType" value="Certificate" title="Client Certificate"
+                          help="${null}"
                           checked="${instance.credentialType == 'Certificate'}" inline="true">
-                <f:entry title="Client Certificate" field="clientCertificate" description="Application client certificate" help="/plugin/azure-ad/help/help-client-certificate.html">
+                <f:entry title="Certificate" field="clientCertificate">
                     <f:secretTextarea/>
                 </f:entry>
             </f:radioBlock>
         </f:entry>
 
-        <f:entry title="Tenant" field="tenant" help="/plugin/azure-ad/help/help-tenant.html">
+        <f:entry title="Tenant" field="tenant">
             <f:textbox />
         </f:entry>
 
@@ -33,11 +34,11 @@
             <f:select/>
         </f:entry>
 
-        <f:entry title="Cache Duration" field="cacheDuration" help="/plugin/azure-ad/help/help-cache-duration.html">
+        <f:entry title="Cache Duration" field="cacheDuration">
             <f:number default="3600" />
         </f:entry>
 
-        <f:entry title="Callback URL from request" field="fromRequest" help="/plugin/azure-ad/help/help-from-request.html">
+        <f:entry title="Callback URL from request" field="fromRequest">
             <f:checkbox />
         </f:entry>
 

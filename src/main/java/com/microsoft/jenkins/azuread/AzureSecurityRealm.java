@@ -6,11 +6,9 @@
 package com.microsoft.jenkins.azuread;
 
 import com.azure.core.credential.AccessToken;
-import com.azure.core.credential.TokenCredential;
 import com.azure.core.credential.TokenRequestContext;
 import com.azure.identity.ClientSecretCredential;
 import com.azure.identity.ClientSecretCredentialBuilder;
-import com.azure.security.keyvault.secrets.models.KeyVaultSecret;
 import com.azure.identity.ClientCertificateCredential;
 import com.azure.identity.ClientCertificateCredentialBuilder;
 import com.github.benmanes.caffeine.cache.Cache;
@@ -19,9 +17,7 @@ import com.github.scribejava.core.builder.ServiceBuilder;
 import com.github.scribejava.core.oauth.OAuth20Service;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
-import com.microsoft.graph.authentication.TokenCredentialAuthProvider;
 import com.microsoft.graph.http.GraphServiceException;
-import com.microsoft.graph.httpcore.HttpClients;
 import com.microsoft.graph.models.Group;
 import com.microsoft.graph.options.Option;
 import com.microsoft.graph.options.QueryOption;
@@ -37,7 +33,6 @@ import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
-import hudson.ProxyConfiguration;
 import hudson.Util;
 import hudson.model.Descriptor;
 import hudson.model.User;
@@ -56,9 +51,6 @@ import javax.servlet.http.HttpSession;
 
 import jenkins.model.Jenkins;
 import jenkins.security.SecurityListener;
-import jenkins.util.JenkinsJVM;
-import okhttp3.Credentials;
-import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -88,7 +80,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
-import java.net.Proxy;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -824,12 +815,12 @@ public class AzureSecurityRealm extends SecurityRealm {
                                                     @QueryParameter final String azureEnvironmentName) {
             switch (credentialType) {
                 case "Secret":
-                    if (isSecretEmpty(clientSecret)) {
+                    if (Secret.toString(clientSecret).isEmpty()) {
                         return FormValidation.error("Please set a secret");
                     }
                     break;
                 case "Certificate":
-                    if (isSecretEmpty(clientCertificate)) {
+                    if (Secret.toString(clientCertificate).isEmpty()) {
                         return FormValidation.error("Please set a certificate");
                     }
                     break;
@@ -859,10 +850,6 @@ public class AzureSecurityRealm extends SecurityRealm {
                 return FormValidation.error(ex, ex.getMessage());
             }
         }
-    }
-
-    private static boolean isSecretEmpty(Secret secret) {
-        return secret == null || Secret.toString(secret).isEmpty();
     }
 
     private void updateIdentity(final AzureAdUser azureAdUser, final User u) {
