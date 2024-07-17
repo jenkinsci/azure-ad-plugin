@@ -9,15 +9,15 @@ import com.azure.core.credential.AccessToken;
 import com.azure.core.credential.TokenRequestContext;
 import com.azure.identity.ClientSecretCredential;
 import com.azure.identity.ClientSecretCredentialBuilder;
+import com.azure.identity.ClientCertificateCredential;
+import com.azure.identity.ClientCertificateCredentialBuilder;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.scribejava.core.builder.ServiceBuilder;
 import com.github.scribejava.core.oauth.OAuth20Service;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
-import com.microsoft.graph.authentication.TokenCredentialAuthProvider;
 import com.microsoft.graph.http.GraphServiceException;
-import com.microsoft.graph.httpcore.HttpClients;
 import com.microsoft.graph.models.Group;
 import com.microsoft.graph.options.Option;
 import com.microsoft.graph.options.QueryOption;
@@ -33,7 +33,6 @@ import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
-import hudson.ProxyConfiguration;
 import hudson.Util;
 import hudson.model.Descriptor;
 import hudson.model.User;
@@ -52,9 +51,6 @@ import javax.servlet.http.HttpSession;
 
 import jenkins.model.Jenkins;
 import jenkins.security.SecurityListener;
-import jenkins.util.JenkinsJVM;
-import okhttp3.Credentials;
-import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -79,9 +75,10 @@ import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
-import java.net.Proxy;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -113,6 +110,8 @@ public class AzureSecurityRealm extends SecurityRealm {
     public static final String CALLBACK_URL = "/securityRealm/finishLogin";
     private static final String CONVERTER_NODE_CLIENT_ID = "clientid";
     private static final String CONVERTER_NODE_CLIENT_SECRET = "clientsecret";
+    private static final String CONVERTER_NODE_CLIENT_CERTIFICATE = "clientCertificate";
+    private static final String CONVERTER_NODE_CREDENTIAL_TYPE = "credentialType";
     private static final String CONVERTER_NODE_TENANT = "tenant";
     private static final String CONVERTER_NODE_CACHE_DURATION = "cacheduration";
     private static final String CONVERTER_NODE_FROM_REQUEST = "fromrequest";
@@ -122,12 +121,14 @@ public class AzureSecurityRealm extends SecurityRealm {
     public static final String CONVERTER_DISABLE_GRAPH_INTEGRATION = "disableGraphIntegration";
     public static final String CONVERTER_SINGLE_LOGOUT = "singleLogout";
     public static final String CONVERTER_PROMPT_ACCOUNT = "promptAccount";
+
     public static final String CONVERTER_ENVIRONMENT_NAME = "environmentName";
 
     private Cache<String, AzureAdUser> caches;
 
     private Secret clientId;
     private Secret clientSecret;
+    private Secret clientCertificate;
     private Secret tenant;
     private int cacheDuration;
     private boolean fromRequest = false;
@@ -135,21 +136,29 @@ public class AzureSecurityRealm extends SecurityRealm {
     private boolean singleLogout;
     private boolean disableGraphIntegration;
     private String azureEnvironmentName = "Azure";
+    private String credentialType = "Secret";
 
     public AccessToken getAccessToken() {
-        ClientSecretCredential clientSecretCredential = getClientSecretCredential();
-
         TokenRequestContext tokenRequestContext = new TokenRequestContext();
         String graphResource = AzureEnvironment.getGraphResource(getAzureEnvironmentName());
         tokenRequestContext.setScopes(singletonList(graphResource + ".default"));
 
-        AccessToken accessToken = clientSecretCredential.getToken(tokenRequestContext).block();
+        AccessToken accessToken = ("Certificate".equals(credentialType) ? getClientCertificateCredential() : getClientSecretCredential())
+            .getToken(tokenRequestContext)
+            .block();
 
         if (accessToken == null) {
             throw new IllegalStateException("Access token null when it is required");
         }
 
         return accessToken;
+    }
+
+    InputStream getCertificate() {
+
+        String secretString = clientCertificate.getPlainText();
+
+        return new ByteArrayInputStream(secretString.getBytes(StandardCharsets.UTF_8));
     }
 
     ClientSecretCredential getClientSecretCredential() {
@@ -163,6 +172,17 @@ public class AzureSecurityRealm extends SecurityRealm {
                 .build();
     }
 
+    ClientCertificateCredential getClientCertificateCredential() {
+        String azureEnv = getAzureEnvironmentName();
+        return new ClientCertificateCredentialBuilder()
+                .clientId(clientId.getPlainText())
+                .pemCertificate(getCertificate())
+                .tenantId(tenant.getPlainText())
+                .sendCertificateChain(true)
+                .authorityHost(getAuthorityHost(azureEnv))
+                .httpClient(HttpClientRetriever.get())
+                .build();
+    }
     public boolean isPromptAccount() {
         return promptAccount;
     }
@@ -192,16 +212,24 @@ public class AzureSecurityRealm extends SecurityRealm {
         return clientSecret.getEncryptedValue();
     }
 
+    public String getClientCertificateSecret() {
+        return clientCertificate.getEncryptedValue();
+    }
+
+    public String getCredentialType() {
+        return credentialType;
+    }
     public String getTenantSecret() {
         return tenant.getEncryptedValue();
     }
 
     String getCredentialCacheKey() {
-        return Util.getDigestOf(clientId.getPlainText()
-                + clientSecret.getPlainText()
+        String credentialComponent = clientId.getPlainText()
+                + ("Certificate".equals(credentialType) ? clientCertificate.getPlainText() : clientSecret.getPlainText())
                 + tenant.getPlainText()
-                + azureEnvironmentName
-        );
+                + azureEnvironmentName;
+
+        return Util.getDigestOf(credentialComponent);
     }
 
     public String getClientId() {
@@ -230,6 +258,11 @@ public class AzureSecurityRealm extends SecurityRealm {
         this.disableGraphIntegration = disableGraphIntegration;
     }
 
+    @DataBoundSetter
+    public void setCredentialType(String credentialType) {
+        this.credentialType = credentialType;
+    }
+
     public void setClientId(String clientId) {
         this.clientId = Secret.fromString(clientId);
     }
@@ -238,8 +271,17 @@ public class AzureSecurityRealm extends SecurityRealm {
         return clientSecret;
     }
 
+    public Secret getClientCertificate() {
+        return clientCertificate;
+    }
+
     public void setClientSecret(String clientSecret) {
         this.clientSecret = Secret.fromString(clientSecret);
+    }
+
+    @DataBoundSetter
+    public void setClientCertificate(String clientCertificate) {
+        this.clientCertificate = Secret.fromString(clientCertificate);
     }
 
     public String getTenant() {
@@ -277,7 +319,7 @@ public class AzureSecurityRealm extends SecurityRealm {
 
     OAuth20Service getOAuthService() {
         return new ServiceBuilder(clientId.getPlainText())
-                .apiSecret(clientSecret.getPlainText())
+                .apiSecret("Certificate".equals(credentialType) ? clientCertificate.getPlainText() : clientSecret.getPlainText())
                 .responseType("id_token")
                 .defaultScope("openid profile email")
                 .callback(getRootUrl() + CALLBACK_URL)
@@ -619,9 +661,19 @@ public class AzureSecurityRealm extends SecurityRealm {
             writer.setValue(realm.getClientIdSecret());
             writer.endNode();
 
-            writer.startNode(CONVERTER_NODE_CLIENT_SECRET);
-            writer.setValue(realm.getClientSecretSecret());
+            writer.startNode(CONVERTER_NODE_CREDENTIAL_TYPE);
+            writer.setValue(realm.getCredentialType());
             writer.endNode();
+
+            if ("Secret".equals(realm.getCredentialType())) {
+                writer.startNode(CONVERTER_NODE_CLIENT_SECRET);
+                writer.setValue(realm.getClientSecretSecret());
+                writer.endNode();
+            } else {
+                writer.startNode(CONVERTER_NODE_CLIENT_CERTIFICATE);
+                writer.setValue(realm.getClientCertificateSecret());
+                writer.endNode();
+            }
 
             writer.startNode(CONVERTER_NODE_TENANT);
             writer.setValue(realm.getTenantSecret());
@@ -665,6 +717,12 @@ public class AzureSecurityRealm extends SecurityRealm {
                         break;
                     case CONVERTER_NODE_CLIENT_SECRET:
                         realm.setClientSecret(value);
+                        break;
+                    case CONVERTER_NODE_CLIENT_CERTIFICATE:
+                        realm.setClientCertificate(value);
+                        break;
+                    case CONVERTER_NODE_CREDENTIAL_TYPE:
+                        realm.setCredentialType(value);
                         break;
                     case CONVERTER_NODE_TENANT:
                         realm.setTenant(value);
@@ -746,10 +804,27 @@ public class AzureSecurityRealm extends SecurityRealm {
 
         public FormValidation doVerifyConfiguration(@QueryParameter final String clientId,
                                                     @QueryParameter final Secret clientSecret,
+                                                    @QueryParameter final Secret clientCertificate,
+                                                    @QueryParameter final String credentialType,
                                                     @QueryParameter final String tenant,
                                                     @QueryParameter final String testObject,
                                                     @QueryParameter final String azureEnvironmentName) {
-            if (testObject.equals("")) {
+            switch (credentialType) {
+                case "Secret":
+                    if (Secret.toString(clientSecret).isEmpty()) {
+                        return FormValidation.error("Please set a secret");
+                    }
+                    break;
+                case "Certificate":
+                    if (Secret.toString(clientCertificate).isEmpty()) {
+                        return FormValidation.error("Please set a certificate");
+                    }
+                    break;
+                default:
+                    return FormValidation.error("Invalid credential type");
+            }
+
+            if (testObject.isEmpty()) {
                 return FormValidation.error("Please set a test user principal name or object ID");
             }
 
@@ -757,6 +832,8 @@ public class AzureSecurityRealm extends SecurityRealm {
                     new GraphClientCacheKey(
                             clientId,
                             Secret.toString(clientSecret),
+                            Secret.toString(clientCertificate),
+                            credentialType,
                             tenant,
                             azureEnvironmentName
                     )

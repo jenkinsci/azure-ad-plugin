@@ -1,7 +1,10 @@
 package com.microsoft.jenkins.azuread;
 
+import com.azure.core.credential.TokenCredential;
 import com.azure.identity.ClientSecretCredential;
 import com.azure.identity.ClientSecretCredentialBuilder;
+import com.azure.identity.ClientCertificateCredential;
+import com.azure.identity.ClientCertificateCredentialBuilder;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.microsoft.graph.authentication.TokenCredentialAuthProvider;
@@ -20,6 +23,9 @@ import okhttp3.Request;
 import org.apache.commons.lang3.StringUtils;
 
 import java.net.Proxy;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 
 import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_PUBLIC_CLOUD;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.getAuthorityHost;
@@ -35,14 +41,7 @@ public class GraphClientCache {
             .build(GraphClientCache::createGraphClient);
 
     private static GraphServiceClient<Request> createGraphClient(GraphClientCacheKey key) {
-        final ClientSecretCredential clientSecretCredential = getClientSecretCredential(key);
-
-        String graphResource = AzureEnvironment.getGraphResource(key.getAzureEnvironmentName());
-
-        final TokenCredentialAuthProvider authProvider = new TokenCredentialAuthProvider(
-                singletonList(graphResource + ".default"),
-                clientSecretCredential
-        );
+        TokenCredentialAuthProvider authProvider = getAuthProvider(key);
 
         OkHttpClient.Builder builder = HttpClients.createDefault(authProvider)
                 .newBuilder();
@@ -63,6 +62,33 @@ public class GraphClientCache {
         return graphServiceClient;
     }
 
+    private static TokenCredentialAuthProvider getAuthProvider(GraphClientCacheKey key) {
+        String graphResource = AzureEnvironment.getGraphResource(key.getAzureEnvironmentName());
+
+        TokenCredential tokenCredential;
+        if ("Secret".equals(key.getCredentialType())) {
+            tokenCredential = getClientSecretCredential(key);
+        } else if ("Certificate".equals(key.getCredentialType())) {
+            tokenCredential = getClientCertificateCredential(key);
+        } else {
+            throw new IllegalArgumentException("Invalid credential type");
+        }
+        return new TokenCredentialAuthProvider(
+                singletonList(graphResource + ".default"),
+                tokenCredential);
+    }
+
+    static ClientCertificateCredential getClientCertificateCredential(GraphClientCacheKey key) {
+        return new ClientCertificateCredentialBuilder()
+                .clientId(key.getClientId())
+                .pemCertificate(getCertificate(key))
+                .tenantId(key.getTenantId())
+                .sendCertificateChain(true)
+                .authorityHost(getAuthorityHost(key.getAzureEnvironmentName()))
+                .httpClient(HttpClientRetriever.get())
+                .build();
+    }
+
     static ClientSecretCredential getClientSecretCredential(GraphClientCacheKey key) {
         return new ClientSecretCredentialBuilder()
                 .clientId(key.getClientId())
@@ -73,6 +99,12 @@ public class GraphClientCache {
                 .build();
     }
 
+    static InputStream getCertificate(GraphClientCacheKey key) {
+
+        String secretString = key.getClientCertificate();
+        return new ByteArrayInputStream(secretString.getBytes(StandardCharsets.UTF_8));
+    }
+
     static GraphServiceClient<Request> getClient(GraphClientCacheKey key) {
         return TOKEN_CACHE.get(key);
     }
@@ -81,6 +113,8 @@ public class GraphClientCache {
         GraphClientCacheKey key = new GraphClientCacheKey(
                 azureSecurityRealm.getClientId(),
                 Secret.toString(azureSecurityRealm.getClientSecret()),
+                Secret.toString(azureSecurityRealm.getClientCertificate()),
+                azureSecurityRealm.getCredentialType(),
                 azureSecurityRealm.getTenant(),
                 azureSecurityRealm.getAzureEnvironmentName()
         );
