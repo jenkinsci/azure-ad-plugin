@@ -9,7 +9,6 @@ import org.jvnet.hudson.test.RestartableJenkinsRule;
 
 import java.util.Arrays;
 import java.util.Collection;
-
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.core.Is.is;

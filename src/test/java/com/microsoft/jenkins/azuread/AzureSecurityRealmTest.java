@@ -86,7 +86,6 @@ public class AzureSecurityRealmTest {
             String secretString = "thisIsSpecialSecret";
             String certificateString = "thisIsSpecialCertificate";
             AzureSecurityRealm securityRealm = new AzureSecurityRealm("tenant", "clientId", Secret.fromString(secretString), 0);
-
             AzureSecurityRealm.ConverterImpl converter = new AzureSecurityRealm.ConverterImpl();
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             writer = new BinaryStreamWriter(outputStream);

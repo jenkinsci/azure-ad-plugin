@@ -78,7 +78,6 @@ public class GraphClientCache {
                 tokenCredential);
     }
 
-
     static ClientCertificateCredential getClientCertificateCredential(GraphClientCacheKey key) {
         return new ClientCertificateCredentialBuilder()
                 .clientId(key.getClientId())
