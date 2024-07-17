@@ -72,7 +72,6 @@ public abstract class BaseConfigAsCodeTest {
             assertFalse(property.hasExplicitPermission(PermissionEntry.user("anonymous"), Item.READ));
             assertTrue(property.hasExplicitPermission(PermissionEntry.group(groupSid), Item.CONFIGURE));
             assertTrue(property.hasExplicitPermission(PermissionEntry.group(groupSid), Item.DELETE));
-            
             String userSid = "c411116f-cfa6-472c-8ccf-d0cb6053c9aa";
             assertTrue(property.hasExplicitPermission(PermissionEntry.user(userSid), Item.BUILD));
         }

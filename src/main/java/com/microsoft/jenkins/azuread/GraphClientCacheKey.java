@@ -10,7 +10,7 @@ class GraphClientCacheKey {
         private final String azureEnvironmentName;
         private final String credentialType;
 
-        public GraphClientCacheKey(String clientId, String clientSecret, String clientCertificate,String credentialType, String tenantId, String azureEnvironmentName) {
+        public GraphClientCacheKey(String clientId, String clientSecret, String clientCertificate, String credentialType, String tenantId, String azureEnvironmentName) {
             this.clientId = clientId;
             this.clientSecret = clientSecret;
             this.clientCertificate = clientCertificate;
@@ -20,7 +20,7 @@ class GraphClientCacheKey {
         }
 
         @Override
-            public boolean equals(Object o) {
+        public boolean equals(Object o) {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             GraphClientCacheKey that = (GraphClientCacheKey) o;
