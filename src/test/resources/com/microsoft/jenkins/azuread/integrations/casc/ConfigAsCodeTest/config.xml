@@ -28,7 +28,7 @@
     <securityRealm class="com.microsoft.jenkins.azuread.AzureSecurityRealm">
         <clientid>clientId</clientid>
         <clientsecret>password</clientsecret>
-        <clientcertificate>password</clientcertificate>
+        <clientcertificate></clientcertificate>
         <credentialtype>secret</credentialtype>
         <tenant>tenantId</tenant>
         <cacheduration>0</cacheduration>
