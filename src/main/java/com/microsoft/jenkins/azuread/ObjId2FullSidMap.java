@@ -1,13 +1,8 @@
 package com.microsoft.jenkins.azuread;
 
 import java.util.HashMap;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class ObjId2FullSidMap extends HashMap<String, String> {
-
-    // full sid should be in the form of "<username> (<object_id>)".
-    private static final Pattern FULL_SID_PATTERN = Pattern.compile("(.*) \\((.*)\\)");
 
     public void putFullSid(String fullSid) {
         String objectId = extractObjectId(fullSid);
@@ -34,13 +29,25 @@ public class ObjId2FullSidMap extends HashMap<String, String> {
     }
 
     static String extractObjectId(String fullSid) {
-        Matcher matcher = FULL_SID_PATTERN.matcher(fullSid);
-        if (matcher.matches()) {
-            String objectId = matcher.group(2);
-            return objectId;
-        } else {
+        // full sid should be in the form of "<username> (<object_id>)".
+
+        // this code previously used regex: (.*) \((.*)\), which was shown to be a CPU hotspot in certain
+        // Jenkins installations
+
+        if (fullSid.isEmpty()) {
             return null;
         }
+        if (fullSid.charAt(fullSid.length() - 1) != ')') {
+            return null;
+        }
+        int openingParenthesesPosition = fullSid.lastIndexOf('(');
+        if (openingParenthesesPosition <= 0) {
+            return null;
+        }
+        if (fullSid.charAt(openingParenthesesPosition - 1) != ' ') {
+            return null;
+        }
+        return fullSid.substring(openingParenthesesPosition + 1, fullSid.length() - 1);
     }
 
     static String generateFullSid(final String displayName, final String objectId) {
