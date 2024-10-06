@@ -121,6 +121,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     public static final String CONVERTER_DISABLE_GRAPH_INTEGRATION = "disableGraphIntegration";
     public static final String CONVERTER_SINGLE_LOGOUT = "singleLogout";
     public static final String CONVERTER_PROMPT_ACCOUNT = "promptAccount";
+    public static final String CONVERTER_DOMAIN_HINT = "domainHint";
 
     public static final String CONVERTER_ENVIRONMENT_NAME = "environmentName";
 
@@ -137,6 +138,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     private boolean disableGraphIntegration;
     private String azureEnvironmentName = "Azure";
     private String credentialType = "Secret";
+    private String domainHint = "";
 
     public AccessToken getAccessToken() {
         TokenRequestContext tokenRequestContext = new TokenRequestContext();
@@ -190,6 +192,15 @@ public class AzureSecurityRealm extends SecurityRealm {
     @DataBoundSetter
     public void setPromptAccount(boolean promptAccount) {
         this.promptAccount = promptAccount;
+    }
+
+    public String getDomainHint() {
+        return domainHint;
+    }
+
+    @DataBoundSetter
+    public void setDomainHint(String domainHint) {
+        this.domainHint = domainHint;
     }
 
     public boolean isSingleLogout() {
@@ -370,6 +381,9 @@ public class AzureSecurityRealm extends SecurityRealm {
         additionalParams.put("response_mode", "form_post");
         if (promptAccount) {
             additionalParams.put("prompt", "select_account");
+        }
+        if (!StringUtils.isBlank(domainHint)) {
+            additionalParams.put("domain_hint", domainHint);
         }
 
         return new HttpRedirect(service.getAuthorizationUrl(additionalParams));
@@ -702,6 +716,10 @@ public class AzureSecurityRealm extends SecurityRealm {
             writer.startNode(CONVERTER_SINGLE_LOGOUT);
             writer.setValue(String.valueOf(realm.isSingleLogout()));
             writer.endNode();
+
+            writer.startNode(CONVERTER_DOMAIN_HINT);
+            writer.setValue(String.valueOf(realm.getDomainHint()));
+            writer.endNode();
         }
 
         @Override
@@ -744,6 +762,9 @@ public class AzureSecurityRealm extends SecurityRealm {
                         break;
                     case CONVERTER_SINGLE_LOGOUT:
                         realm.setSingleLogout(Boolean.parseBoolean(value));
+                        break;
+                    case CONVERTER_DOMAIN_HINT:
+                        realm.setDomainHint(value);
                         break;
                     default:
                         break;
