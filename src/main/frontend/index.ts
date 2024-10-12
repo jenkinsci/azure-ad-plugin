@@ -30,10 +30,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 })
-const currentUrl = window.location.href
+
+const origin = window.location.origin
+const pathname = window.location.pathname
 
 // GraphProxy is either a root action or at an item level
-const endStrippedCurrentUrl = currentUrl
+const endStrippedPathname = pathname
     .replace('configureSecurity/', '')
     .replace('configure', '')
     .replace('pipeline-syntax/', '')
@@ -41,8 +43,15 @@ const endStrippedCurrentUrl = currentUrl
     .replace('cloud/create', '')
     .replace('computer/createItem', '');
 
+function appendSlashIfRequired(value: string) {
+    if (!value.endsWith("/"))  {
+        return `${value}/`
+    }
+    return value
+}
 
-Providers.globalProvider = new ProxyProvider(`${endStrippedCurrentUrl}/GraphProxy`, async () => {
+const url = `${origin}${appendSlashIfRequired(endStrippedPathname)}GraphProxy`
+Providers.globalProvider = new ProxyProvider(url, async () => {
     return {
         [document.head.dataset.crumbHeader as string]: document.head.dataset.crumbValue,
     };
