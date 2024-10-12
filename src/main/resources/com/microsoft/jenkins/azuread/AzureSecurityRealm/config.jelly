@@ -30,33 +30,35 @@
             <f:textbox />
         </f:entry>
 
-        <f:entry title="${%Azure Environment}" field="azureEnvironmentName">
-            <f:select/>
-        </f:entry>
+        <f:advanced>
+            <f:entry title="${%Azure Environment}" field="azureEnvironmentName">
+                <f:select/>
+            </f:entry>
+            <f:entry title="Cache Duration" field="cacheDuration">
+                <f:number default="3600"/>
+            </f:entry>
 
-        <f:entry title="Cache Duration" field="cacheDuration">
-            <f:number default="3600" />
-        </f:entry>
+            <f:entry title="Callback URL from request" field="fromRequest">
+                <f:checkbox/>
+            </f:entry>
 
-        <f:entry title="Callback URL from request" field="fromRequest">
-            <f:checkbox />
-        </f:entry>
+            <f:entry title="${%Prompt for user account on each login}" field="promptAccount">
+                <f:checkbox/>
+            </f:entry>
 
-        <f:entry title="${%Prompt for user account on each login}" field="promptAccount">
-            <f:checkbox />
-        </f:entry>
+            <f:entry title="${%Domain Hint}" description="${%The realm of the user in a federated directory}"
+                     field="domainHint">
+                <f:textbox/>
+            </f:entry>
 
-        <f:entry title="${%Domain Hint: The realm of the user in a federated directory}" field="domainHint">
-            <f:textbox />
-        </f:entry>
+            <f:entry title="${%Enable Single Logout}" field="singleLogout">
+                <f:checkbox/>
+            </f:entry>
 
-        <f:entry title="${%Enable Single Logout}" field="singleLogout">
-            <f:checkbox />
-        </f:entry>
-
-        <f:entry title="${%Disable graph integration}" field="disableGraphIntegration">
-            <f:checkbox />
-        </f:entry>
+            <f:entry title="${%Disable graph integration}" field="disableGraphIntegration">
+                <f:checkbox/>
+            </f:entry>
+        </f:advanced>
 
         <f:entry title="Test user principal name or object id">
             <f:textbox name="testObject" />
