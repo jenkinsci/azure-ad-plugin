@@ -81,7 +81,7 @@
         <dependency>
             <groupId>com.microsoft.graph</groupId>
             <artifactId>microsoft-graph</artifactId>
-            <version>5.80.0</version>
+            <version>6.19.0</version>
             <exclusions>
                 <exclusion>
                     <groupId>com.azure</groupId>
