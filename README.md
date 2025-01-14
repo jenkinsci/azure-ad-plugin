@@ -89,7 +89,6 @@ The following can normally be used:
 * Object ID of user or group
 * Display name of group (Only if Graph API permissions granted)
 * `preferred_username` claim which is normally the 'User principal name', but not always.
-* User principal name (Rest API authentication only)
 
 ## Configuration as Code and Job DSL support
 The plugin has full support for use in Configuration as Code and Job DSL.
