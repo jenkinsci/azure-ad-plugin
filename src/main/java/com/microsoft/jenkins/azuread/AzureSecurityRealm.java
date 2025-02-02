@@ -19,10 +19,13 @@ import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
 import com.microsoft.graph.http.GraphServiceException;
 import com.microsoft.graph.models.Group;
+import com.microsoft.graph.models.ProfilePhoto;
 import com.microsoft.graph.options.Option;
 import com.microsoft.graph.options.QueryOption;
 import com.microsoft.graph.requests.GraphServiceClient;
 import com.microsoft.graph.requests.GroupCollectionPage;
+import com.microsoft.graph.requests.ProfilePhotoRequestBuilder;
+import com.microsoft.jenkins.azuread.avatar.EntraAvatarProperty;
 import com.microsoft.jenkins.azuread.scribe.AzureAdApi;
 import com.microsoft.jenkins.azuread.utils.UUIDValidator;
 import com.thoughtworks.xstream.converters.Converter;
@@ -47,10 +50,14 @@ import hudson.util.ListBoxModel;
 import hudson.util.Secret;
 import io.jenkins.plugins.azuresdk.HttpClientRetriever;
 
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import javax.servlet.http.HttpSession;
 
 import jenkins.model.Jenkins;
 import jenkins.security.SecurityListener;
+import jenkins.util.SystemProperties;
 import okhttp3.Request;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -146,8 +153,8 @@ public class AzureSecurityRealm extends SecurityRealm {
         tokenRequestContext.setScopes(singletonList(graphResource + ".default"));
 
         AccessToken accessToken = ("Certificate".equals(credentialType) ? getClientCertificateCredential() : getClientSecretCredential())
-            .getToken(tokenRequestContext)
-            .block();
+                .getToken(tokenRequestContext)
+                .block();
 
         if (accessToken == null) {
             throw new IllegalStateException("Access token null when it is required");
@@ -185,6 +192,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                 .httpClient(HttpClientRetriever.get())
                 .build();
     }
+
     public boolean isPromptAccount() {
         return promptAccount;
     }
@@ -230,6 +238,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     public String getCredentialType() {
         return credentialType;
     }
+
     public String getTenantSecret() {
         return tenant.getEncryptedValue();
     }
@@ -465,9 +474,14 @@ public class AzureSecurityRealm extends SecurityRealm {
 
             // Enforce updating current identity
             SecurityContextHolder.getContext().setAuthentication(auth);
-            updateIdentity(auth.getAzureAdUser(), User.current());
+            User currentUser = User.current();
+            updateIdentity(auth.getAzureAdUser(), currentUser);
 
             SecurityListener.fireAuthenticated2(userDetails);
+
+            if (!isDisableGraphIntegration()) {
+                updateAvatar(userDetails, currentUser);
+            }
         } catch (Exception ex) {
             LOGGER.log(Level.SEVERE, "error", ex);
             throw ex;
@@ -477,6 +491,50 @@ public class AzureSecurityRealm extends SecurityRealm {
             return HttpResponses.redirectTo(referer);
         } else {
             return HttpResponses.redirectToContextRoot();
+        }
+    }
+
+    private void updateAvatar(AzureAdUser userDetails, User currentUser) {
+        if (currentUser == null) {
+            return;
+        }
+        try {
+            if (SystemProperties.getBoolean(AzureSecurityRealm.class.getName() + ".disableAvatar",  false)) {
+                return;
+            }
+            ProfilePhotoRequestBuilder photosRequestBuilder = getAzureClient()
+                    .users(userDetails.getObjectID()).photos("48x48");
+            LOGGER.finest("Fetching avatar metadata");
+            ProfilePhoto profilePhoto = photosRequestBuilder.buildRequest().get();
+            LOGGER.finest("Completed fetching avatar metadata");
+            if (profilePhoto != null) {
+                LOGGER.finest("Fetching avatar");
+                try (InputStream inputStream = photosRequestBuilder.content().buildRequest().get()) {
+                    if (inputStream != null) {
+                        String mediaContentType = profilePhoto.additionalDataManager().get("@odata.mediaContentType")
+                                .getAsString();
+                        EntraAvatarProperty.AvatarImage avatarImage = new EntraAvatarProperty.AvatarImage(
+                                mediaContentType
+                        );
+                        EntraAvatarProperty entraAvatarProperty = new EntraAvatarProperty(avatarImage);
+                        File targetFile = new File(currentUser.getUserFolder(), "entra-avatar." + avatarImage.getFilenameSuffix());
+
+                        Files.copy(
+                                inputStream,
+                                targetFile.toPath(),
+                                StandardCopyOption.REPLACE_EXISTING);
+                        currentUser.addProperty(entraAvatarProperty);
+                        LOGGER.finest("Saved avatar");
+                    }
+
+                } catch (IOException e) {
+                    LOGGER.log(Level.WARNING, "Failed to save profile photo for %s".formatted(currentUser.getId()), e);
+                }
+            } else {
+                LOGGER.finest("No avatar found");
+            }
+        } catch (GraphServiceException e) {
+            LOGGER.log(e.getResponseCode() == 404 ? Level.FINER : Level.WARNING, "Failed to get profile photo for %s".formatted(currentUser.getId()), e);
         }
     }
 
@@ -878,7 +936,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                 if (StringUtils.isNotBlank(azureAdUser.getEmail())) {
                     UserProperty existing = u.getProperty(UserProperty.class);
                     if (existing == null || !existing.hasExplicitlyConfiguredAddress()) {
-                            u.addProperty(new Mailer.UserProperty(azureAdUser.getEmail()));
+                        u.addProperty(new Mailer.UserProperty(azureAdUser.getEmail()));
                     }
                 }
             } catch (IOException e) {
