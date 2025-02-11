@@ -20,7 +20,7 @@ import org.kohsuke.accmod.restrictions.DoNotUse;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.QueryParameter;
-import org.kohsuke.stapler.StaplerRequest;
+import org.kohsuke.stapler.StaplerRequest2;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -99,7 +99,7 @@ public class AzureAdAuthorizationMatrixNodeProperty extends AuthorizationMatrixN
 
         @Override
         public AzureAdAuthorizationMatrixNodeProperty newInstance(
-                StaplerRequest req,
+                StaplerRequest2 req,
                 @NonNull JSONObject formData
         ) throws FormException {
             return createNewInstance(req, formData, false);
