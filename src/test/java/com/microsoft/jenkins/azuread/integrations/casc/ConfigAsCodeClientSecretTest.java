@@ -4,23 +4,22 @@ import com.microsoft.jenkins.azuread.AzureSecurityRealm;
 import hudson.security.SecurityRealm;
 import io.jenkins.plugins.casc.misc.ConfiguredWithCode;
 import io.jenkins.plugins.casc.misc.JenkinsConfiguredWithCodeRule;
-import org.junit.ClassRule;
-import org.junit.Test;
+import io.jenkins.plugins.casc.misc.junit.jupiter.WithJenkinsConfiguredWithCode;
+import org.junit.jupiter.api.Test;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class ConfigAsCodeClientSecretTest extends BaseConfigAsCodeTest {
-
-    @ClassRule
-    @ConfiguredWithCode("configuration-as-code-secret-auth.yml")
-    public static JenkinsConfiguredWithCodeRule jSecret = new JenkinsConfiguredWithCodeRule();
+@WithJenkinsConfiguredWithCode
+class ConfigAsCodeClientSecretTest extends BaseConfigAsCodeTest {
 
     @Test
-    public void should_support_configuration_as_code_clientSecret() {
+    @ConfiguredWithCode("configuration-as-code-secret-auth.yml")
+    void should_support_configuration_as_code_clientSecret(JenkinsConfiguredWithCodeRule jSecret) {
         SecurityRealm securityRealm = jSecret.jenkins.getSecurityRealm();
-        assertTrue("security realm", securityRealm instanceof AzureSecurityRealm);
+        assertInstanceOf(AzureSecurityRealm.class, securityRealm, "security realm");
         AzureSecurityRealm azureSecurityRealm = (AzureSecurityRealm) securityRealm;
         assertNotEquals("clientId", azureSecurityRealm.getClientIdSecret());
         assertNotEquals("clientSecret", azureSecurityRealm.getClientSecretSecret());
