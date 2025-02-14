@@ -50,7 +50,7 @@ import org.kohsuke.accmod.restrictions.DoNotUse;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.QueryParameter;
-import org.kohsuke.stapler.StaplerRequest2;
+import org.kohsuke.stapler.StaplerRequest;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -165,7 +165,7 @@ public class AuthorizationMatrixNodeProperty extends NodeProperty<Node> implemen
         }
 
         @Override
-        public AuthorizationMatrixNodeProperty newInstance(StaplerRequest2 req, @NonNull JSONObject formData)
+        public AuthorizationMatrixNodeProperty newInstance(StaplerRequest req, @NonNull JSONObject formData)
                 throws FormException {
             return createNewInstance(req, formData, false);
         }

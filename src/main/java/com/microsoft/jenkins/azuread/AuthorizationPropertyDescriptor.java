@@ -31,7 +31,7 @@ import net.sf.json.JSONObject;
 import org.jenkinsci.plugins.matrixauth.inheritance.InheritanceStrategy;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
-import org.kohsuke.stapler.StaplerRequest2;
+import org.kohsuke.stapler.StaplerRequest;
 
 import java.util.Map;
 import java.util.logging.Level;
@@ -49,7 +49,7 @@ public interface AuthorizationPropertyDescriptor<T extends AuthorizationProperty
 
     T create();
 
-    default T createNewInstance(StaplerRequest2 req, JSONObject formData, boolean hasOptionalWrap)
+    default T createNewInstance(StaplerRequest req, JSONObject formData, boolean hasOptionalWrap)
             throws Descriptor.FormException {
         if (hasOptionalWrap) {
             formData = formData.getJSONObject("useProjectSecurity");
