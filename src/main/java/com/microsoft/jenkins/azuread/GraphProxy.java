@@ -24,8 +24,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.kohsuke.stapler.StaplerProxy;
-import org.kohsuke.stapler.StaplerRequest2;
-import org.kohsuke.stapler.StaplerResponse2;
+import org.kohsuke.stapler.StaplerRequest;
+import org.kohsuke.stapler.StaplerResponse;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -124,11 +124,11 @@ public class GraphProxy implements RootAction, StaplerProxy {
             return Collections.singletonList(new GraphProxy(target));
         }
     }
-    public void doDynamic(StaplerRequest2 request, StaplerResponse2 response) throws IOException {
+    public void doDynamic(StaplerRequest request, StaplerResponse response) throws IOException {
         proxy(request, response);
     }
 
-    private void proxy(StaplerRequest2 request, StaplerResponse2 response) throws IOException {
+    private void proxy(StaplerRequest request, StaplerResponse response) throws IOException {
         OkHttpClient client = getClient();
         String baseUrl = getBaseUrl();
         String token = getToken();
@@ -199,7 +199,7 @@ public class GraphProxy implements RootAction, StaplerProxy {
         throw new IllegalStateException("GraphProxy only works when Authentication is set to Azure");
     }
 
-    private Request buildRequest(StaplerRequest2 request, String token, String url) throws IOException {
+    private Request buildRequest(StaplerRequest request, String token, String url) throws IOException {
         Request.Builder okRequest = new Request.Builder()
                 .url(url)
                 .addHeader("Authorization", "Bearer " + token);
@@ -229,7 +229,7 @@ public class GraphProxy implements RootAction, StaplerProxy {
         return okRequest.build();
     }
 
-    private String buildUrl(StaplerRequest2 request, String baseUrl) {
+    private String buildUrl(StaplerRequest request, String baseUrl) {
         String apiUrl = baseUrl;
 
         if (request.getRestOfPath().startsWith("/beta")) {

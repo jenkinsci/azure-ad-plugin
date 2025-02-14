@@ -53,7 +53,7 @@ import io.jenkins.plugins.azuresdk.HttpClientRetriever;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
-import jakarta.servlet.http.HttpSession;
+import javax.servlet.http.HttpSession;
 
 import jenkins.model.Jenkins;
 import jenkins.security.SecurityListener;
@@ -71,17 +71,17 @@ import org.kohsuke.stapler.HttpRedirect;
 import org.kohsuke.stapler.HttpResponse;
 import org.kohsuke.stapler.HttpResponses;
 import org.kohsuke.stapler.QueryParameter;
-import org.kohsuke.stapler.StaplerRequest2;
+import org.kohsuke.stapler.StaplerRequest;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import javax.servlet.FilterChain;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -375,7 +375,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     }
 
     @SuppressWarnings("unused") // used by stapler
-    public HttpResponse doCommenceLogin(StaplerRequest2 request, @Header("Referer") final String referer) {
+    public HttpResponse doCommenceLogin(StaplerRequest request, @Header("Referer") final String referer) {
         String trimmedReferrer = getReferer(referer);
 
         recreateSession(request);
@@ -414,7 +414,7 @@ public class AzureSecurityRealm extends SecurityRealm {
      * Check if a request contains a session, if so, invalidate the session and create a new one to avoid session
      * fixation.
      */
-    private void recreateSession(StaplerRequest2 request) {
+    private void recreateSession(StaplerRequest request) {
         HttpSession session = request.getSession(false);
         if (session != null) {
             session.invalidate();
@@ -423,7 +423,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     }
 
 
-    public HttpResponse doFinishLogin(StaplerRequest2 request)
+    public HttpResponse doFinishLogin(StaplerRequest request)
             throws InvalidJwtException, IOException {
         String referer = (String) request.getSession().getAttribute(REFERER_ATTRIBUTE);
         try {
@@ -554,7 +554,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     }
 
     @Override
-    protected String getPostLogOutUrl2(StaplerRequest2 req, Authentication auth) {
+    protected String getPostLogOutUrl2(StaplerRequest req, Authentication auth) {
         if (auth instanceof AzureAuthenticationToken) {
             AzureAuthenticationToken azureToken = (AzureAuthenticationToken) auth;
             String oid = azureToken.getAzureAdUser().getObjectID();
