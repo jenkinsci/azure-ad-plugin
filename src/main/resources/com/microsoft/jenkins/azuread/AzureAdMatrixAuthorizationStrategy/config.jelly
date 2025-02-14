@@ -118,6 +118,9 @@ THE SOFTWARE.
     <link rel="stylesheet" href="${rootURL}${app.VIEW_RESOURCE_PATH}/hudson/security/table.css" type="text/css" />
     <j:set var="strategyid" value="${descriptor.jsonSafeClassName}" />
     <j:set var="tableid" value="${h.generateId()}"/>
+
+    <p>Graph integration status (disableGraphIntegration): ${descriptor.disableGraphIntegration}</p>
+
     <table id="${strategyid}" data-table-id="${tableid}" class="center-align global-matrix-authorization-strategy-table ${readOnlyMode ? 'read-only' : ''}" name="data">
 
       <!-- The first row will show grouping -->
