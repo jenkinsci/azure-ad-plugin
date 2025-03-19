@@ -113,6 +113,11 @@ public class AzureAdAuthorizationMatrixProperty extends AuthorizationMatrixPrope
                 return Utils.undecidableResponse(value);
             }
 
+            // occurs in an empty multi-branch project
+            if (project == null) {
+                return Utils.undecidableResponse(value);
+            }
+
             return doCheckName_(value, project, Item.CONFIGURE);
         }
 
