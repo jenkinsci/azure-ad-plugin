@@ -1,5 +1,6 @@
 package com.microsoft.jenkins.azuread.AzureAdAuthorizationMatrixProperty
 
+import hudson.model.Item
 import lib.FormTagLib
 import org.jenkinsci.plugins.matrixauth.inheritance.InheritanceStrategyDescriptor
 
@@ -9,7 +10,8 @@ def st = namespace("jelly:stapler")
 f.optionalBlock(name: 'useProjectSecurity', checked: instance != null, title: _("Enable project-based security")) {
     f.nested {
         div {
-            f.dropdownDescriptorSelector(title: _("Inheritance Strategy"), descriptors: InheritanceStrategyDescriptor.getApplicableDescriptors(my.class), field: 'inheritanceStrategy')
+            // It is unclear whether we can expect every Item to be an AbstractItem. While I've been unsuccessful finding one in a quick search, better be safe here and just offer fewer options if necessary.
+            f.dropdownDescriptorSelector(title: _("Inheritance Strategy"), descriptors: InheritanceStrategyDescriptor.getApplicableDescriptors(my?.class?: Item.class), field: 'inheritanceStrategy')
             st.include(class: "com.microsoft.jenkins.azuread.AzureAdMatrixAuthorizationStrategy", page: "config")
         }
     }
