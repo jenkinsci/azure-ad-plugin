@@ -146,7 +146,7 @@ public class GraphProxy implements RootAction, StaplerProxy {
             response.addHeader("client-request-id", okResp.header("client-request-id"));
             ResponseBody body = okResp.body();
             if (body != null) {
-                if ("application/json".equals(contentType)) {
+                if (contentType.startsWith("application/json")) {
                     String string = body.string();
                     response.getWriter().write(string);
                 } else {
