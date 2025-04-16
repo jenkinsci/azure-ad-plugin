@@ -116,9 +116,6 @@ public class AuthorizationMatrixNodeProperty extends NodeProperty<Node> implemen
 
     private final class AclImpl extends SidACL {
         @CheckForNull
-        @SuppressFBWarnings(
-                value = "NP_BOOLEAN_RETURN_NULL",
-                justification = "As designed, implements a third state for the ternary logic")
         protected Boolean hasPermission(Sid sid, Permission p) {
             if (AuthorizationMatrixNodeProperty.this.hasPermission(toString(sid), p, sid instanceof PrincipalSid)) {
                 return true;
