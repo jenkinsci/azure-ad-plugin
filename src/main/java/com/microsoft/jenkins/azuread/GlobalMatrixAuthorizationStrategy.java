@@ -113,9 +113,6 @@ public class GlobalMatrixAuthorizationStrategy extends AuthorizationStrategy imp
 
     private final class AclImpl extends SidACL {
         @CheckForNull
-        @SuppressFBWarnings(
-                value = "NP_BOOLEAN_RETURN_NULL",
-                justification = "As designed, implements a third state for the ternary logic")
         protected Boolean hasPermission(Sid p, Permission permission) {
             if (GlobalMatrixAuthorizationStrategy.this.hasPermission(
                     toString(p), permission, p instanceof PrincipalSid)) return true;
