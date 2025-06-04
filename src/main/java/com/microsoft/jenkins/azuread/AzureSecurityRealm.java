@@ -26,6 +26,7 @@ import com.microsoft.graph.requests.GraphServiceClient;
 import com.microsoft.graph.requests.GroupCollectionPage;
 import com.microsoft.graph.requests.ProfilePhotoRequestBuilder;
 import com.microsoft.jenkins.azuread.avatar.EntraAvatarProperty;
+import com.microsoft.jenkins.azuread.oauth.StateCache;
 import com.microsoft.jenkins.azuread.scribe.AzureAdApi;
 import com.microsoft.jenkins.azuread.utils.UUIDValidator;
 import com.thoughtworks.xstream.converters.Converter;
@@ -109,9 +110,9 @@ import static java.util.Objects.requireNonNull;
 
 public class AzureSecurityRealm extends SecurityRealm {
 
-    private static final String REFERER_ATTRIBUTE = AzureSecurityRealm.class.getName() + ".referer";
-    private static final String TIMESTAMP_ATTRIBUTE = AzureSecurityRealm.class.getName() + ".beginTime";
-    private static final String NONCE_ATTRIBUTE = AzureSecurityRealm.class.getName() + ".nonce";
+    public static final String REFERER_ATTRIBUTE = AzureSecurityRealm.class.getName() + ".referer";
+    public static final String TIMESTAMP_ATTRIBUTE = AzureSecurityRealm.class.getName() + ".beginTime";
+    public static final String NONCE_ATTRIBUTE = AzureSecurityRealm.class.getName() + ".nonce";
     private static final Logger LOGGER = Logger.getLogger(AzureSecurityRealm.class.getName());
     private static final int NONCE_LENGTH = 16;
     public static final String CALLBACK_URL = "/securityRealm/finishLogin";
@@ -382,12 +383,15 @@ public class AzureSecurityRealm extends SecurityRealm {
         request.getSession().setAttribute(REFERER_ATTRIBUTE, trimmedReferrer);
         OAuth20Service service = getOAuthService();
         request.getSession().setAttribute(TIMESTAMP_ATTRIBUTE, System.currentTimeMillis());
-        String nonce = RandomStringUtils.randomAlphanumeric(NONCE_LENGTH);
+        String nonce = RandomStringUtils.secure().nextAlphanumeric(NONCE_LENGTH);
         request.getSession().setAttribute(NONCE_ATTRIBUTE, nonce);
+
+        String state = new StateCache().generateValue(request.getSession());
 
         Map<String, String> additionalParams = new HashMap<>();
         additionalParams.put("nonce", nonce);
         additionalParams.put("response_mode", "form_post");
+        additionalParams.put("state", state);
         if (promptAccount) {
             additionalParams.put("prompt", "select_account");
         }
@@ -425,20 +429,19 @@ public class AzureSecurityRealm extends SecurityRealm {
 
     public HttpResponse doFinishLogin(StaplerRequest2 request)
             throws InvalidJwtException, IOException {
-        String referer = (String) request.getSession().getAttribute(REFERER_ATTRIBUTE);
+        String state = request.getParameter("state");
+        StateCache.CacheHolder cachedStateValue = StateCache.CACHE.getIfPresent(state);
+        if (cachedStateValue == null || cachedStateValue.nonce() == null) {
+            // no nonce, probably some issue with an old session, force the user to re-auth
+            return HttpResponses.redirectToContextRoot();
+        }
+        String referer = cachedStateValue.referrer();
         try {
-            final Long beginTime = (Long) request.getSession().getAttribute(TIMESTAMP_ATTRIBUTE);
-            final String expectedNonce = (String) request.getSession().getAttribute(NONCE_ATTRIBUTE);
+            final Long beginTime = cachedStateValue.beginTime();
+            final String expectedNonce = cachedStateValue.nonce();
 
-            if (expectedNonce == null) {
-                // no nonce, probably some issue with an old session, force the user to re-auth
-                return HttpResponses.redirectToContextRoot();
-            }
-
-            if (beginTime != null) {
-                long endTime = System.currentTimeMillis();
-                LOGGER.info("Requesting oauth code time = " + (endTime - beginTime) + " ms");
-            }
+            long endTime = System.currentTimeMillis();
+            LOGGER.info("Requesting oauth code time = " + (endTime - beginTime) + " ms");
 
             final String idToken = request.getParameter("id_token");
 
