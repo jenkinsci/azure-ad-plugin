@@ -429,6 +429,7 @@ public class AzureSecurityRealm extends SecurityRealm {
 
     public HttpResponse doFinishLogin(StaplerRequest2 request)
             throws InvalidJwtException, IOException {
+        recreateSession(request);
         String state = request.getParameter("state");
         StateCache.CacheHolder cachedStateValue = StateCache.CACHE.getIfPresent(state);
         if (cachedStateValue == null || cachedStateValue.nonce() == null) {
