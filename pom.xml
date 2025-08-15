@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.jenkins-ci.plugins</groupId>
         <artifactId>plugin</artifactId>
-        <version>5.19</version>
+        <version>5.21</version>
     </parent>
 
     <artifactId>azure-ad</artifactId>
@@ -44,6 +44,7 @@
         <hpi.compatibleSinceVersion>391.v252da_e1dd39c</hpi.compatibleSinceVersion>
 
         <checkstyle.skip>true</checkstyle.skip>
+        <ban-junit4-imports.skip>false</ban-junit4-imports.skip>
     </properties>
 
     <repositories>
