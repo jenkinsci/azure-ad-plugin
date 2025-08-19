@@ -206,7 +206,7 @@ THE SOFTWARE.
               <mgt-people-picker
                       class="entra-id-people-picker"
                       type="any"
-                      user-type="any"
+                      user-type="user"
                       group-type="any"
                       show-max="10"
               />
