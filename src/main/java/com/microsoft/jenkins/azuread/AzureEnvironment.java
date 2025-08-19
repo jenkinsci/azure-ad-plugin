@@ -16,16 +16,11 @@ public final class AzureEnvironment {
     }
 
     static String getAuthorityHost(String azureEnvironmentName) {
-        switch (azureEnvironmentName) {
-            case AZURE_CHINA:
-                return AzureAuthorityHosts.AZURE_CHINA;
-            case AZURE_US_GOVERNMENT_L4:
-            case AZURE_US_GOVERNMENT_L5:
-                return AzureAuthorityHosts.AZURE_GOVERNMENT;
-            case AZURE_PUBLIC_CLOUD:
-            default:
-                return AzureAuthorityHosts.AZURE_PUBLIC_CLOUD;
-        }
+        return switch (azureEnvironmentName) {
+            case AZURE_CHINA -> "https://login.partner.microsoftonline.cn/";
+            case AZURE_US_GOVERNMENT_L4, AZURE_US_GOVERNMENT_L5 -> AzureAuthorityHosts.AZURE_GOVERNMENT;
+            default -> AzureAuthorityHosts.AZURE_PUBLIC_CLOUD;
+        };
     }
 
     static String getGraphResource(String azureEnv) {
