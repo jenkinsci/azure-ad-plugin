@@ -248,7 +248,7 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
         @Override
         @NonNull
         public String getDisplayName() {
-            return "Azure Active Directory Matrix-based security";
+            return "Entra ID Matrix-based security";
         }
 
 

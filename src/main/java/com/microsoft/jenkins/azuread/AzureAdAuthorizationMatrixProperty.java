@@ -124,7 +124,7 @@ public class AzureAdAuthorizationMatrixProperty extends AuthorizationMatrixPrope
         @NonNull
         @Override
         public String getDisplayName() {
-            return "Azure Active Directory Authorization Matrix";
+            return "Entra ID Authorization Matrix";
         }
 
         @SuppressWarnings("unused") // called by jelly

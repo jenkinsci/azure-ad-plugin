@@ -863,7 +863,7 @@ public class AzureSecurityRealm extends SecurityRealm {
         @Override
         @NonNull
         public String getDisplayName() {
-            return "Azure Active Directory";
+            return "Entra ID";
         }
 
         public DescriptorImpl() {
@@ -950,7 +950,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     }
 
     private String generateDescription(AzureAdUser user) {
-        return "Azure Active Directory User\n"
+        return "Entra ID User\n"
                 + "\nUnique Principal Name: " + user.getUniqueName()
                 + "\nEmail: " + user.getEmail()
                 + "\nObject ID: " + user.getObjectID()
