@@ -48,11 +48,11 @@ _Note: You can skip this part and just use the claims returned when authenticati
 
 ## Setup In Jenkins
 
-Click `Manage Jenkins` in the left menu, then click `Security`
+Click the settings icon in the header, then click `Security`
 
 ## Authentication
 
-1. Check `Azure Active Directory` and fill in the credential.
+1. For the Security Realm select `Entra ID` and fill in the credential.
 
 1. Click `Verify Application` to make sure your input is valid.
 
@@ -73,7 +73,7 @@ with the ability to search by users / groups by display name when configuring th
 
 To use this feature:
 
-1. Click `Azure Active Directory Matrix-based security`
+1. Click `Entra ID Matrix-based security`
 1. Search for user in 'Azure User/group to add' and click Add
 1. Select the permission(s) in the table
 1. Click 'Apply'
@@ -90,15 +90,19 @@ The following can normally be used:
 * Display name of group (Only if Graph API permissions granted)
 * `preferred_username` claim which is normally the 'User principal name', but not always.
 
+It is recommended that you use the Object ID, after adding the object ID you will be
+able to see the user or group's display name.
+
 ## Configuration as Code and Job DSL support
 The plugin has full support for use in Configuration as Code and Job DSL.
 
 For an example combining the two, see the [configuration-as-code.yml](./src/test/resources/com/microsoft/jenkins/azuread/integrations/casc/configuration-as-code.yml) test resource.
 
 ## FAQ
-#### Q: How to recover if Jenkins keeps failing during the login phase?
+
+### Q: How to recover if Jenkins keeps failing during the login phase?
 A: You can disable the security from the config file (see [https://www.jenkins.io/doc/book/security/access-control/disable/](https://www.jenkins.io/doc/book/security/access-control/disable/))
 
-#### Q: Why am I getting an error "insufficient privileges to complete the operation" even after having granted the permission?
+### Q: Why am I getting an error "insufficient privileges to complete the operation" even after having granted the permission?
 
 A: It can take a long time for the privileges to take effect, which could be 10-20 minutes. Just wait for a while and try again.

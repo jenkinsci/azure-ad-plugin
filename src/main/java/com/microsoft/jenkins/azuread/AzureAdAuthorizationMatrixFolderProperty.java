@@ -109,7 +109,7 @@ public class AzureAdAuthorizationMatrixFolderProperty extends AuthorizationMatri
         @Override
         @NonNull
         public String getDisplayName() {
-            return "Azure Active Directory Authorization Matrix";
+            return "Entra ID Authorization Matrix";
         }
 
         @SuppressWarnings("unused")
