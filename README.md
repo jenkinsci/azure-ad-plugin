@@ -42,7 +42,7 @@ _Note: You can skip this part and just use the claims returned when authenticati
 
 1. Application permissions
 
-1. Add 'User.Read.All', 'Group.Read.All' and 'People.Read.All'
+1. Add 'User.ReadBasic.All', 'GroupMember.Read.All'
 
 1. Click `Grant admin consent`. If you are not an admin in your tenant, please contact an admin to grant the permissions.
 
