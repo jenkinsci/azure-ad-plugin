@@ -15,8 +15,6 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
@@ -40,15 +38,9 @@ public final class AzureAdUser implements UserDetails {
 
     private List<String> groupOIDs;
 
-    private transient volatile List<GrantedAuthority> authorities;
+    private volatile List<GrantedAuthority> authorities;
 
     private AzureAdUser() {
-        authorities = Collections.singletonList(SecurityRealm.AUTHENTICATED_AUTHORITY2);
-    }
-
-    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
-        in.defaultReadObject();
-
         authorities = Collections.singletonList(SecurityRealm.AUTHENTICATED_AUTHORITY2);
     }
 
