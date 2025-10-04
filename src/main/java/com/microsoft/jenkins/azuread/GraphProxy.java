@@ -21,6 +21,7 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.kohsuke.stapler.StaplerProxy;
@@ -238,7 +239,7 @@ public class GraphProxy implements RootAction, StaplerProxy {
 
         StringBuilder builder = new StringBuilder(apiUrl);
 
-        String path = StringUtils.removeStart(request.getRestOfPath(), "/v1.0");
+        String path = Strings.CS.removeStart(request.getRestOfPath(), "/v1.0");
 
         // /me doesn't work for service principals but we can use the current logged in user instead
         // this is also used for /me/people to get the people the current logged in user works with

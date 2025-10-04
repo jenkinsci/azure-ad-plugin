@@ -24,7 +24,6 @@
 package com.microsoft.jenkins.azuread;
 
 import edu.umd.cs.findbugs.annotations.CheckForNull;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.Extension;
 import hudson.model.Item;
 import hudson.model.Job;
@@ -295,7 +294,7 @@ public class AuthorizationMatrixProperty extends JobProperty<Job<?, ?>> implemen
                     if (!strategy.getACL(job).hasPermission2(Jenkins.getAuthentication2(), Item.CONFIGURE)) {
                         prop.add(Item.CONFIGURE, new PermissionEntry(AuthorizationType.USER, sid));
                     }
-                    if (prop.getGrantedPermissionEntries().size() > 0) {
+                    if (!prop.getGrantedPermissionEntries().isEmpty()) {
                         try {
                             if (propIsNew) {
                                 job.addProperty(prop);
