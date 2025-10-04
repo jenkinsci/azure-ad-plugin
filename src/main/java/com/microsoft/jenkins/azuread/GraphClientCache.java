@@ -14,7 +14,6 @@ import hudson.ProxyConfiguration;
 import hudson.util.Secret;
 import io.jenkins.plugins.azuresdk.HttpClientRetriever;
 import java.net.URI;
-import java.util.Collections;
 import jenkins.model.Jenkins;
 import jenkins.util.JenkinsJVM;
 import okhttp3.Credentials;

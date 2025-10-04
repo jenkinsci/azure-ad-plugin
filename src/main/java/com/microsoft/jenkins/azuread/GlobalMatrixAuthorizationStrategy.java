@@ -25,7 +25,6 @@ package com.microsoft.jenkins.azuread;
 
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.Extension;
 import hudson.PluginManager;
 import hudson.model.Descriptor;

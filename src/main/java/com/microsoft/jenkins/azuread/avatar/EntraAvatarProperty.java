@@ -55,7 +55,7 @@ public class EntraAvatarProperty extends UserProperty implements Action {
             return;
         }
 
-        try (FileInputStream fileInputStream = new FileInputStream(file); ) {
+        try (FileInputStream fileInputStream = new FileInputStream(file)) {
             rsp.setContentType(avatarImage.mimeType);
             rsp.serveFile(
                     req, fileInputStream, file.lastModified(), file.length(), imageFileName);
