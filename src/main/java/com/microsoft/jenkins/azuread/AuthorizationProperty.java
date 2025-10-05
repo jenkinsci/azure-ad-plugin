@@ -57,12 +57,12 @@ public interface AuthorizationProperty extends AuthorizationContainer {
 
     /**
      * Sets the flag to block inheritance.
-     *
+     * <p>
      * Since the introduction of inheritance strategies, set the inheritance
      * strategy roughly matching the previous behavior, i.e. {@code false} will
      * set the {@link NonInheritingStrategy}, {@code true} will set the
      * {@link InheritGlobalStrategy}.
-     *
+     * <p>
      * Note that for items nested inside folders, this will change behavior significantly.
      *
      * @since 2.0
@@ -80,7 +80,7 @@ public interface AuthorizationProperty extends AuthorizationContainer {
     /**
      * Returns true if the authorization matrix is configured to block
      * inheritance from the parent.
-     *
+     * <p>
      * Since the introduction of inheritance strategies, returns {@code true}
      * if and only if the selected inheritance strategy is {@link NonInheritingStrategy}.
      *

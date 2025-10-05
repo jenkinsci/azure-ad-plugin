@@ -23,7 +23,7 @@ import static com.microsoft.jenkins.azuread.ValidationUtil.formatUserGroupValida
 
 /**
  * Interface methods common to descriptors of authorization strategy and the various properties.
- *
+ * <p>
  * Mostly some methods used from the similar configuration UI for these (reuse there).
  *
  */

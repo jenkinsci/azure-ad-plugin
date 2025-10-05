@@ -72,7 +72,7 @@ public abstract class MatrixAuthorizationStrategyConfigurator<T extends Authoriz
      * Maps an {@link AuthorizationContainer} to a collection (list) of {@link DefinitionEntry}, its serialized form.
      *
      * @param container the container
-     * @return
+     * @return the entries
      */
     public static Collection<DefinitionEntry> getEntries(AuthorizationContainer container) {
         // Contain has: Map from Permission to List of PermissionEntries (sid and type)
