@@ -25,7 +25,6 @@ package com.microsoft.jenkins.azuread;
 
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.Extension;
 import hudson.model.Computer;
 import hudson.model.Node;
@@ -213,7 +212,7 @@ public class AuthorizationMatrixNodeProperty extends NodeProperty<Node> implemen
                 if (!strategy.getACL(node).hasPermission2(Jenkins.getAuthentication2(), Computer.CONFIGURE)) {
                     prop.add(Computer.CONFIGURE, PermissionEntry.user(sid));
                 }
-                if (prop.getGrantedPermissionEntries().size() > 0) {
+                if (!prop.getGrantedPermissionEntries().isEmpty()) {
                     try {
                         node.getNodeProperties().replace(prop);
                     } catch (IOException ex) {

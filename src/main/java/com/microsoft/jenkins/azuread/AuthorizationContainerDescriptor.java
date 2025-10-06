@@ -23,7 +23,7 @@ import static com.microsoft.jenkins.azuread.ValidationUtil.formatUserGroupValida
 
 /**
  * Interface methods common to descriptors of authorization strategy and the various properties.
- *
+ * <p>
  * Mostly some methods used from the similar configuration UI for these (reuse there).
  *
  */
@@ -46,13 +46,13 @@ public interface AuthorizationContainerDescriptor {
             // only annotate permissions that aren't Administer
             if (impliedBy == null) {
                 // this permission is not implied by anything else, this is notable
-                if (description.length() > 0) {
+                if (!description.isEmpty()) {
                     description += "<br/><br/>";
                 }
                 description += Messages.GlobalMatrixAuthorizationStrategy_PermissionNotImpliedBy();
             } else if (impliedBy != Jenkins.ADMINISTER) {
                 // this is implied by a permission other than Administer
-                if (description.length() > 0) {
+                if (!description.isEmpty()) {
                     description += "<br/><br/>";
                 }
                 description += Messages.GlobalMatrixAuthorizationStrategy_PermissionImpliedBy(

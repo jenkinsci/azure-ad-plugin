@@ -23,7 +23,6 @@
  */
 package com.microsoft.jenkins.azuread;
 
-import com.microsoft.jenkins.azuread.AuthorizationType;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Functions;
 import hudson.Util;
@@ -37,7 +36,6 @@ import org.jenkins.ui.symbol.SymbolRequest;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 import static com.microsoft.jenkins.azuread.AuthorizationType.EITHER;

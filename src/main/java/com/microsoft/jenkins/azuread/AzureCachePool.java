@@ -16,7 +16,6 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
 public final class AzureCachePool {
     private static final Logger LOGGER = Logger.getLogger(AzureCachePool.class.getName());
@@ -57,7 +56,7 @@ public final class AzureCachePool {
                                         return null;
                                     })
                                     .filter(Objects::nonNull)
-                                    .collect(Collectors.toList());
+                                    .toList();
                             groups.addAll(groupsFromPage);
 
                             DirectoryObjectCollectionWithReferencesRequestBuilder nextPage = collection

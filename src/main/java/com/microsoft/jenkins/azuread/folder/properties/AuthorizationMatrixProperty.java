@@ -255,7 +255,7 @@ public class AuthorizationMatrixProperty extends AbstractFolderProperty<Abstract
                             .hasPermission2(Jenkins.getAuthentication2(), Item.CONFIGURE)) {
                         prop.add(Item.CONFIGURE, PermissionEntry.user(sid));
                     }
-                    if (prop.getGrantedPermissionEntries().size() > 0) {
+                    if (!prop.getGrantedPermissionEntries().isEmpty()) {
                         try {
                             if (propIsNew) {
                                 folder.addProperty(prop);
