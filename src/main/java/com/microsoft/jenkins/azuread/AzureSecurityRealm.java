@@ -485,6 +485,13 @@ public class AzureSecurityRealm extends SecurityRealm {
             if (!isDisableGraphIntegration()) {
                 updateAvatar(userDetails, currentUser);
             }
+
+            // Let jenkins.security.LastGrantedAuthoritiesProperty
+            // save the list of groups, so that User.impersonate2() can
+            // find them even if graph integration is disabled.
+            // This is important for jenkins.security.ResourceDomainRootAction,
+            // whose resource URIs encode the user ID but not the groups.
+            SecurityListener.fireLoggedIn(currentUser.getId());
         } catch (Exception ex) {
             LOGGER.log(Level.SEVERE, "error", ex);
             throw ex;
