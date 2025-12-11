@@ -478,6 +478,9 @@ public class AzureSecurityRealm extends SecurityRealm {
             // Enforce updating current identity
             SecurityContextHolder.getContext().setAuthentication(auth);
             User currentUser = User.current();
+            if (currentUser == null) {
+                throw new IllegalStateException("No current user after authentication");
+            }
             updateIdentity(auth.getAzureAdUser(), currentUser);
 
             SecurityListener.fireAuthenticated2(userDetails);
@@ -621,7 +624,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                     user.setAuthorities(groups, user.getUniqueName());
 
                     // Enforce updating added identity
-                    updateIdentity(user, User.getById(user.getObjectID(), true));
+                    updateIdentity(user, getByIdOrCreate(user));
 
                     return user;
                 } catch (GraphServiceException e) {
@@ -646,6 +649,14 @@ public class AzureSecurityRealm extends SecurityRealm {
 
             return azureAdUser;
         });
+    }
+
+    private static @NonNull User getByIdOrCreate(AzureAdUser user) {
+        User byId = User.getById(user.getObjectID(), true);
+        if (byId == null) {
+            throw new IllegalStateException("User should have been created but is null");
+        }
+        return byId;
     }
 
     /**
@@ -933,8 +944,8 @@ public class AzureSecurityRealm extends SecurityRealm {
         }
     }
 
-    private void updateIdentity(final AzureAdUser azureAdUser, final User u) {
-        if (azureAdUser != null && u != null) {
+    private void updateIdentity(final AzureAdUser azureAdUser, @NonNull final User u) {
+        if (azureAdUser != null) {
             try {
                 String description = generateDescription(azureAdUser);
                 u.setDescription(description);
