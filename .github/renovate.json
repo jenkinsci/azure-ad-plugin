@@ -10,8 +10,8 @@
   "packageRules": [
     {
       "groupName": "microsoft-mgt",
-      "matchPackagePatterns": [
-        "@microsoft/mgt"
+      "matchPackageNames": [
+        "/@microsoft/mgt/"
       ]
     }
   ]
