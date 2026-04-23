@@ -32,55 +32,58 @@ public final class AzureCachePool {
     }
 
     public List<AzureAdGroup> getBelongingGroupsByOid(final String oid) {
-        List<AzureAdGroup> result = belongingGroupsByOid.get(oid,
-                (cacheKey) -> {
-                    try {
-                        DirectoryObjectCollectionWithReferencesPage collection = azure
-                                .users(oid)
-                                // TODO asGroup isn't working json error, and neither is $filter on securityEnabled
-                                .transitiveMemberOf()
-                                .buildRequest()
-                                .get();
-
-
-                        List<AzureAdGroup> groups = new ArrayList<>();
-
-                        while (collection != null) {
-                            final List<DirectoryObject> directoryObjects = collection.getCurrentPage();
-
-                            List<AzureAdGroup> groupsFromPage = directoryObjects.stream()
-                                    .map(group -> {
-                                        if (group instanceof Group) {
-                                            return new AzureAdGroup(group.id, ((Group) group).displayName);
-                                        }
-                                        return null;
-                                    })
-                                    .filter(Objects::nonNull)
-                                    .toList();
-                            groups.addAll(groupsFromPage);
-
-                            DirectoryObjectCollectionWithReferencesRequestBuilder nextPage = collection
-                                    .getNextPage();
-                            if (nextPage == null) {
-                                break;
-                            } else {
-                                collection = nextPage.buildRequest().get();
-                            }
-                        }
-
-                        return groups;
-                    } catch (Exception e) {
-                        LOGGER.log(Level.WARNING, "Do not have sufficient privileges to "
-                                + "fetch your belonging groups' authorities.", e);
-                        return Collections.emptyList();
-                    }
-
-                });
-        if (Constants.DEBUG) {
-            belongingGroupsByOid.invalidate(oid);
+        List<AzureAdGroup> cachedResult = belongingGroupsByOid.getIfPresent(oid);
+        if (cachedResult != null) {
+            return cachedResult;
         }
-        return result;
 
+        try {
+            DirectoryObjectCollectionWithReferencesPage collection = azure
+                    .users(oid)
+                    // TODO asGroup isn't working json error, and neither is $filter on securityEnabled
+                    .transitiveMemberOf()
+                    .buildRequest()
+                    .get();
+
+            List<AzureAdGroup> groups = new ArrayList<>();
+
+            while (collection != null) {
+                final List<DirectoryObject> directoryObjects = collection.getCurrentPage();
+
+                List<AzureAdGroup> groupsFromPage = directoryObjects.stream()
+                        .map(group -> {
+                            if (group instanceof Group) {
+                                return new AzureAdGroup(group.id, ((Group) group).displayName);
+                            }
+                            return null;
+                        })
+                        .filter(Objects::nonNull)
+                        .toList();
+                groups.addAll(groupsFromPage);
+
+                DirectoryObjectCollectionWithReferencesRequestBuilder nextPage = collection
+                        .getNextPage();
+                if (nextPage == null) {
+                    break;
+                } else {
+                    collection = nextPage.buildRequest().get();
+                }
+            }
+
+            // Only cache successful results
+            belongingGroupsByOid.put(oid, groups);
+
+            if (Constants.DEBUG) {
+                belongingGroupsByOid.invalidate(oid);
+            }
+
+            return groups;
+        } catch (Exception e) {
+            LOGGER.log(Level.WARNING, "Do not have sufficient privileges to "
+                    + "fetch your belonging groups' authorities.", e);
+            // Return empty list but DO NOT cache it - let the next request try again
+            return Collections.emptyList();
+        }
     }
 
     public static void invalidateBelongingGroupsByOid(String userId) {
