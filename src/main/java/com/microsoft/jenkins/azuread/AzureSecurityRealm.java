@@ -509,11 +509,10 @@ public class AzureSecurityRealm extends SecurityRealm {
         try (Response response = client.newCall(requestObjectRequest).execute()) {
             if (response.isSuccessful()) {
                 // Parse and print the response body
-                tokenResponse = response.body().string();
-
-                if(tokenResponse == null || tokenResponse.isEmpty()) {
-                    throw new IOException("Authentication failed: Empty response body");
+                if (response.body() == null || response.body().string() == null || response.body().string().isEmpty()) {
+                    throw new IOException("Authentication failed: No response or empty body");
                 }
+                tokenResponse = response.body().string();
             } else {
                 // Handle error response
                 throw new IOException("Authentication failed: " + response.code() + " " + response.message());
