@@ -500,7 +500,7 @@ public class AzureSecurityRealm extends SecurityRealm {
             throw ex;
         }
 
-        if (referer != null) {
+        if (referer != null && Util.isSafeToRedirectTo(referer)) {
             return HttpResponses.redirectTo(referer);
         } else {
             return HttpResponses.redirectToContextRoot();
