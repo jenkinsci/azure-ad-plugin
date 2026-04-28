@@ -16,12 +16,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.scribejava.core.builder.ServiceBuilder;
-import com.github.scribejava.core.model.OAuth2AccessToken;
 import com.github.scribejava.core.oauth.OAuth20Service;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
 import com.microsoft.graph.http.GraphServiceException;
 import com.microsoft.graph.models.Group;
+import com.microsoft.graph.httpcore.HttpClients;
 import com.microsoft.graph.models.ProfilePhoto;
 import com.microsoft.graph.options.Option;
 import com.microsoft.graph.options.QueryOption;
@@ -40,6 +40,7 @@ import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
+import hudson.ProxyConfiguration;
 import hudson.Util;
 import hudson.model.Descriptor;
 import hudson.model.User;
@@ -61,10 +62,14 @@ import jakarta.servlet.http.HttpSession;
 
 import jenkins.model.Jenkins;
 import jenkins.security.SecurityListener;
+import jenkins.util.JenkinsJVM;
 import jenkins.util.SystemProperties;
+import okhttp3.Credentials;
 import okhttp3.OkHttpClient;
+import okhttp3.OkHttpClient.Builder;
 import okhttp3.Request;
 import okhttp3.Response;
+import okhttp3.ResponseBody;
 import okhttp3.RequestBody;
 import okhttp3.MediaType;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -93,6 +98,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.Proxy;
+import java.net.URI;
 import java.net.URLEncoder;
 import java.security.KeyFactory;
 import java.security.MessageDigest;
@@ -491,8 +498,14 @@ public class AzureSecurityRealm extends SecurityRealm {
             throw new IOException("Authentication failed", e);
         }
 
-        // Create OkHttpClient instance
-        OkHttpClient client = new OkHttpClient();
+        OkHttpClient client = getClient(tokenEndpoint);
+
+
+
+
+
+
+
         String tokenResponse = "";
         // Build the request
         RequestBody body = RequestBody.create(
@@ -509,10 +522,15 @@ public class AzureSecurityRealm extends SecurityRealm {
         try (Response response = client.newCall(requestObjectRequest).execute()) {
             if (response.isSuccessful()) {
                 // Parse and print the response body
-                if (response.body() == null || response.body().string() == null || response.body().string().isEmpty()) {
+                ResponseBody responseBody = response.body();
+                if (responseBody == null) {
                     throw new IOException("Authentication failed: No response or empty body");
                 }
-                tokenResponse = response.body().string();
+                String responseBodyString = responseBody.string();
+                if (responseBodyString == null || responseBodyString.isEmpty()) {
+                    throw new IOException("Authentication failed: No response or empty body");
+                }
+                tokenResponse = responseBodyString;
             } else {
                 // Handle error response
                 throw new IOException("Authentication failed: " + response.code() + " " + response.message());
@@ -589,6 +607,34 @@ public class AzureSecurityRealm extends SecurityRealm {
         } else {
             return HttpResponses.redirectToContextRoot();
         }
+    }
+
+    private OkHttpClient getClient(String tokenEndpoint) {
+        // Create OkHttpClient instance
+        Builder clientBuilder = HttpClients.custom();
+
+        if (JenkinsJVM.isJenkinsJVM()) {
+            ProxyConfiguration proxyConfiguration = Jenkins.get().getProxy();
+            if (proxyConfiguration != null && StringUtils.isNotBlank(proxyConfiguration.getName())) {
+
+                String graphHost = URI.create(tokenEndpoint).getHost();
+                Proxy proxy = proxyConfiguration.createProxy(graphHost);
+
+                clientBuilder = clientBuilder.proxy(proxy);
+                if (StringUtils.isNotBlank(proxyConfiguration.getUserName())) {
+                    clientBuilder = clientBuilder.proxyAuthenticator((route, response) -> {
+                        String credential = Credentials.basic(
+                                proxyConfiguration.getUserName(),
+                                proxyConfiguration.getSecretPassword().getPlainText()
+                        );
+                        return response.request().newBuilder().header("Authorization", credential).build();
+                    });
+                }
+            }
+        }
+
+        OkHttpClient client = clientBuilder.build();
+        return client;
     }
 
     private String getClientAssertion(String tokenEndpoint) throws Exception {
