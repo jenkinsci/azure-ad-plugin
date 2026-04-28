@@ -485,13 +485,16 @@ public class AzureSecurityRealm extends SecurityRealm {
             formData = "client_id=" + URLEncoder.encode(getClientId(), StandardCharsets.UTF_8) +
                     "&grant_type=authorization_code" +
                     "&code=" + URLEncoder.encode(authorizationCode, StandardCharsets.UTF_8) +
-                    "&redirect_uri=" + URLEncoder.encode(redirectUri, StandardCharsets.UTF_8) +
-                    "&client_assertion_type=" + URLEncoder.encode("urn:ietf:params:oauth:client-assertion-type:jwt-bearer", StandardCharsets.UTF_8);
+                    "&redirect_uri=" + URLEncoder.encode(redirectUri, StandardCharsets.UTF_8);
             if (getCredentialType().equals("Certificate")) {
                 String clientAssertion = getClientAssertion(tokenEndpoint);
+                formData += "&client_assertion_type="
+                        + URLEncoder.encode("urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+                        StandardCharsets.UTF_8);
                 formData += "&client_assertion=" + URLEncoder.encode(clientAssertion, StandardCharsets.UTF_8);
             } else {
-                formData += "&client_assertion=" + URLEncoder.encode(getClientSecret().getPlainText(), StandardCharsets.UTF_8);
+                formData += "&client_secret="
+                        + URLEncoder.encode(getClientSecret().getPlainText(), StandardCharsets.UTF_8);
             }
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error encoding form data", e);
