@@ -16,12 +16,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.scribejava.core.builder.ServiceBuilder;
-import com.github.scribejava.core.model.OAuth2AccessToken;
 import com.github.scribejava.core.oauth.OAuth20Service;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
 import com.microsoft.graph.http.GraphServiceException;
 import com.microsoft.graph.models.Group;
+import com.microsoft.graph.httpcore.HttpClients;
 import com.microsoft.graph.models.ProfilePhoto;
 import com.microsoft.graph.options.Option;
 import com.microsoft.graph.options.QueryOption;
@@ -40,6 +40,7 @@ import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
+import hudson.ProxyConfiguration;
 import hudson.Util;
 import hudson.model.Descriptor;
 import hudson.model.User;
@@ -61,10 +62,14 @@ import jakarta.servlet.http.HttpSession;
 
 import jenkins.model.Jenkins;
 import jenkins.security.SecurityListener;
+import jenkins.util.JenkinsJVM;
 import jenkins.util.SystemProperties;
+import okhttp3.Credentials;
 import okhttp3.OkHttpClient;
+import okhttp3.OkHttpClient.Builder;
 import okhttp3.Request;
 import okhttp3.Response;
+import okhttp3.ResponseBody;
 import okhttp3.RequestBody;
 import okhttp3.MediaType;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -93,6 +98,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.Proxy;
+import java.net.URI;
 import java.net.URLEncoder;
 import java.security.KeyFactory;
 import java.security.MessageDigest;
@@ -456,72 +463,87 @@ public class AzureSecurityRealm extends SecurityRealm {
             return HttpResponses.redirectToContextRoot();
         }
         String referer = cachedStateValue.referrer();
+
+        final Long beginTime = cachedStateValue.beginTime();
+        final String expectedNonce = cachedStateValue.nonce();
+
+        long endTime = System.currentTimeMillis();
+        LOGGER.info("Requesting oauth code time = " + (endTime - beginTime) + " ms");
+        // Extract the authorization code from the request
+        String authorizationCode = request.getParameter("code");
+        if (StringUtils.isBlank(authorizationCode)) {
+            LOGGER.info("No `authorization_code` found. Redirecting to context root.");
+            return HttpResponses.redirectToContextRoot();
+        }
+
+        // Replace these values with your app's configuration
+        String redirectUri = getRootUrl() + CALLBACK_URL;
+
+        // The token endpoint for Azure AD
+        OAuth20Service service = getOAuthService();
+        String tokenEndpoint = service.getApi().getAccessTokenEndpoint();
+        // Create the form data for the POST request
+        String formData = null;        
+
         try {
-            final Long beginTime = cachedStateValue.beginTime();
-            final String expectedNonce = cachedStateValue.nonce();
-
-            long endTime = System.currentTimeMillis();
-            LOGGER.info("Requesting oauth code time = " + (endTime - beginTime) + " ms");
-            // Extract the authorization code from the request
-            String authorizationCode = request.getParameter("code");
-            if (StringUtils.isBlank(authorizationCode)) {
-                LOGGER.info("No `authorization_code` found. Redirecting to context root.");
-                return HttpResponses.redirectToContextRoot();
+            formData = "client_id=" + URLEncoder.encode(getClientId(), StandardCharsets.UTF_8) +
+                    "&grant_type=authorization_code" +
+                    "&code=" + URLEncoder.encode(authorizationCode, StandardCharsets.UTF_8) +
+                    "&redirect_uri=" + URLEncoder.encode(redirectUri, StandardCharsets.UTF_8) +
+                    "&client_assertion_type=" + URLEncoder.encode("urn:ietf:params:oauth:client-assertion-type:jwt-bearer", StandardCharsets.UTF_8);
+            if (getCredentialType().equals("Certificate")) {
+                String clientAssertion = getClientAssertion(tokenEndpoint);
+                formData += "&client_assertion=" + URLEncoder.encode(clientAssertion, StandardCharsets.UTF_8);
+            } else {
+                formData += "&client_assertion=" + URLEncoder.encode(getClientSecret().getPlainText(), StandardCharsets.UTF_8);
             }
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error encoding form data", e);
+            throw new IOException("Authentication failed", e);
+        }
 
-            // Replace these values with your app's configuration
-            String redirectUri = getRootUrl() + CALLBACK_URL;
+        OkHttpClient client = getClient(tokenEndpoint);
 
-            // The token endpoint for Azure AD
-            OAuth20Service service = getOAuthService();
-            String tokenEndpoint = service.getApi().getAccessTokenEndpoint();
-            // Create the form data for the POST request
-            String formData = null;
-            try {
-                formData = "client_id=" + URLEncoder.encode(getClientId(), StandardCharsets.UTF_8) +
-                        "&grant_type=authorization_code" +
-                        "&code=" + URLEncoder.encode(authorizationCode, StandardCharsets.UTF_8) +
-                        "&redirect_uri=" + URLEncoder.encode(redirectUri, StandardCharsets.UTF_8) +
-                        "&client_assertion_type=" + URLEncoder.encode("urn:ietf:params:oauth:client-assertion-type:jwt-bearer", StandardCharsets.UTF_8);
-                if (getCredentialType().equals("Certificate")) {
-                    // String clientAssertion = getClientAssertion(tokenEndpoint);
-                    String clientAssertion = "getClientAssertion(tokenEndpoint)";
-                    formData += "&client_assertion=" + URLEncoder.encode(clientAssertion, StandardCharsets.UTF_8);
-                } else {
-                    formData += "&client_assertion=" + URLEncoder.encode(getClientSecret().getPlainText(), StandardCharsets.UTF_8);
+
+
+
+
+
+
+        String tokenResponse = "";
+        // Build the request
+        RequestBody body = RequestBody.create(
+                formData,
+                MediaType.parse("application/x-www-form-urlencoded")
+        );
+
+        Request requestObjectRequest = new Request.Builder()
+                .url(tokenEndpoint)
+                .post(body)
+                .build();
+
+        // Send the request asynchronously or synchronously
+        try (Response response = client.newCall(requestObjectRequest).execute()) {
+            if (response.isSuccessful()) {
+                // Parse and print the response body
+                ResponseBody responseBody = response.body();
+                if (responseBody == null) {
+                    throw new IOException("Authentication failed: No response or empty body");
                 }
-            } catch (Exception e) {
-                LOGGER.log(Level.SEVERE, "Error encoding form data", e);
-                throw new IOException("Authentication failed", e);
-            }
-
-            // Create OkHttpClient instance
-            OkHttpClient client = new OkHttpClient();
-            String tokenResponse = "";
-            // Build the request
-            RequestBody body = RequestBody.create(
-                    formData,
-                    MediaType.parse("application/x-www-form-urlencoded")
-            );
-
-            Request requestObjectRequest = new Request.Builder()
-                    .url(tokenEndpoint)
-                    .post(body)
-                    .build();
-
-            // Send the request asynchronously or synchronously
-            try (Response response = client.newCall(requestObjectRequest).execute()) {
-                if (response.isSuccessful()) {
-                    // Parse and print the response body
-                    tokenResponse = response.body().string();
-                } else {
-                    // Handle error response
-                    throw new IOException("Authentication failed: " + response.code() + " " + response.message());
+                String responseBodyString = responseBody.string();
+                if (responseBodyString == null || responseBodyString.isEmpty()) {
+                    throw new IOException("Authentication failed: No response or empty body");
                 }
-            } catch (IOException e) {
-                throw new IOException("Authentication failed", e);
+                tokenResponse = responseBodyString;
+            } else {
+                // Handle error response
+                throw new IOException("Authentication failed: " + response.code() + " " + response.message());
             }
+        } catch (IOException e) {
+            throw new IOException("Authentication failed", e);
+        }        
 
+        try {
             // Parse the token response
             ObjectMapper mapper = new ObjectMapper();
             JsonNode tokenJson = mapper.readTree(tokenResponse);
@@ -591,6 +613,34 @@ public class AzureSecurityRealm extends SecurityRealm {
         return safeReferer
                 ? HttpResponses.redirectTo(referer)
                 : HttpResponses.redirectToContextRoot();
+    }
+
+    private OkHttpClient getClient(String tokenEndpoint) {
+        // Create OkHttpClient instance
+        Builder clientBuilder = HttpClients.custom();
+
+        if (JenkinsJVM.isJenkinsJVM()) {
+            ProxyConfiguration proxyConfiguration = Jenkins.get().getProxy();
+            if (proxyConfiguration != null && StringUtils.isNotBlank(proxyConfiguration.getName())) {
+
+                String graphHost = URI.create(tokenEndpoint).getHost();
+                Proxy proxy = proxyConfiguration.createProxy(graphHost);
+
+                clientBuilder = clientBuilder.proxy(proxy);
+                if (StringUtils.isNotBlank(proxyConfiguration.getUserName())) {
+                    clientBuilder = clientBuilder.proxyAuthenticator((route, response) -> {
+                        String credential = Credentials.basic(
+                                proxyConfiguration.getUserName(),
+                                proxyConfiguration.getSecretPassword().getPlainText()
+                        );
+                        return response.request().newBuilder().header("Authorization", credential).build();
+                    });
+                }
+            }
+        }
+
+        OkHttpClient client = clientBuilder.build();
+        return client;
     }
 
     private String getClientAssertion(String tokenEndpoint) throws Exception {
