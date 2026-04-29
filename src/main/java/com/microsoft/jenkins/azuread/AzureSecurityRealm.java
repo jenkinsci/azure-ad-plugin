@@ -9,8 +9,10 @@ import com.azure.core.credential.AccessToken;
 import com.azure.core.credential.TokenRequestContext;
 import com.azure.identity.ClientSecretCredential;
 import com.azure.identity.ClientSecretCredentialBuilder;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.azure.identity.ClientCertificateCredential;
 import com.azure.identity.ClientCertificateCredentialBuilder;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.scribejava.core.builder.ServiceBuilder;
@@ -19,6 +21,7 @@ import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
 import com.microsoft.graph.http.GraphServiceException;
 import com.microsoft.graph.models.Group;
+import com.microsoft.graph.httpcore.HttpClients;
 import com.microsoft.graph.models.ProfilePhoto;
 import com.microsoft.graph.options.Option;
 import com.microsoft.graph.options.QueryOption;
@@ -37,6 +40,7 @@ import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
+import hudson.ProxyConfiguration;
 import hudson.Util;
 import hudson.model.Descriptor;
 import hudson.model.User;
@@ -58,8 +62,16 @@ import jakarta.servlet.http.HttpSession;
 
 import jenkins.model.Jenkins;
 import jenkins.security.SecurityListener;
+import jenkins.util.JenkinsJVM;
 import jenkins.util.SystemProperties;
+import okhttp3.Credentials;
+import okhttp3.OkHttpClient;
+import okhttp3.OkHttpClient.Builder;
 import okhttp3.Request;
+import okhttp3.Response;
+import okhttp3.ResponseBody;
+import okhttp3.RequestBody;
+import okhttp3.MediaType;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jose4j.jwt.JwtClaims;
@@ -86,9 +98,20 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.Proxy;
+import java.net.URI;
 import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
+import java.security.KeyFactory;
 import java.security.MessageDigest;
+import java.security.PrivateKey;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.time.Instant;
+import java.util.Base64;
+
+
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -340,7 +363,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     OAuth20Service getOAuthService() {
         return new ServiceBuilder(clientId.getPlainText())
                 .apiSecret("Certificate".equals(credentialType) ? clientCertificate.getPlainText() : clientSecret.getPlainText())
-                .responseType("id_token")
+                .responseType("code")
                 .defaultScope("openid profile email")
                 .callback(getRootUrl() + CALLBACK_URL)
                 .build(AzureAdApi.custom(getTenant(), getAuthorityHost(getAzureEnvironmentName())));
@@ -436,14 +459,96 @@ public class AzureSecurityRealm extends SecurityRealm {
             return HttpResponses.redirectToContextRoot();
         }
         String referer = cachedStateValue.referrer();
+
+        final Long beginTime = cachedStateValue.beginTime();
+        final String expectedNonce = cachedStateValue.nonce();
+
+        long endTime = System.currentTimeMillis();
+        LOGGER.info("Requesting oauth code time = " + (endTime - beginTime) + " ms");
+        // Extract the authorization code from the request
+        String authorizationCode = request.getParameter("code");
+        if (StringUtils.isBlank(authorizationCode)) {
+            LOGGER.info("No `authorization_code` found. Redirecting to context root.");
+            return HttpResponses.redirectToContextRoot();
+        }
+
+        // Replace these values with your app's configuration
+        String redirectUri = getRootUrl() + CALLBACK_URL;
+
+        // The token endpoint for Azure AD
+        OAuth20Service service = getOAuthService();
+        String tokenEndpoint = service.getApi().getAccessTokenEndpoint();
+        // Create the form data for the POST request
+        String formData = null;        
+
         try {
-            final Long beginTime = cachedStateValue.beginTime();
-            final String expectedNonce = cachedStateValue.nonce();
+            formData = "client_id=" + URLEncoder.encode(getClientId(), StandardCharsets.UTF_8) +
+                    "&grant_type=authorization_code" +
+                    "&code=" + URLEncoder.encode(authorizationCode, StandardCharsets.UTF_8) +
+                    "&redirect_uri=" + URLEncoder.encode(redirectUri, StandardCharsets.UTF_8);
+            if (getCredentialType().equals("Certificate")) {
+                String clientAssertion = getClientAssertion(tokenEndpoint);
+                formData += "&client_assertion_type="
+                        + URLEncoder.encode("urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+                        StandardCharsets.UTF_8);
+                formData += "&client_assertion=" + URLEncoder.encode(clientAssertion, StandardCharsets.UTF_8);
+            } else {
+                formData += "&client_secret="
+                        + URLEncoder.encode(getClientSecret().getPlainText(), StandardCharsets.UTF_8);
+            }
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error encoding form data", e);
+            throw new IOException("Authentication failed", e);
+        }
 
-            long endTime = System.currentTimeMillis();
-            LOGGER.info("Requesting oauth code time = " + (endTime - beginTime) + " ms");
+        OkHttpClient client = getClient(tokenEndpoint);
 
-            final String idToken = request.getParameter("id_token");
+
+
+
+
+
+
+        String tokenResponse = "";
+        // Build the request
+        RequestBody body = RequestBody.create(
+                formData,
+                MediaType.parse("application/x-www-form-urlencoded")
+        );
+
+        Request requestObjectRequest = new Request.Builder()
+                .url(tokenEndpoint)
+                .post(body)
+                .build();
+
+        // Send the request asynchronously or synchronously
+        try (Response response = client.newCall(requestObjectRequest).execute()) {
+            if (response.isSuccessful()) {
+                // Parse and print the response body
+                ResponseBody responseBody = response.body();
+                if (responseBody == null) {
+                    throw new IOException("Authentication failed: No response or empty body");
+                }
+                String responseBodyString = responseBody.string();
+                if (responseBodyString == null || responseBodyString.isEmpty()) {
+                    throw new IOException("Authentication failed: No response or empty body");
+                }
+                tokenResponse = responseBodyString;
+            } else {
+                // Handle error response
+                throw new IOException("Authentication failed: " + response.code() + " " + response.message());
+            }
+        } catch (IOException e) {
+            throw new IOException("Authentication failed", e);
+        }        
+
+        try {
+            // Parse the token response
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode tokenJson = mapper.readTree(tokenResponse);
+
+            // String accessToken = tokenJson.get("access_token").asText();
+            final String idToken = tokenJson.has("id_token") ? tokenJson.get("id_token").asText() : null;
 
             if (StringUtils.isBlank(idToken)) {
                 LOGGER.info("No `id_token` found ensure you have enabled it on the 'Authentication' page of the "
@@ -505,6 +610,126 @@ public class AzureSecurityRealm extends SecurityRealm {
         } else {
             return HttpResponses.redirectToContextRoot();
         }
+    }
+
+    private OkHttpClient getClient(String tokenEndpoint) {
+        // Create OkHttpClient instance
+        Builder clientBuilder = HttpClients.custom();
+
+        if (JenkinsJVM.isJenkinsJVM()) {
+            ProxyConfiguration proxyConfiguration = Jenkins.get().getProxy();
+            if (proxyConfiguration != null && StringUtils.isNotBlank(proxyConfiguration.getName())) {
+
+                String graphHost = URI.create(tokenEndpoint).getHost();
+                Proxy proxy = proxyConfiguration.createProxy(graphHost);
+
+                clientBuilder = clientBuilder.proxy(proxy);
+                if (StringUtils.isNotBlank(proxyConfiguration.getUserName())) {
+                    clientBuilder = clientBuilder.proxyAuthenticator((route, response) -> {
+                        String credential = Credentials.basic(
+                                proxyConfiguration.getUserName(),
+                                proxyConfiguration.getSecretPassword().getPlainText()
+                        );
+                        return response.request().newBuilder().header("Authorization", credential).build();
+                    });
+                }
+            }
+        }
+
+        OkHttpClient client = clientBuilder.build();
+        return client;
+    }
+
+    private String getClientAssertion(String tokenEndpoint) throws Exception {
+        // Load certificate and private key from PEM
+        String combinedPem = clientCertificate.getPlainText();
+        String certPem = null;
+        String keyPem = null;
+        String[] parts = combinedPem.split("(?=-----BEGIN )");
+        for (String part : parts) {
+            if (part.contains("CERTIFICATE")) {
+                // Use the first certificate found (typically the leaf certificate)
+                // to avoid issues with certificate chains where the last cert might be an intermediate
+                if (certPem == null) {
+                    certPem = part.trim();
+                }
+            } else if (part.contains("PRIVATE KEY")) {
+                keyPem = part.trim();
+            }
+        }
+        if (certPem == null || keyPem == null) {
+            throw new IllegalArgumentException("Combined PEM must contain both CERTIFICATE and PRIVATE KEY blocks");
+        }
+
+        X509Certificate cert = loadCertificateFromString(certPem);
+        PrivateKey privateKey = loadPrivateKeyFromString(keyPem);
+        String thumbprint = calculateThumbprint(cert);
+
+        try {
+            return generateClientAssertion(getClientId(), getTenant(), privateKey, thumbprint, tokenEndpoint);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate client assertion", e);
+        }
+    }
+
+    // Load certificate from PEM string (single-line or multi-line)
+    private X509Certificate loadCertificateFromString(String certPem) throws Exception {
+        String certClean = certPem.replaceAll("-----BEGIN CERTIFICATE-----", "")
+                                 .replaceAll("-----END CERTIFICATE-----", "")
+                                 .replaceAll("\\s+", "");
+        byte[] certBytes = Base64.getDecoder().decode(certClean);
+        CertificateFactory cf = CertificateFactory.getInstance("X.509");
+        return (X509Certificate) cf.generateCertificate(new java.io.ByteArrayInputStream(certBytes));
+    }
+
+    // Load private key from PEM string (PKCS#8 format, base64-encoded, single-line or multi-line)
+    private PrivateKey loadPrivateKeyFromString(String keyPem) throws Exception {
+        String keyClean = keyPem.replaceAll("-----BEGIN (.*)-----", "")
+                               .replaceAll("-----END (.*)-----", "")
+                               .replaceAll("\\s+", "");
+        byte[] keyBytes = Base64.getDecoder().decode(keyClean);
+        PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keyBytes);
+        KeyFactory kf = KeyFactory.getInstance("RSA");
+        return kf.generatePrivate(spec);
+    }    
+
+    // Calculate SHA-1 thumbprint and base64url encode
+    private String calculateThumbprint(X509Certificate cert) throws Exception {
+        MessageDigest sha1 = MessageDigest.getInstance("SHA-1");
+        byte[] der = cert.getEncoded();
+        byte[] digest = sha1.digest(der);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(digest);
+    }
+
+    // Create JWT header and payload, sign with private key (minimal external libs)
+    private String generateClientAssertion(String clientId, String tenantId, PrivateKey privateKey, String thumbprint, String tokenEndpoint) throws Exception {
+        long now = Instant.now().getEpochSecond();
+        long exp = now + 600; // 10 minutes
+
+        // Header
+        String headerJson = "{" +
+                "\"alg\":\"RS256\"," +
+                "\"x5t\":\"" + thumbprint + "\"}";
+        String header = Base64.getUrlEncoder().withoutPadding().encodeToString(headerJson.getBytes(StandardCharsets.UTF_8));
+
+        // Payload
+        String payloadJson = "{" +
+                "\"aud\":\"" + tokenEndpoint + "\"," +
+                "\"iss\":\"" + clientId + "\"," +
+                "\"sub\":\"" + clientId + "\"," +
+                "\"exp\":" + exp + "," +
+                "\"iat\":" + now + "}";
+        String payload = Base64.getUrlEncoder().withoutPadding().encodeToString(payloadJson.getBytes(StandardCharsets.UTF_8));
+
+        // Sign header.payload
+        String signingInput = header + "." + payload;
+        java.security.Signature signature = java.security.Signature.getInstance("SHA256withRSA");
+        signature.initSign(privateKey);
+        signature.update(signingInput.getBytes(StandardCharsets.UTF_8));
+        byte[] sigBytes = signature.sign();
+        String signatureB64 = Base64.getUrlEncoder().withoutPadding().encodeToString(sigBytes);
+
+        return signingInput + "." + signatureB64;
     }
 
     private void updateAvatar(AzureAdUser userDetails, User currentUser) {
