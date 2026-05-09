@@ -500,11 +500,13 @@ public class AzureSecurityRealm extends SecurityRealm {
             throw ex;
         }
 
-        String rootUrl = Jenkins.get().getRootUrl();
-        if ((rootUrl != null && referer.startsWith(rootUrl)) || Util.isSafeToRedirectTo(referer)) {
-            return HttpResponses.redirectTo(referer);
-        }
-        return HttpResponses.redirectToContextRoot();
+        String rootUrl = getRootUrl();
+        boolean safeReferer = referer != null
+                && ((rootUrl != null && referer.startsWith(rootUrl)) || Util.isSafeToRedirectTo(referer));
+
+        return safeReferer
+                ? HttpResponses.redirectTo(referer)
+                : HttpResponses.redirectToContextRoot();
     }
 
     private void updateAvatar(AzureAdUser userDetails, User currentUser) {
