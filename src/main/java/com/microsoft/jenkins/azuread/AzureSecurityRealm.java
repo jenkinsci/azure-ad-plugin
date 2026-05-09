@@ -352,9 +352,13 @@ public class AzureSecurityRealm extends SecurityRealm {
 
 
     private String getRootUrl() {
+        return getRootUrl(true);
+    }
+
+    private String getRootUrl(boolean strip) {
         Jenkins jenkins = Jenkins.get();
         String url = isFromRequest() ? jenkins.getRootUrlFromRequest() : jenkins.getRootUrl();
-        return StringUtils.stripEnd(url, "/");
+        return strip ? StringUtils.stripEnd(url, "/") : url;
     }
 
     @DataBoundConstructor
@@ -500,7 +504,7 @@ public class AzureSecurityRealm extends SecurityRealm {
             throw ex;
         }
 
-        String rootUrl = getRootUrl();
+        String rootUrl = getRootUrl(false);
         boolean safeReferer = referer != null
                 && ((rootUrl != null && referer.startsWith(rootUrl)) || Util.isSafeToRedirectTo(referer));
 
