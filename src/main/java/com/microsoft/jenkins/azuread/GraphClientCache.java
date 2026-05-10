@@ -137,7 +137,7 @@ public class GraphClientCache {
     public static GraphServiceClient<Request> getClient(AzureSecurityRealm azureSecurityRealm) {
         GraphClientCacheKey key = new GraphClientCacheKey(
                 azureSecurityRealm.getClientId(),
-                azureSecurityRealm.resolveClientSecret(),
+                Secret.toString(azureSecurityRealm.getClientSecret()),
                 Secret.toString(azureSecurityRealm.getClientCertificate()),
                 azureSecurityRealm.getCredentialType(),
                 azureSecurityRealm.getTenant(),

@@ -186,7 +186,7 @@ public class AzureSecurityRealm extends SecurityRealm {
         String azureEnv = getAzureEnvironmentName();
         return new ClientSecretCredentialBuilder()
                 .clientId(clientId.getPlainText())
-                .clientSecret(resolveClientSecret())
+                .clientSecret(clientSecret.getPlainText())
                 .tenantId(tenant.getPlainText())
                 .authorityHost(getAuthorityHost(azureEnv))
                 .httpClient(HttpClientRetriever.get())
@@ -283,7 +283,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                 break;
             default:
                 credentialComponent = clientId.getPlainText()
-                        + resolveClientSecret()
+                        + clientSecret.getPlainText()
                         + tenant.getPlainText()
                         + azureEnvironmentName;
                 break;
@@ -328,26 +328,6 @@ public class AzureSecurityRealm extends SecurityRealm {
 
     public Secret getClientSecret() {
         return clientSecret;
-    }
-
-    /**
-     * Resolves the effective client secret value.
-     * Returns the persisted secret if non-empty, otherwise falls back
-     * to the {@code AZURE_CLIENT_SECRET} environment variable.
-     *
-     * @return the resolved secret string, or empty string if neither source is available
-     */
-    String resolveClientSecret() {
-        String persisted = clientSecret != null ? clientSecret.getPlainText() : "";
-        if (!persisted.isEmpty()) {
-            return persisted;
-        }
-        String envSecret = System.getenv("AZURE_CLIENT_SECRET");
-        if (envSecret != null && !envSecret.isEmpty()) {
-            LOGGER.log(Level.FINE, "resolveClientSecret: using AZURE_CLIENT_SECRET environment variable");
-            return envSecret;
-        }
-        return persisted;
     }
 
     public Secret getClientCertificate() {
@@ -411,7 +391,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                             getTenant(), getAuthorityHost(getAzureEnvironmentName())));
         }
         return new ServiceBuilder(clientId.getPlainText())
-                .apiSecret("Certificate".equals(credentialType) ? clientCertificate.getPlainText() : resolveClientSecret())
+                .apiSecret("Certificate".equals(credentialType) ? clientCertificate.getPlainText() : clientSecret.getPlainText())
                 .responseType("id_token")
                 .defaultScope("openid profile email")
                 .callback(getRootUrl() + CALLBACK_URL)
@@ -986,49 +966,6 @@ public class AzureSecurityRealm extends SecurityRealm {
         }
 
 
-        /**
-         * Returns the default Client ID from the AZURE_CLIENT_ID environment variable,
-         * or empty string if not set. Used by config.jelly to pre-populate the form.
-         */
-        public String getDefaultClientId() {
-            String value = System.getenv("AZURE_CLIENT_ID");
-            if (value != null && !value.isEmpty()) {
-                LOGGER.log(Level.FINE, "getDefaultClientId: pre-populating from AZURE_CLIENT_ID");
-            }
-            return value != null ? value : "";
-        }
-
-        /**
-         * Returns the default Tenant ID from the AZURE_TENANT_ID environment variable,
-         * or empty string if not set. Used by config.jelly to pre-populate the form.
-         */
-        public String getDefaultTenant() {
-            String value = System.getenv("AZURE_TENANT_ID");
-            if (value != null && !value.isEmpty()) {
-                LOGGER.log(Level.FINE, "getDefaultTenant: pre-populating from AZURE_TENANT_ID");
-            }
-            return value != null ? value : "";
-        }
-
-        /**
-         * Returns the default credential type based on environment variables.
-         * Priority: WorkloadIdentity (AZURE_FEDERATED_TOKEN_FILE) > Secret (AZURE_CLIENT_SECRET) > Secret (default).
-         */
-        public String getDefaultCredentialType() {
-            String tokenFile = System.getenv("AZURE_FEDERATED_TOKEN_FILE");
-            if (tokenFile != null && !tokenFile.isEmpty()) {
-                LOGGER.log(Level.FINE,
-                        "getDefaultCredentialType: AZURE_FEDERATED_TOKEN_FILE is set, defaulting to WorkloadIdentity");
-                return "WorkloadIdentity";
-            }
-            String clientSecret = System.getenv("AZURE_CLIENT_SECRET");
-            if (clientSecret != null && !clientSecret.isEmpty()) {
-                LOGGER.log(Level.FINE,
-                        "getDefaultCredentialType: AZURE_CLIENT_SECRET is set, defaulting to Secret");
-            }
-            return "Secret";
-        }
-
         public ListBoxModel doFillAzureEnvironmentNameItems() {
             ListBoxModel model = new ListBoxModel();
 
@@ -1051,13 +988,7 @@ public class AzureSecurityRealm extends SecurityRealm {
             switch (credentialType) {
                 case "Secret":
                     if (Secret.toString(clientSecret).isEmpty()) {
-                        String envSecret = System.getenv("AZURE_CLIENT_SECRET");
-                        if (envSecret == null || envSecret.isEmpty()) {
-                            return FormValidation.error(
-                                    "Please set a secret or provide it via the AZURE_CLIENT_SECRET environment variable");
-                        }
-                        LOGGER.log(Level.FINE,
-                                "doVerifyConfiguration: using AZURE_CLIENT_SECRET environment variable");
+                        return FormValidation.error("Please set a secret");
                     }
                     break;
                 case "Certificate":
@@ -1084,18 +1015,10 @@ public class AzureSecurityRealm extends SecurityRealm {
                 return FormValidation.error("Please set a test user principal name or object ID");
             }
 
-            String effectiveSecret = Secret.toString(clientSecret);
-            if (effectiveSecret.isEmpty() && "Secret".equals(credentialType)) {
-                String envSecret = System.getenv("AZURE_CLIENT_SECRET");
-                if (envSecret != null && !envSecret.isEmpty()) {
-                    effectiveSecret = envSecret;
-                }
-            }
-
             GraphServiceClient<Request> graphServiceClient = GraphClientCache.getClient(
                     new GraphClientCacheKey(
                             clientId,
-                            effectiveSecret,
+                            Secret.toString(clientSecret),
                             Secret.toString(clientCertificate),
                             credentialType,
                             tenant,
