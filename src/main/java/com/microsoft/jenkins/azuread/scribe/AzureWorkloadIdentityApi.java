@@ -43,10 +43,11 @@ public class AzureWorkloadIdentityApi extends AzureAdApi {
     }
 
     /**
-     * Read the federated token from the file system.
+     * Read the federated token from the file path specified by the
+     * {@code AZURE_FEDERATED_TOKEN_FILE} environment variable.
      *
      * @return the JWT token string
-     * @throws IOException if the token file cannot be read
+     * @throws IOException if the env var is not set or the token file cannot be read
      */
     static String readFederatedToken() throws IOException {
         String tokenFilePath = System.getenv("AZURE_FEDERATED_TOKEN_FILE");
@@ -54,6 +55,17 @@ public class AzureWorkloadIdentityApi extends AzureAdApi {
             throw new IOException("AZURE_FEDERATED_TOKEN_FILE environment variable is not set. "
                     + "Set it to the path of a JWT token file issued by your OIDC identity provider.");
         }
+        return readFederatedToken(tokenFilePath);
+    }
+
+    /**
+     * Read the federated token from the given file path.
+     *
+     * @param tokenFilePath absolute path to the JWT token file
+     * @return the JWT token string, trimmed
+     * @throws IOException if the file cannot be read
+     */
+    static String readFederatedToken(String tokenFilePath) throws IOException {
         return new String(Files.readAllBytes(Paths.get(tokenFilePath)), StandardCharsets.UTF_8).trim();
     }
 
