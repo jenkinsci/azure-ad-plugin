@@ -16,6 +16,8 @@ import hudson.ProxyConfiguration;
 import hudson.util.Secret;
 import io.jenkins.plugins.azuresdk.HttpClientRetriever;
 import java.net.URI;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import jenkins.model.Jenkins;
 import jenkins.util.JenkinsJVM;
 import okhttp3.Credentials;
@@ -36,15 +38,15 @@ import static java.util.Collections.singletonList;
 
 public class GraphClientCache {
 
-    private static final java.util.logging.Logger LOGGER =
-            java.util.logging.Logger.getLogger(GraphClientCache.class.getName());
+    private static final Logger LOGGER =
+            Logger.getLogger(GraphClientCache.class.getName());
     private static final int TEN = 10;
     private static final LoadingCache<GraphClientCacheKey, GraphServiceClient<Request>> TOKEN_CACHE = Caffeine.newBuilder()
             .maximumSize(TEN)
             .build(GraphClientCache::createGraphClient);
 
     private static GraphServiceClient<Request> createGraphClient(GraphClientCacheKey key) {
-        LOGGER.log(java.util.logging.Level.FINE,
+        LOGGER.log(Level.FINE,
                 "createGraphClient: creating client for credentialType={0}, environment={1}",
                 new Object[]{key.getCredentialType(), key.getAzureEnvironmentName()});
         TokenCredentialAuthProvider authProvider = getAuthProvider(key);
@@ -65,7 +67,7 @@ public class GraphClientCache {
         if (!azureEnv.equals(AZURE_PUBLIC_CLOUD)) {
             graphServiceClient.setServiceRoot(getServiceRoot(azureEnv));
         }
-        LOGGER.log(java.util.logging.Level.FINE, "createGraphClient: client created successfully");
+        LOGGER.log(Level.FINE, "createGraphClient: client created successfully");
         return graphServiceClient;
     }
 
@@ -84,8 +86,6 @@ public class GraphClientCache {
                 tokenCredential = getWorkloadIdentityCredential(key);
                 break;
             default:
-                LOGGER.log(java.util.logging.Level.SEVERE,
-                        "getAuthProvider: invalid credential type ''{0}''", key.getCredentialType());
                 throw new IllegalArgumentException("Invalid credential type: " + key.getCredentialType());
         }
         return new TokenCredentialAuthProvider(

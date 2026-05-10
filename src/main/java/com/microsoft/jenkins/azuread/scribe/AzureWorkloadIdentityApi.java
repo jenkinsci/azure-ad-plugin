@@ -1,8 +1,3 @@
-/*
- * Copyright (c) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See LICENSE file in the project root for license information.
- */
-
 package com.microsoft.jenkins.azuread.scribe;
 
 import com.github.scribejava.core.model.OAuthRequest;
@@ -12,8 +7,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * Custom ScribeJava API for Workload Identity Federation.
@@ -26,8 +19,6 @@ import java.util.logging.Logger;
  * client assertion.</p>
  */
 public class AzureWorkloadIdentityApi extends AzureAdApi {
-
-    private static final Logger LOGGER = Logger.getLogger(AzureWorkloadIdentityApi.class.getName());
 
     AzureWorkloadIdentityApi(String tenant, String authorityHost) {
         super(tenant, authorityHost);
@@ -89,7 +80,6 @@ public class AzureWorkloadIdentityApi extends AzureAdApi {
             try {
                 request.addBodyParameter("client_assertion", readFederatedToken());
             } catch (IOException e) {
-                LOGGER.log(Level.SEVERE, "Failed to read federated token for Workload Identity", e);
                 throw new RuntimeException("Failed to read federated token for Workload Identity "
                         + "authentication. Ensure AZURE_FEDERATED_TOKEN_FILE is set and readable.", e);
             }
