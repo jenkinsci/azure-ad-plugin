@@ -7,26 +7,26 @@
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
     <f:block>
         <f:entry title="Client ID"  field="clientId" >
-            <f:textbox default="${descriptor.defaultClientId}" />
+            <f:textbox />
         </f:entry>
 
         <f:entry title="Authentication Type">
             <f:radioBlock name="credentialType" value="Secret" title="Client Secret" help="${null}"
-                          checked="${(instance.credentialType == null) ? (descriptor.defaultCredentialType == 'Secret') : (instance.credentialType == 'Secret')}" inline="true">
+                          checked="${(instance.credentialType == null) ? 'true' : (instance.credentialType == 'Secret')}" inline="true">
                 <f:entry title="Secret" field="clientSecret">
                     <f:password/>
                 </f:entry>
             </f:radioBlock>
             <f:radioBlock name="credentialType" value="Certificate" title="Client Certificate"
                           help="${null}"
-                          checked="${(instance.credentialType == null) ? (descriptor.defaultCredentialType == 'Certificate') : (instance.credentialType == 'Certificate')}" inline="true">
+                          checked="${instance.credentialType == 'Certificate'}" inline="true">
                 <f:entry title="Certificate" field="clientCertificate">
                     <f:secretTextarea/>
                 </f:entry>
             </f:radioBlock>
             <f:radioBlock name="credentialType" value="WorkloadIdentity" title="Workload Identity (Federated Credentials)"
                           help="${rootURL}/descriptor/com.microsoft.jenkins.azuread.AzureSecurityRealm/help-workloadIdentity.html"
-                          checked="${(instance.credentialType == null) ? (descriptor.defaultCredentialType == 'WorkloadIdentity') : (instance.credentialType == 'WorkloadIdentity')}" inline="true">
+                          checked="${instance.credentialType == 'WorkloadIdentity'}" inline="true">
                 <f:description>
                     No secret or certificate required. Jenkins will use a federated token
                     provided via the AZURE_FEDERATED_TOKEN_FILE environment variable.
@@ -35,7 +35,7 @@
         </f:entry>
 
         <f:entry title="Tenant" field="tenant">
-            <f:textbox default="${descriptor.defaultTenant}" />
+            <f:textbox />
         </f:entry>
 
         <f:advanced>
