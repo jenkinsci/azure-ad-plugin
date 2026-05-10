@@ -1,0 +1,25 @@
+<div>
+    <p>
+        Use <strong>Workload Identity</strong> for secretless authentication when Jenkins
+        runs in an environment that provides OIDC-based federated credentials (e.g. Kubernetes,
+        GitHub Actions, or any custom OIDC identity provider).
+    </p>
+    <p>
+        <strong>Prerequisites:</strong>
+    </p>
+    <ul>
+        <li>An OIDC identity provider that issues JWT tokens (e.g. a Kubernetes cluster with OIDC Issuer,
+            a custom OIDC provider hosted on a storage account, or GitHub Actions).</li>
+        <li>A Federated Identity Credential configured on the Entra ID App Registration, pointing to your
+            OIDC issuer and matching the subject and audience of the issued tokens.</li>
+        <li>The <code>AZURE_FEDERATED_TOKEN_FILE</code> environment variable set to the path of
+            the JWT token file.</li>
+    </ul>
+    <p>
+        When this option is selected, no Client Secret or Certificate is required.
+        The plugin reads the federated token from the file path
+        specified in the <code>AZURE_FEDERATED_TOKEN_FILE</code> environment variable
+        and uses it as a <code>client_assertion</code> when exchanging the OIDC
+        authorization code with Entra ID.
+    </p>
+</div>

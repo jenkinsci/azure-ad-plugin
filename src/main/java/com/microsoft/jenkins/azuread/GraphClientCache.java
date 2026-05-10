@@ -5,6 +5,8 @@ import com.azure.identity.ClientSecretCredential;
 import com.azure.identity.ClientSecretCredentialBuilder;
 import com.azure.identity.ClientCertificateCredential;
 import com.azure.identity.ClientCertificateCredentialBuilder;
+import com.azure.identity.WorkloadIdentityCredential;
+import com.azure.identity.WorkloadIdentityCredentialBuilder;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.microsoft.graph.authentication.TokenCredentialAuthProvider;
@@ -34,12 +36,17 @@ import static java.util.Collections.singletonList;
 
 public class GraphClientCache {
 
+    private static final java.util.logging.Logger LOGGER =
+            java.util.logging.Logger.getLogger(GraphClientCache.class.getName());
     private static final int TEN = 10;
     private static final LoadingCache<GraphClientCacheKey, GraphServiceClient<Request>> TOKEN_CACHE = Caffeine.newBuilder()
             .maximumSize(TEN)
             .build(GraphClientCache::createGraphClient);
 
     private static GraphServiceClient<Request> createGraphClient(GraphClientCacheKey key) {
+        LOGGER.log(java.util.logging.Level.FINE,
+                "createGraphClient: creating client for credentialType={0}, environment={1}",
+                new Object[]{key.getCredentialType(), key.getAzureEnvironmentName()});
         TokenCredentialAuthProvider authProvider = getAuthProvider(key);
 
         OkHttpClient.Builder builder = HttpClients.createDefault(authProvider)
@@ -58,6 +65,7 @@ public class GraphClientCache {
         if (!azureEnv.equals(AZURE_PUBLIC_CLOUD)) {
             graphServiceClient.setServiceRoot(getServiceRoot(azureEnv));
         }
+        LOGGER.log(java.util.logging.Level.FINE, "createGraphClient: client created successfully");
         return graphServiceClient;
     }
 
@@ -65,12 +73,20 @@ public class GraphClientCache {
         String graphResource = AzureEnvironment.getGraphResource(key.getAzureEnvironmentName());
 
         TokenCredential tokenCredential;
-        if ("Secret".equals(key.getCredentialType())) {
-            tokenCredential = getClientSecretCredential(key);
-        } else if ("Certificate".equals(key.getCredentialType())) {
-            tokenCredential = getClientCertificateCredential(key);
-        } else {
-            throw new IllegalArgumentException("Invalid credential type");
+        switch (key.getCredentialType()) {
+            case "Secret":
+                tokenCredential = getClientSecretCredential(key);
+                break;
+            case "Certificate":
+                tokenCredential = getClientCertificateCredential(key);
+                break;
+            case "WorkloadIdentity":
+                tokenCredential = getWorkloadIdentityCredential(key);
+                break;
+            default:
+                LOGGER.log(java.util.logging.Level.SEVERE,
+                        "getAuthProvider: invalid credential type ''{0}''", key.getCredentialType());
+                throw new IllegalArgumentException("Invalid credential type: " + key.getCredentialType());
         }
         return new TokenCredentialAuthProvider(
                 singletonList(graphResource + ".default"),
@@ -83,6 +99,16 @@ public class GraphClientCache {
                 .pemCertificate(getCertificate(key))
                 .tenantId(key.getTenantId())
                 .sendCertificateChain(true)
+                .authorityHost(getAuthorityHost(key.getAzureEnvironmentName()))
+                .httpClient(HttpClientRetriever.get())
+                .build();
+    }
+
+    static WorkloadIdentityCredential getWorkloadIdentityCredential(GraphClientCacheKey key) {
+        return new WorkloadIdentityCredentialBuilder()
+                .clientId(key.getClientId())
+                .tenantId(key.getTenantId())
+                .tokenFilePath(System.getenv("AZURE_FEDERATED_TOKEN_FILE"))
                 .authorityHost(getAuthorityHost(key.getAzureEnvironmentName()))
                 .httpClient(HttpClientRetriever.get())
                 .build();
