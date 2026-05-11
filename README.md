@@ -34,17 +34,93 @@ This is used for:
 
 _Note: You can skip this part and just use the claims returned when authenticating._
 
+#### Required permissions summary
+
+| Permission | Type | Purpose |
+|---|---|---|
+| `openid` | Delegated | OIDC sign-in |
+| `profile` | Delegated | Basic profile in ID token |
+| `email` | Delegated | Email address in ID token |
+| `User.ReadBasic.All` | Application | Look up user profiles |
+| `GroupMember.Read.All` | Application | Look up transitive group memberships |
+| `Group.Read.All` | Application | Search and resolve groups by name or ID |
+| `ProfilePhoto.Read.All` | Application | Fetch user avatar photos _(optional)_ |
+
+> **Important:** `offline_access` and `User.Read` (delegated) must **not** be present in the API permissions list. If they exist (often added automatically during app registration), remove them. The `offline_access` scope in particular causes a recurring admin consent prompt on every login because the plugin only uses `id_token` and never needs a refresh token.
+
+#### Option A — Azure Portal (manual)
+
 1. Click `API permissions`
 
-1. Add a permission
+1. Add a permission → Microsoft Graph → **Application permissions**
 
-1. Microsoft Graph
+1. Add the following **Application** permissions:
+   - `User.ReadBasic.All` — read basic user profiles
+   - `GroupMember.Read.All` — read group memberships
+   - `Group.Read.All` — read group details and search groups
+   - `ProfilePhoto.Read.All` — read user profile photos (optional, for avatars)
 
-1. Application permissions
+1. Add a permission → Microsoft Graph → **Delegated permissions**
 
-1. Add 'User.ReadBasic.All', 'GroupMember.Read.All'
+1. Add the following **Delegated** permissions:
+   - `openid`
+   - `profile`
+   - `email`
 
-1. Click `Grant admin consent`. If you are not an admin in your tenant, please contact an admin to grant the permissions.
+1. Remove `offline_access` and `User.Read` (delegated) if they are listed.
+
+1. Click `Grant admin consent for <your tenant>`. If you are not an admin in your tenant, please contact an admin to grant the permissions.
+
+#### Option B — Azure CLI
+
+Replace `<APP_CLIENT_ID>` and `<TENANT_ID>` with your values, then run the script below.
+
+```bash
+APP_ID="<APP_CLIENT_ID>"
+TENANT_ID="<TENANT_ID>"
+GRAPH_API_ID="00000003-0000-0000-c000-000000000000"
+
+# Resolve permission IDs from the live Microsoft Graph service principal
+GRAPH_SP=$(az ad sp show --id "$GRAPH_API_ID")
+
+# --- Delegated (Scope) ---
+OPENID_ID=$(echo "$GRAPH_SP"        | jq -r '.oauth2PermissionScopes[] | select(.value=="openid")         | .id')
+PROFILE_ID=$(echo "$GRAPH_SP"       | jq -r '.oauth2PermissionScopes[] | select(.value=="profile")        | .id')
+EMAIL_ID=$(echo "$GRAPH_SP"         | jq -r '.oauth2PermissionScopes[] | select(.value=="email")          | .id')
+OFFLINE_ACCESS_ID=$(echo "$GRAPH_SP"| jq -r '.oauth2PermissionScopes[] | select(.value=="offline_access") | .id')
+USER_READ_SCOPE_ID=$(echo "$GRAPH_SP"| jq -r '.oauth2PermissionScopes[] | select(.value=="User.Read")     | .id')
+
+# --- Application (Role) ---
+USER_READ_BASIC_ALL_ID=$(echo "$GRAPH_SP"   | jq -r '.appRoles[] | select(.value=="User.ReadBasic.All")    | .id')
+GROUP_MEMBER_READ_ALL_ID=$(echo "$GRAPH_SP" | jq -r '.appRoles[] | select(.value=="GroupMember.Read.All") | .id')
+GROUP_READ_ALL_ID=$(echo "$GRAPH_SP"        | jq -r '.appRoles[] | select(.value=="Group.Read.All")        | .id')
+PROFILE_PHOTO_READ_ALL_ID=$(echo "$GRAPH_SP"| jq -r '.appRoles[] | select(.value=="ProfilePhoto.Read.All")| .id')
+
+# Remove unwanted permissions that cause the recurring admin-consent prompt
+az ad app permission delete --id "$APP_ID" --api "$GRAPH_API_ID" \
+  --api-permissions "$OFFLINE_ACCESS_ID" 2>/dev/null || true
+az ad app permission delete --id "$APP_ID" --api "$GRAPH_API_ID" \
+  --api-permissions "$USER_READ_SCOPE_ID" 2>/dev/null || true
+
+# Add required Application permissions
+az ad app permission add --id "$APP_ID" --api "$GRAPH_API_ID" \
+  --api-permissions \
+    "${USER_READ_BASIC_ALL_ID}=Role" \
+    "${GROUP_MEMBER_READ_ALL_ID}=Role" \
+    "${GROUP_READ_ALL_ID}=Role" \
+    "${PROFILE_PHOTO_READ_ALL_ID}=Role"
+
+# Add required Delegated permissions (OIDC sign-in scopes)
+az ad app permission add --id "$APP_ID" --api "$GRAPH_API_ID" \
+  --api-permissions \
+    "${OPENID_ID}=Scope" \
+    "${PROFILE_ID}=Scope" \
+    "${EMAIL_ID}=Scope"
+
+# Grant tenant-wide admin consent for all permissions
+az ad app permission admin-consent --id "$APP_ID"
+```
+> If admin consent fails, contact your IT Administrator
 
 ## Setup In Jenkins
 
@@ -151,3 +227,17 @@ A: You can disable the security from the config file (see [https://www.jenkins.i
 ### Q: Why am I getting an error "insufficient privileges to complete the operation" even after having granted the permission?
 
 A: It can take a long time for the privileges to take effect, which could be 10-20 minutes. Just wait for a while and try again.
+
+### Q: Why do I keep seeing an admin consent prompt ("View users' basic profile" / "Maintain access to data you have given it access to") on every login, even after approving it?
+
+A: This is caused by two issues that often appear together:
+
+1. **`offline_access` is registered on the app** — it is added automatically by Azure when you create an app registration. Since this plugin only uses an `id_token` and never needs a refresh token, this permission is unnecessary. Its presence triggers a recurring consent prompt.
+
+2. **Admin consent was not granted at the tenant level** — clicking "Accept" on the per-user interactive consent screen only consents for that single user. Every other user (and the same user in a new session on some tenants) is prompted again.
+
+**Fix:**
+- Remove `offline_access` (and `User.Read` delegated if present) from the app's API permissions.
+- Click **"Grant admin consent for \<your tenant\>"** in the Azure Portal (API permissions page), or run `az ad app permission admin-consent --id <APP_CLIENT_ID>`.
+
+Refer to [Option B — Azure CLI](#option-b--azure-cli) above for a complete setup script.
