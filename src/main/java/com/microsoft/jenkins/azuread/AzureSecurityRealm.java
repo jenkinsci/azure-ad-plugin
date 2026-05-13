@@ -589,7 +589,9 @@ public class AzureSecurityRealm extends SecurityRealm {
         String[] parts = combinedPem.split("(?=-----BEGIN )");
         for (String part : parts) {
             if (part.contains("CERTIFICATE")) {
-                certPem = part.trim();
+                if (certPem == null) {
+                    certPem = part.trim();
+                }
             } else if (part.contains("PRIVATE KEY")) {
                 keyPem = part.trim();
             }
