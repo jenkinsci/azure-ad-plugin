@@ -200,7 +200,7 @@ public class ScribeOkHttpClient implements HttpClient {
                                 proxyConfiguration.getUserName(),
                                 proxyConfiguration.getSecretPassword().getPlainText()
                         );
-                        return response.request().newBuilder().header("Authorization", credential).build();
+                        return response.request().newBuilder().header("Proxy-Authorization", credential).build();
                     });
                 }
             }
