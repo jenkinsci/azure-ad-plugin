@@ -493,7 +493,9 @@ public class AzureSecurityRealm extends SecurityRealm {
                         tokenResponse = response.getBody();
                         LOGGER.log(Level.FINE, "Successfully obtained tokens using certificate-based authentication.");
                     } else {
-                        LOGGER.log(Level.SEVERE, "Failed to obtain tokens using certificate-based authentication. HTTP Status: " + response.getCode() + ", Response: " + response.getBody());
+                        LOGGER.log(Level.SEVERE,
+                                "Failed to obtain tokens using certificate-based authentication. HTTP Status: "
+                                        + response.getCode() + ", Response: " + response.getBody());
                         throw new IOException("Authentication failed: " + response.getCode() + " " + response.getMessage());
                     }               
                 } else {
@@ -645,10 +647,12 @@ public class AzureSecurityRealm extends SecurityRealm {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(digest);
     }
 
+    private static final long CLIENT_ASSERTION_LIFETIME_SECONDS = 600L;
+
     // Create JWT header and payload, sign with private key (minimal external libs)
     private String generateClientAssertion(String clientId, String tenantId, PrivateKey privateKey, String thumbprint, String tokenEndpoint) throws GeneralSecurityException {
         long now = Instant.now().getEpochSecond();
-        long exp = now + 600; // 10 minutes
+        long exp = now + CLIENT_ASSERTION_LIFETIME_SECONDS; // 10 minutes
 
         // Header
         String headerJson = "{" +
