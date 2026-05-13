@@ -567,8 +567,13 @@ public class AzureSecurityRealm extends SecurityRealm {
             throw ex;
         }
 
-        if (referer != null) {
-            return HttpResponses.redirectTo(referer);
+        String rootUrl = Jenkins.get().getRootUrl();
+        String safeReferer = referer != null
+                && ((rootUrl != null && referer.startsWith(rootUrl)) || Util.isSafeToRedirectTo(referer))
+                ? referer
+                : null;
+        if (safeReferer != null) {
+            return HttpResponses.redirectTo(safeReferer);
         } else {
             return HttpResponses.redirectToContextRoot();
         }
