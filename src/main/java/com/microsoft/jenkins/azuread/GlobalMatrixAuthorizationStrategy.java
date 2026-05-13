@@ -122,6 +122,11 @@ public class GlobalMatrixAuthorizationStrategy extends AuthorizationStrategy imp
     @Extension
     public static final DescriptorImpl DESCRIPTOR = new DescriptorImpl();
 
+    @Override
+    public Descriptor<AuthorizationStrategy> getDescriptor() {
+        return DESCRIPTOR;
+    }
+
     /**
      * Persist {@link GlobalMatrixAuthorizationStrategy} as a list of IDs that
      * represent {@link GlobalMatrixAuthorizationStrategy#grantedPermissions}.
