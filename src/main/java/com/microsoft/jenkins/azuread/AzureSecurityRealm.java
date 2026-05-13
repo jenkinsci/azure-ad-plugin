@@ -12,6 +12,7 @@ import com.azure.identity.ClientSecretCredentialBuilder;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.azure.identity.ClientCertificateCredential;
 import com.azure.identity.ClientCertificateCredentialBuilder;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -516,7 +517,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                     tokenRequest.addBodyParameter("grant_type", "authorization_code");
                     tokenRequest.addBodyParameter("code", authorizationCode);
                     tokenRequest.addBodyParameter("redirect_uri", redirectUri);
-                    tokenRequest.addBodyParameter("scope", service.getDefaultScope());                    
+                    tokenRequest.addBodyParameter("scope", service.getDefaultScope());
                     String clientAssertion = getClientAssertion(service.getApi().getAccessTokenEndpoint());
                     tokenRequest.addBodyParameter("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer");
                     tokenRequest.addBodyParameter("client_assertion", clientAssertion);
@@ -645,7 +646,7 @@ public class AzureSecurityRealm extends SecurityRealm {
             PrivateKey privateKey = loadPrivateKeyFromString(keyPem);
             String thumbprint = calculateThumbprint(cert);
             return generateClientAssertion(privateKey, thumbprint, tokenEndpoint);
-        } catch (GeneralSecurityException e) {
+        } catch (GeneralSecurityException | JsonProcessingException e) {
             throw new RuntimeException("Failed to generate client assertion", e);
         }
     }
@@ -682,26 +683,39 @@ public class AzureSecurityRealm extends SecurityRealm {
     private static final long CLIENT_ASSERTION_LIFETIME_SECONDS = 600L;
 
     // Create JWT header and payload, sign with private key (minimal external libs)
-    private String generateClientAssertion(PrivateKey privateKey, String thumbprint, String tokenEndpoint) throws GeneralSecurityException {
+    private String generateClientAssertion(PrivateKey privateKey, String thumbprint, String tokenEndpoint) throws GeneralSecurityException, JsonProcessingException {
         long now = Instant.now().getEpochSecond();
         long exp = now + CLIENT_ASSERTION_LIFETIME_SECONDS; // 10 minutes
 
-        String clientId = getClientId();
+        ObjectMapper mapper = new ObjectMapper();
+
         // Header
-        String headerJson = "{" +
-                "\"alg\":\"RS256\"," +
-                "\"x5t\":\"" + thumbprint + "\"}";
-        String header = Base64.getUrlEncoder().withoutPadding().encodeToString(headerJson.getBytes(StandardCharsets.UTF_8));
+        Map<String, Object> headerMap = new HashMap<>();
+        headerMap.put("alg", "RS256");
+        headerMap.put("x5t", thumbprint);
+
+        String headerJson = mapper.writeValueAsString(headerMap);
+
+        String header = Base64.getUrlEncoder()
+                .withoutPadding()
+                .encodeToString(headerJson.getBytes(StandardCharsets.UTF_8));
 
         // Payload
-        String payloadJson = "{" +
-                "\"aud\":\"" + tokenEndpoint + "\"," +
-                "\"iss\":\"" + clientId + "\"," +
-                "\"sub\":\"" + clientId + "\"," +
-                "\"jti\":\"" + UUID.randomUUID() + "\"," +
-                "\"exp\":" + exp + "," +
-                "\"iat\":" + now + "}";
-        String payload = Base64.getUrlEncoder().withoutPadding().encodeToString(payloadJson.getBytes(StandardCharsets.UTF_8));
+        Map<String, Object> payloadMap = new HashMap<>();
+
+        payloadMap.put("aud", tokenEndpoint);
+        payloadMap.put("iss", getClientId());
+        payloadMap.put("sub", getClientId());
+        payloadMap.put("jti", UUID.randomUUID().toString());
+        payloadMap.put("exp", exp);
+        payloadMap.put("iat", now);
+
+        String payloadJson = mapper.writeValueAsString(payloadMap);
+
+        String payload = Base64.getUrlEncoder()
+            .withoutPadding()
+            .encodeToString(payloadJson.getBytes(StandardCharsets.UTF_8));
+
 
         // Sign header.payload
         String signingInput = header + "." + payload;
