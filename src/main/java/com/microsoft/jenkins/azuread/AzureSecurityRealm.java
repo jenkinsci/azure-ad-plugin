@@ -495,7 +495,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                     } else {
                         LOGGER.log(Level.SEVERE, "Failed to obtain tokens using certificate-based authentication. HTTP Status: " + response.getCode() + ", Response: " + response.getBody());
                         throw new IOException("Authentication failed: " + response.getCode() + " " + response.getMessage());
-                    }               
+                    }
                 } else {
                     LOGGER.log(Level.FINE, "Using client secret-based authentication to exchange authorization code for tokens.");
                     final OAuth2AccessToken accessToken = service.getAccessToken(authorizationCode);
@@ -635,7 +635,7 @@ public class AzureSecurityRealm extends SecurityRealm {
         PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keyBytes);
         KeyFactory kf = KeyFactory.getInstance("RSA");
         return kf.generatePrivate(spec);
-    }    
+    }
 
     // Calculate SHA-1 thumbprint and base64url encode
     private String calculateThumbprint(X509Certificate cert) throws GeneralSecurityException {
