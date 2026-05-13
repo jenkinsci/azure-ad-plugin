@@ -501,11 +501,14 @@ public class AzureSecurityRealm extends SecurityRealm {
                     final OAuth2AccessToken accessToken = service.getAccessToken(authorizationCode);
                     tokenResponse = accessToken.getRawResponse();
                 }
-            } catch (InterruptedException | ExecutionException | RuntimeException e) {
+            } catch (ExecutionException | RuntimeException e) {
+                LOGGER.log(Level.SEVERE, "Error during token exchange", e);
+                throw new IOException("Failed to exchange authorization code for tokens", e);
+            } catch (InterruptedException  e) {
+                Thread.currentThread().interrupt();
                 LOGGER.log(Level.SEVERE, "Error during token exchange", e);
                 throw new IOException("Failed to exchange authorization code for tokens", e);
             }
-
 
             // Parse the token response
             ObjectMapper mapper = new ObjectMapper();
@@ -570,8 +573,11 @@ public class AzureSecurityRealm extends SecurityRealm {
         }
 
         String rootUrl = Jenkins.get().getRootUrl();
+        String requestRootUrl = Jenkins.get().getRootUrlFromRequest();
         String safeReferer = referer != null
-                && ((rootUrl != null && referer.startsWith(rootUrl)) || Util.isSafeToRedirectTo(referer))
+                && (((rootUrl != null && referer.startsWith(rootUrl))
+                || (requestRootUrl != null && referer.startsWith(requestRootUrl))
+                || Util.isSafeToRedirectTo(referer)))
                 ? referer
                 : null;
         if (safeReferer != null) {
