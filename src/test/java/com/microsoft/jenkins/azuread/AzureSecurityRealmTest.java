@@ -209,14 +209,14 @@ class AzureSecurityRealmTest {
         String thumbprint = (String) calcThumbprint.invoke(realm, cert);
 
         Method generateAssertion = AzureSecurityRealm.class.getDeclaredMethod(
-                "generateClientAssertion", String.class, String.class, PrivateKey.class, String.class, String.class);
+                "generateClientAssertion", PrivateKey.class, String.class, String.class);
         generateAssertion.setAccessible(true);
 
         String clientId = "test-client-id";
-        String tenantId = "test-tenant-id";
+        realm.setClientId(clientId);
         String tokenEndpoint = "https://login.microsoftonline.com/test-tenant-id/oauth2/v2.0/token";
 
-        String jwt = (String) generateAssertion.invoke(realm, clientId, tenantId, privateKey, thumbprint, tokenEndpoint);
+        String jwt = (String) generateAssertion.invoke(realm, privateKey, thumbprint, tokenEndpoint);
 
         assertNotNull(jwt);
         // JWT should have 3 parts: header.payload.signature
