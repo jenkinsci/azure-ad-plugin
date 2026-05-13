@@ -16,6 +16,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.scribejava.core.builder.ServiceBuilder;
+import com.github.scribejava.core.httpclient.HttpClientConfig;
+import com.github.scribejava.core.httpclient.jdk.JDKHttpClientConfig;
 import com.github.scribejava.core.model.OAuth2AccessToken;
 import com.github.scribejava.core.model.OAuthRequest;
 import com.github.scribejava.core.oauth.OAuth20Service;
@@ -43,6 +45,7 @@ import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
+import hudson.ProxyConfiguration;
 import hudson.Util;
 import hudson.model.Descriptor;
 import hudson.model.User;
@@ -89,9 +92,13 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.net.Authenticator;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.PasswordAuthentication;
+import java.net.Proxy;
+import java.net.URI;
 import java.net.URLEncoder;
 import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
@@ -357,8 +364,33 @@ public class AzureSecurityRealm extends SecurityRealm {
     }
 
     OAuth20Service getOAuthService() {
+        JDKHttpClientConfig httpClientConfig = JDKHttpClientConfig.defaultConfig();
+
+        ProxyConfiguration proxyConfiguration = Jenkins.get().getProxy();
+        if (proxyConfiguration != null && StringUtils.isNotBlank(proxyConfiguration.getName())) {
+            String host = URI.create(getAuthorityHost(getAzureEnvironmentName())).getHost();
+            Proxy proxy = proxyConfiguration.createProxy(host);
+            httpClientConfig.setProxy(proxy);
+            if (StringUtils.isNotBlank(proxyConfiguration.getUserName())
+                    && proxyConfiguration.getSecretPassword() != null
+                    && StringUtils.isNotBlank(proxyConfiguration.getSecretPassword().getPlainText())) {
+                Authenticator.setDefault(new Authenticator() {
+                    @Override
+                    protected PasswordAuthentication getPasswordAuthentication() {
+                        if (getRequestorType() == RequestorType.PROXY) {
+                            return new PasswordAuthentication(
+                                    proxyConfiguration.getUserName(),
+                                    proxyConfiguration.getSecretPassword().getPlainText().toCharArray());
+                        }
+                        return null;
+                    }
+                });
+            }
+        }
+
         return new ServiceBuilder(clientId.getPlainText())
                 .apiSecret("Certificate".equals(credentialType) ? clientCertificate.getPlainText() : clientSecret.getPlainText())
+                .httpClientConfig(httpClientConfig)
                 .responseType("code")
                 .defaultScope("openid profile email")
                 .callback(getRootUrl() + CALLBACK_URL)
