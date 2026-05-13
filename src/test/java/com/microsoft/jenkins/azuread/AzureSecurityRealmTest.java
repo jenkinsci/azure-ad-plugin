@@ -12,7 +12,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 
 import java.io.ByteArrayInputStream;
-import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.security.PrivateKey;
 import java.security.Signature;
@@ -150,10 +149,7 @@ class AzureSecurityRealmTest {
     @Test
     void testLoadCertificateFromString() throws Exception {
         AzureSecurityRealm realm = new AzureSecurityRealm();
-        Method method = AzureSecurityRealm.class.getDeclaredMethod("loadCertificateFromString", String.class);
-        method.setAccessible(true);
-
-        X509Certificate cert = (X509Certificate) method.invoke(realm, TEST_CERT_PEM);
+        X509Certificate cert = realm.loadCertificateFromString(TEST_CERT_PEM);
 
         assertNotNull(cert);
         assertEquals("X.509", cert.getType());
@@ -163,19 +159,13 @@ class AzureSecurityRealmTest {
     @Test
     void testLoadCertificateFromStringInvalid() throws Exception {
         AzureSecurityRealm realm = new AzureSecurityRealm();
-        Method method = AzureSecurityRealm.class.getDeclaredMethod("loadCertificateFromString", String.class);
-        method.setAccessible(true);
-
-        assertThrows(Exception.class, () -> method.invoke(realm, "not-a-valid-pem"));
+        assertThrows(Exception.class, () -> realm.loadCertificateFromString("not-a-valid-pem"));
     }
 
     @Test
     void testLoadPrivateKeyFromString() throws Exception {
         AzureSecurityRealm realm = new AzureSecurityRealm();
-        Method method = AzureSecurityRealm.class.getDeclaredMethod("loadPrivateKeyFromString", String.class);
-        method.setAccessible(true);
-
-        PrivateKey key = (PrivateKey) method.invoke(realm, TEST_KEY_PEM);
+        PrivateKey key = realm.loadPrivateKeyFromString(TEST_KEY_PEM);
 
         assertNotNull(key);
         assertEquals("RSA", key.getAlgorithm());
@@ -185,38 +175,22 @@ class AzureSecurityRealmTest {
     @Test
     void testLoadPrivateKeyFromStringInvalid() throws Exception {
         AzureSecurityRealm realm = new AzureSecurityRealm();
-        Method method = AzureSecurityRealm.class.getDeclaredMethod("loadPrivateKeyFromString", String.class);
-        method.setAccessible(true);
-
-        assertThrows(Exception.class, () -> method.invoke(realm, "not-a-valid-key"));
+        assertThrows(Exception.class, () -> realm.loadPrivateKeyFromString("not-a-valid-key"));
     }
 
     @Test
     void testGenerateClientAssertion() throws Exception {
         AzureSecurityRealm realm = new AzureSecurityRealm();
 
-        // Load the private key and cert for the test
-        Method loadKey = AzureSecurityRealm.class.getDeclaredMethod("loadPrivateKeyFromString", String.class);
-        loadKey.setAccessible(true);
-        PrivateKey privateKey = (PrivateKey) loadKey.invoke(realm, TEST_KEY_PEM);
-
-        Method loadCert = AzureSecurityRealm.class.getDeclaredMethod("loadCertificateFromString", String.class);
-        loadCert.setAccessible(true);
-        X509Certificate cert = (X509Certificate) loadCert.invoke(realm, TEST_CERT_PEM);
-
-        Method calcThumbprint = AzureSecurityRealm.class.getDeclaredMethod("calculateThumbprint", X509Certificate.class);
-        calcThumbprint.setAccessible(true);
-        String thumbprint = (String) calcThumbprint.invoke(realm, cert);
-
-        Method generateAssertion = AzureSecurityRealm.class.getDeclaredMethod(
-                "generateClientAssertion", PrivateKey.class, String.class, String.class);
-        generateAssertion.setAccessible(true);
+        PrivateKey privateKey = realm.loadPrivateKeyFromString(TEST_KEY_PEM);
+        X509Certificate cert = realm.loadCertificateFromString(TEST_CERT_PEM);
+        String thumbprint = realm.calculateThumbprint(cert);
 
         String clientId = "test-client-id";
         realm.setClientId(clientId);
         String tokenEndpoint = "https://login.microsoftonline.com/test-tenant-id/oauth2/v2.0/token";
 
-        String jwt = (String) generateAssertion.invoke(realm, privateKey, thumbprint, tokenEndpoint);
+        String jwt = realm.generateClientAssertion(privateKey, thumbprint, tokenEndpoint);
 
         assertNotNull(jwt);
         // JWT should have 3 parts: header.payload.signature
@@ -256,10 +230,7 @@ class AzureSecurityRealmTest {
         realm.setClientCertificate(COMBINED_PEM);
         realm.setCredentialType("Certificate");
 
-        Method method = AzureSecurityRealm.class.getDeclaredMethod("getClientAssertion", String.class);
-        method.setAccessible(true);
-
-        String jwt = (String) method.invoke(realm, tokenEndpoint);
+        String jwt = realm.getClientAssertion(tokenEndpoint);
 
         assertNotNull(jwt);
         String[] parts = jwt.split("\\.");
@@ -279,11 +250,8 @@ class AzureSecurityRealmTest {
         realm.setClientCertificate(TEST_KEY_PEM); // only key, no certificate
         realm.setCredentialType("Certificate");
 
-        Method method = AzureSecurityRealm.class.getDeclaredMethod("getClientAssertion", String.class);
-        method.setAccessible(true);
-
         assertThrows(Exception.class, () ->
-                method.invoke(realm, "https://login.microsoftonline.com/test-tenant/oauth2/v2.0/token"));
+            realm.getClientAssertion("https://login.microsoftonline.com/test-tenant/oauth2/v2.0/token"));
     }
 
     @Test
@@ -292,10 +260,7 @@ class AzureSecurityRealmTest {
         realm.setClientCertificate(TEST_CERT_PEM); // only cert, no key
         realm.setCredentialType("Certificate");
 
-        Method method = AzureSecurityRealm.class.getDeclaredMethod("getClientAssertion", String.class);
-        method.setAccessible(true);
-
         assertThrows(Exception.class, () ->
-                method.invoke(realm, "https://login.microsoftonline.com/test-tenant/oauth2/v2.0/token"));
+            realm.getClientAssertion("https://login.microsoftonline.com/test-tenant/oauth2/v2.0/token"));
     }
 }

@@ -593,7 +593,7 @@ public class AzureSecurityRealm extends SecurityRealm {
         }
     }
 
-    private String getClientAssertion(String tokenEndpoint) throws IllegalArgumentException, RuntimeException {
+    String getClientAssertion(String tokenEndpoint) throws IllegalArgumentException, RuntimeException {
         // Load certificate and private key from PEM
         String combinedPem = clientCertificate.getPlainText();
         String certPem = null;
@@ -623,7 +623,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     }
 
     // Load certificate from PEM string (single-line or multi-line)
-    private X509Certificate loadCertificateFromString(String certPem) throws CertificateException {
+    X509Certificate loadCertificateFromString(String certPem) throws CertificateException {
         String certClean = certPem.replaceAll("-----BEGIN CERTIFICATE-----", "")
                                  .replaceAll("-----END CERTIFICATE-----", "")
                                  .replaceAll("\\s+", "");
@@ -633,7 +633,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     }
 
     // Load private key from PEM string (PKCS#8 format, base64-encoded, single-line or multi-line)
-    private PrivateKey loadPrivateKeyFromString(String keyPem) throws GeneralSecurityException {
+    PrivateKey loadPrivateKeyFromString(String keyPem) throws GeneralSecurityException {
         String keyClean = keyPem.replaceAll("-----BEGIN (.*)-----", "")
                                .replaceAll("-----END (.*)-----", "")
                                .replaceAll("\\s+", "");
@@ -644,7 +644,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     }
 
     // Calculate SHA-1 thumbprint and base64url encode
-    private String calculateThumbprint(X509Certificate cert) throws GeneralSecurityException {
+    String calculateThumbprint(X509Certificate cert) throws GeneralSecurityException {
         MessageDigest sha1 = MessageDigest.getInstance("SHA-1");
         byte[] der = cert.getEncoded();
         byte[] digest = sha1.digest(der);
@@ -654,7 +654,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     private static final long CLIENT_ASSERTION_LIFETIME_SECONDS = 600L;
 
     // Create JWT header and payload, sign with private key (minimal external libs)
-    private String generateClientAssertion(PrivateKey privateKey, String thumbprint, String tokenEndpoint) throws GeneralSecurityException, JsonProcessingException {
+    String generateClientAssertion(PrivateKey privateKey, String thumbprint, String tokenEndpoint) throws GeneralSecurityException, JsonProcessingException {
         long now = Instant.now().getEpochSecond();
         long exp = now + CLIENT_ASSERTION_LIFETIME_SECONDS; // 10 minutes
 
