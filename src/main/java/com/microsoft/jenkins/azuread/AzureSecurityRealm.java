@@ -103,6 +103,7 @@ import java.security.cert.X509Certificate;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.UUID;
 
 
 import java.nio.charset.StandardCharsets;
@@ -479,10 +480,11 @@ public class AzureSecurityRealm extends SecurityRealm {
                 if (getCredentialType().equals("Certificate")) {
                     LOGGER.log(Level.FINE, "Using certificate-based authentication to exchange authorization code for tokens.");
                     final OAuthRequest tokenRequest = new OAuthRequest(Verb.POST, service.getApi().getAccessTokenEndpoint());
-                    tokenRequest.addBodyParameter("clientId", getClientId());
+                    tokenRequest.addBodyParameter("client_id", getClientId());
                     tokenRequest.addBodyParameter("grant_type", "authorization_code");
                     tokenRequest.addBodyParameter("code", authorizationCode);
                     tokenRequest.addBodyParameter("redirect_uri", redirectUri);
+                    tokenRequest.addBodyParameter("scope", service.getDefaultScope());                    
                     String clientAssertion = getClientAssertion(service.getApi().getAccessTokenEndpoint());
                     tokenRequest.addBodyParameter("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer");
                     tokenRequest.addBodyParameter("client_assertion", clientAssertion);
@@ -651,6 +653,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                 "\"aud\":\"" + tokenEndpoint + "\"," +
                 "\"iss\":\"" + clientId + "\"," +
                 "\"sub\":\"" + clientId + "\"," +
+                "\"jti\":\"" + UUID.randomUUID() + "\"," +
                 "\"exp\":" + exp + "," +
                 "\"iat\":" + now + "}";
         String payload = Base64.getUrlEncoder().withoutPadding().encodeToString(payloadJson.getBytes(StandardCharsets.UTF_8));
