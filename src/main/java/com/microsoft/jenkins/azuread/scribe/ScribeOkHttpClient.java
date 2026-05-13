@@ -6,7 +6,11 @@ import com.github.scribejava.core.model.OAuthAsyncRequestCallback;
 import com.github.scribejava.core.model.OAuthRequest;
 import com.github.scribejava.core.model.Response;
 import com.github.scribejava.core.model.Verb;
-import com.microsoft.jenkins.azuread.GraphClientCache;
+
+import hudson.ProxyConfiguration;
+import jenkins.model.Jenkins;
+import jenkins.util.JenkinsJVM;
+import okhttp3.Credentials;
 import okhttp3.Headers;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -15,19 +19,22 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.Proxy;
+import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 
+
 public class ScribeOkHttpClient implements HttpClient {
 
     private final OkHttpClient client;
 
-    public ScribeOkHttpClient(String azureEnvironmentName) {
+    public ScribeOkHttpClient(String authorityHost) {
         OkHttpClient.Builder builder = new OkHttpClient.Builder();
-        this.client = GraphClientCache.addProxyToHttpClientIfRequired(builder, azureEnvironmentName).build();
+        this.client = addProxyToHttpClientIfRequired(builder, authorityHost).build();
     }
 
     @Override
@@ -177,4 +184,28 @@ public class ScribeOkHttpClient implements HttpClient {
         }
         return MediaType.parse(HttpClient.DEFAULT_CONTENT_TYPE);
     }
+
+    private static OkHttpClient.Builder addProxyToHttpClientIfRequired(OkHttpClient.Builder builder, String authorityHost) {
+        if (JenkinsJVM.isJenkinsJVM()) {
+            ProxyConfiguration proxyConfiguration = Jenkins.get().getProxy();
+            if (proxyConfiguration != null && StringUtils.isNotBlank(proxyConfiguration.getName())) {
+
+                String graphHost = URI.create(authorityHost).getHost();
+                Proxy proxy = proxyConfiguration.createProxy(graphHost);
+
+                builder = builder.proxy(proxy);
+                if (StringUtils.isNotBlank(proxyConfiguration.getUserName())) {
+                    builder = builder.proxyAuthenticator((route, response) -> {
+                        String credential = Credentials.basic(
+                                proxyConfiguration.getUserName(),
+                                proxyConfiguration.getSecretPassword().getPlainText()
+                        );
+                        return response.request().newBuilder().header("Authorization", credential).build();
+                    });
+                }
+            }
+        }
+
+        return builder;
+    }    
 }

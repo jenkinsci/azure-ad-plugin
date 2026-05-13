@@ -362,7 +362,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     OAuth20Service getOAuthService() {
         return new ServiceBuilder(clientId.getPlainText())
                 .apiSecret("Certificate".equals(credentialType) ? clientCertificate.getPlainText() : clientSecret.getPlainText())
-                .httpClient(new ScribeOkHttpClient(getAzureEnvironmentName()))
+                .httpClient(new ScribeOkHttpClient(getAuthorityHost(getAzureEnvironmentName())))
                 .responseType("code")
                 .defaultScope("openid profile email")
                 .callback(getRootUrl() + CALLBACK_URL)
