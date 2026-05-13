@@ -85,9 +85,10 @@ public class ScribeOkHttpClient implements HttpClient {
     public void close() {
         client.dispatcher().executorService().shutdown();
         client.connectionPool().evictAll();
-        if (client.cache() != null) {
+        okhttp3.Cache cache = client.cache();
+        if (cache != null) {
             try {
-                client.cache().close();
+                cache.close();
             } catch (IOException ignored) {
                 // No local cache is configured, but close defensively if one is added later.
             }
