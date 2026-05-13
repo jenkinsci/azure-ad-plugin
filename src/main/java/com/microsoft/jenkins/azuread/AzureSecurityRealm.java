@@ -612,7 +612,7 @@ public class AzureSecurityRealm extends SecurityRealm {
             X509Certificate cert = loadCertificateFromString(certPem);
             PrivateKey privateKey = loadPrivateKeyFromString(keyPem);
             String thumbprint = calculateThumbprint(cert);
-            return generateClientAssertion(getClientId(), getTenant(), privateKey, thumbprint, tokenEndpoint);
+            return generateClientAssertion(privateKey, thumbprint, tokenEndpoint);
         } catch (GeneralSecurityException e) {
             throw new RuntimeException("Failed to generate client assertion", e);
         }
@@ -650,10 +650,11 @@ public class AzureSecurityRealm extends SecurityRealm {
     private static final long CLIENT_ASSERTION_LIFETIME_SECONDS = 600L;
 
     // Create JWT header and payload, sign with private key (minimal external libs)
-    private String generateClientAssertion(String clientId, String tenantId, PrivateKey privateKey, String thumbprint, String tokenEndpoint) throws GeneralSecurityException {
+    private String generateClientAssertion(PrivateKey privateKey, String thumbprint, String tokenEndpoint) throws GeneralSecurityException {
         long now = Instant.now().getEpochSecond();
         long exp = now + CLIENT_ASSERTION_LIFETIME_SECONDS; // 10 minutes
 
+        String clientId = getClientId();
         // Header
         String headerJson = "{" +
                 "\"alg\":\"RS256\"," +
