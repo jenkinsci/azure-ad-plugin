@@ -2,6 +2,7 @@ package com.microsoft.jenkins.azuread;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.microsoft.jenkins.azuread.utils.CertificateHelper;
 import com.thoughtworks.xstream.io.binary.BinaryStreamReader;
 import com.thoughtworks.xstream.io.binary.BinaryStreamWriter;
 import hudson.util.Secret;
@@ -147,43 +148,11 @@ class AzureSecurityRealmTest {
     private static final String COMBINED_PEM = TEST_CERT_PEM + "\n" + TEST_KEY_PEM;
 
     @Test
-    void testLoadCertificateFromString() throws Exception {
-        AzureSecurityRealm realm = new AzureSecurityRealm();
-        X509Certificate cert = realm.loadCertificateFromString(TEST_CERT_PEM);
-
-        assertNotNull(cert);
-        assertEquals("X.509", cert.getType());
-        assertTrue(cert.getSubjectX500Principal().getName().contains("CN=Test"));
-    }
-
-    @Test
-    void testLoadCertificateFromStringInvalid() throws Exception {
-        AzureSecurityRealm realm = new AzureSecurityRealm();
-        assertThrows(Exception.class, () -> realm.loadCertificateFromString("not-a-valid-pem"));
-    }
-
-    @Test
-    void testLoadPrivateKeyFromString() throws Exception {
-        AzureSecurityRealm realm = new AzureSecurityRealm();
-        PrivateKey key = realm.loadPrivateKeyFromString(TEST_KEY_PEM);
-
-        assertNotNull(key);
-        assertEquals("RSA", key.getAlgorithm());
-        assertEquals("PKCS#8", key.getFormat());
-    }
-
-    @Test
-    void testLoadPrivateKeyFromStringInvalid() throws Exception {
-        AzureSecurityRealm realm = new AzureSecurityRealm();
-        assertThrows(Exception.class, () -> realm.loadPrivateKeyFromString("not-a-valid-key"));
-    }
-
-    @Test
     void testGenerateClientAssertion() throws Exception {
         AzureSecurityRealm realm = new AzureSecurityRealm();
 
-        PrivateKey privateKey = realm.loadPrivateKeyFromString(TEST_KEY_PEM);
-        X509Certificate cert = realm.loadCertificateFromString(TEST_CERT_PEM);
+        PrivateKey privateKey = CertificateHelper.loadPrivateKeyFromString(TEST_KEY_PEM);
+        X509Certificate cert = CertificateHelper.loadCertificateFromString(TEST_CERT_PEM);
         String thumbprint = realm.calculateThumbprint(cert);
 
         String clientId = "test-client-id";

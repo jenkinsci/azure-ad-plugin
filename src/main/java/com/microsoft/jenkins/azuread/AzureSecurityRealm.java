@@ -125,9 +125,12 @@ import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_PUBLIC_CLOUD;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_US_GOVERNMENT_L4;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_US_GOVERNMENT_L5;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.getAuthorityHost;
+import static com.microsoft.jenkins.azuread.utils.CertificateHelper.loadCertificateFromString;
+import static com.microsoft.jenkins.azuread.utils.CertificateHelper.loadPrivateKeyFromString;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.Objects.requireNonNull;
+
 
 public class AzureSecurityRealm extends SecurityRealm {
 
@@ -620,27 +623,6 @@ public class AzureSecurityRealm extends SecurityRealm {
         } catch (GeneralSecurityException | JsonProcessingException e) {
             throw new RuntimeException("Failed to generate client assertion", e);
         }
-    }
-
-    // Load certificate from PEM string (single-line or multi-line)
-    X509Certificate loadCertificateFromString(String certPem) throws CertificateException {
-        String certClean = certPem.replaceAll("-----BEGIN CERTIFICATE-----", "")
-                                 .replaceAll("-----END CERTIFICATE-----", "")
-                                 .replaceAll("\\s+", "");
-        byte[] certBytes = Base64.getDecoder().decode(certClean);
-        CertificateFactory cf = CertificateFactory.getInstance("X.509");
-        return (X509Certificate) cf.generateCertificate(new java.io.ByteArrayInputStream(certBytes));
-    }
-
-    // Load private key from PEM string (PKCS#8 format, base64-encoded, single-line or multi-line)
-    PrivateKey loadPrivateKeyFromString(String keyPem) throws GeneralSecurityException {
-        String keyClean = keyPem.replaceAll("-----BEGIN (.*)-----", "")
-                               .replaceAll("-----END (.*)-----", "")
-                               .replaceAll("\\s+", "");
-        byte[] keyBytes = Base64.getDecoder().decode(keyClean);
-        PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keyBytes);
-        KeyFactory kf = KeyFactory.getInstance("RSA");
-        return kf.generatePrivate(spec);
     }
 
     // Calculate SHA-1 thumbprint and base64url encode
