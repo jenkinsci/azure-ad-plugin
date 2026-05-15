@@ -19,6 +19,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Closeable;
 import java.net.Proxy;
 import java.net.URI;
 import java.util.LinkedHashMap;
@@ -92,14 +93,7 @@ public class ScribeOkHttpClient implements HttpClient {
     public void close() {
         client.dispatcher().executorService().shutdown();
         client.connectionPool().evictAll();
-        okhttp3.Cache cache = client.cache();
-        if (cache != null) {
-            try {
-                cache.close();
-            } catch (IOException ignored) {
-                // No local cache is configured, but close defensively if one is added later.
-            }
-        }
+        closeCache(client.cache());
     }
 
     private <T> Future<T> executeAsyncInternal(String userAgent, Map<String, String> headers, Verb httpVerb,
@@ -185,27 +179,43 @@ public class ScribeOkHttpClient implements HttpClient {
         return MediaType.parse(HttpClient.DEFAULT_CONTENT_TYPE);
     }
 
+    static void closeCache(Closeable closeable) {
+        if (closeable == null) {
+            return;
+        }
+        try {
+            closeable.close();
+        } catch (IOException ignored) {
+            // No local cache is configured, but close defensively if one is added later.
+        }
+    }
+
     private static OkHttpClient.Builder addProxyToHttpClientIfRequired(OkHttpClient.Builder builder, String authorityHost) {
-        if (JenkinsJVM.isJenkinsJVM()) {
-            ProxyConfiguration proxyConfiguration = Jenkins.get().getProxy();
-            if (proxyConfiguration != null && StringUtils.isNotBlank(proxyConfiguration.getName())) {
+        ProxyConfiguration proxyConfiguration = JenkinsJVM.isJenkinsJVM() ? Jenkins.get().getProxy() : null;
+        return addProxyToHttpClientIfRequired(builder, authorityHost, proxyConfiguration);
+    }
 
-                String graphHost = URI.create(authorityHost).getHost();
-                Proxy proxy = proxyConfiguration.createProxy(graphHost);
+    static OkHttpClient.Builder addProxyToHttpClientIfRequired(OkHttpClient.Builder builder, String authorityHost,
+            ProxyConfiguration proxyConfiguration) {
+        if (proxyConfiguration == null || StringUtils.isBlank(proxyConfiguration.getName())) {
+            return builder;
+        }
 
-                builder = builder.proxy(proxy);
-                if (StringUtils.isNotBlank(proxyConfiguration.getUserName())) {
-                    builder = builder.proxyAuthenticator((route, response) -> {
-                        String credential = Credentials.basic(
-                                proxyConfiguration.getUserName(),
-                                proxyConfiguration.getSecretPassword().getPlainText()
-                        );
-                        return response.request().newBuilder().header("Proxy-Authorization", credential).build();
-                    });
-                }
-            }
+        String graphHost = URI.create(authorityHost).getHost();
+        Proxy proxy = proxyConfiguration.createProxy(graphHost);
+
+        builder = builder.proxy(proxy);
+        if (StringUtils.isNotBlank(proxyConfiguration.getUserName())) {
+            builder = builder.proxyAuthenticator((route, response) -> {
+                String credential = Credentials.basic(
+                        proxyConfiguration.getUserName(),
+                        proxyConfiguration.getSecretPassword().getPlainText()
+                );
+                return response.request().newBuilder().header("Proxy-Authorization", credential).build();
+            });
         }
 
         return builder;
-    }    
+    }
+   
 }

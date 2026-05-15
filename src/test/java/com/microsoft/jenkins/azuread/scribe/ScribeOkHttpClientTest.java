@@ -9,16 +9,25 @@ import com.github.scribejava.core.model.Verb;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
+import hudson.ProxyConfiguration;
+import hudson.util.Secret;
+import okhttp3.OkHttpClient;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.jvnet.hudson.test.JenkinsRule;
+import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 
 import java.io.ByteArrayOutputStream;
+import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.net.Proxy;
 import java.net.ServerSocket;
+import java.nio.file.Path;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Locale;
@@ -31,6 +40,7 @@ import java.util.concurrent.Future;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -157,6 +167,29 @@ class ScribeOkHttpClientTest {
     }
 
     @Test
+    void executeAsyncWithByteArrayReturnsRawResponseWhenConverterAndCallbackAreNull() throws Exception {
+        CapturedExchange capturedExchange = new CapturedExchange();
+        startServer(capturedExchange, exchange -> writeResponse(exchange, 203, "raw-response"));
+
+        ScribeOkHttpClient client = newClient();
+        byte[] payload = new byte[] {9, 8, 7};
+
+        Future<Response> future = client.executeAsync(
+                "agent/4.1",
+                Map.of(HttpClient.CONTENT_TYPE, "application/octet-stream"),
+                Verb.PUT,
+                serverUrl("/async-bytes"),
+                payload,
+                null,
+                null);
+
+        Response response = future.get();
+        assertEquals(203, response.getCode());
+        assertEquals("raw-response", response.getBody());
+        assertArrayEquals(payload, capturedExchange.body);
+    }
+
+    @Test
     void executeAsyncCompletesExceptionallyAndInvokesThrowableCallback() {
         ScribeOkHttpClient client = newClient();
         TrackingCallback callback = new TrackingCallback();
@@ -202,10 +235,157 @@ class ScribeOkHttpClientTest {
         client.close();
     }
 
+    @Test
+    void closeCacheSwallowsIoException(@TempDir Path tempDir) {
+        Closeable cache = () -> {
+            throw new IOException("cache-close-failed");
+        };
+
+        ScribeOkHttpClient.closeCache(cache);
+    }
+
+    @Test
+    void executeWithoutUserAgentHeadersOrResponseBody() throws Exception {
+        CapturedExchange capturedExchange = new CapturedExchange();
+        startServer(capturedExchange, exchange -> exchange.sendResponseHeaders(204, -1));
+
+        ScribeOkHttpClient client = newClient();
+
+        Response response = client.execute("  ", Map.of(), Verb.GET, serverUrl("/no-body"), (byte[]) null);
+
+        assertEquals(204, response.getCode());
+        assertEquals("", response.getBody());
+        assertEquals("GET", capturedExchange.method);
+        assertTrue(capturedExchange.header("User-Agent").startsWith("okhttp/"));
+    }
+
+    @Test
+    void executeWithoutRequestBodyForOptionalBodyVerb() throws Exception {
+        CapturedExchange capturedExchange = new CapturedExchange();
+        startServer(capturedExchange, exchange -> writeResponse(exchange, 200, "deleted"));
+
+        ScribeOkHttpClient client = newClient();
+
+        Response response = client.execute("agent/6.0", null, Verb.DELETE, serverUrl("/delete"), (String) null);
+
+        assertEquals(200, response.getCode());
+        assertEquals("deleted", response.getBody());
+        assertEquals("DELETE", capturedExchange.method);
+        assertArrayEquals(new byte[0], capturedExchange.body);
+    }
+
+    @Test
+    void executeWithNullByteArrayBodyOmitsContentTypeAndRequestBody() throws Exception {
+        CapturedExchange capturedExchange = new CapturedExchange();
+        startServer(capturedExchange, exchange -> writeResponse(exchange, 200, "sync-null-body"));
+
+        ScribeOkHttpClient client = newClient();
+
+        Response response = client.execute("agent/7.0", null, Verb.PUT, serverUrl("/null-bytes"), (byte[]) null);
+
+        assertEquals(200, response.getCode());
+        assertEquals("sync-null-body", response.getBody());
+        assertEquals("PUT", capturedExchange.method);
+        assertArrayEquals(new byte[0], capturedExchange.body);
+        assertNull(capturedExchange.header("Content-Type"));
+    }
+
+    @Test
+    void executeUsesDefaultContentTypeWhenHeaderIsBlank() throws Exception {
+        CapturedExchange capturedExchange = new CapturedExchange();
+        startServer(capturedExchange, exchange -> writeResponse(exchange, 200, "blank-content-type"));
+
+        ScribeOkHttpClient client = newClient();
+        Map<String, String> headers = new LinkedHashMap<>();
+        headers.put(HttpClient.CONTENT_TYPE, "   ");
+
+        Response response = client.execute("agent/8.0", headers, Verb.POST, serverUrl("/blank-header"), "body");
+
+        assertEquals(200, response.getCode());
+        assertEquals("application/x-www-form-urlencoded; charset=utf-8", capturedExchange.header("Content-Type"));
+    }
+
+    @Test
+    void addProxyToHttpClientIfRequiredLeavesBuilderUntouchedWhenProxyIsNull() {
+        OkHttpClient.Builder builder = new OkHttpClient.Builder();
+
+        OkHttpClient client = ScribeOkHttpClient.addProxyToHttpClientIfRequired(
+                builder,
+                "https://graph.microsoft.com/common",
+                null).build();
+
+        assertNull(client.proxy());
+    }
+
+    @Test
+    void addProxyToHttpClientIfRequiredAddsProxyWithoutAuthenticatorWhenUsernameIsBlank() {
+        ProxyConfiguration proxyConfiguration = new ProxyConfiguration("proxy.example", 8080);
+
+        OkHttpClient client = ScribeOkHttpClient.addProxyToHttpClientIfRequired(
+                new OkHttpClient.Builder(),
+                "https://graph.microsoft.com/common",
+                proxyConfiguration).build();
+
+        assertNotNull(client.proxy());
+        assertEquals(Proxy.Type.HTTP, client.proxy().type());
+        assertEquals(8080, ((InetSocketAddress) client.proxy().address()).getPort());
+        assertEquals(okhttp3.Authenticator.NONE, client.proxyAuthenticator());
+    }
+
+    @Test
+    void addProxyToHttpClientIfRequiredAddsProxyAuthenticatorWhenCredentialsExist() throws Exception {
+        ProxyConfiguration proxyConfiguration = new ProxyConfiguration("proxy.example", 8080);
+        proxyConfiguration.setUserName("build-user");
+        proxyConfiguration.setSecretPassword(Secret.fromString("build-pass"));
+
+        OkHttpClient client = ScribeOkHttpClient.addProxyToHttpClientIfRequired(
+                new OkHttpClient.Builder(),
+                "https://graph.microsoft.com/common",
+                proxyConfiguration).build();
+
+        okhttp3.Request request = new okhttp3.Request.Builder().url("https://graph.microsoft.com/v1.0/me").build();
+        okhttp3.Response response = new okhttp3.Response.Builder()
+                .request(request)
+                .protocol(okhttp3.Protocol.HTTP_1_1)
+                .code(407)
+                .message("Proxy Authentication Required")
+                .build();
+
+        okhttp3.Request authenticatedRequest = client.proxyAuthenticator().authenticate(null, response);
+
+        assertNotNull(authenticatedRequest);
+        assertEquals("Basic YnVpbGQtdXNlcjpidWlsZC1wYXNz", authenticatedRequest.header("Proxy-Authorization"));
+    }
+
+    @Test
+    @WithJenkins
+    void constructorAddsJenkinsProxyWhenRunningInJenkinsJvm(JenkinsRule j) throws Exception {
+        ProxyConfiguration proxyConfiguration = new ProxyConfiguration("proxy.example", 8080);
+        proxyConfiguration.setUserName("jenkins-user");
+        proxyConfiguration.setSecretPassword(Secret.fromString("jenkins-pass"));
+        j.jenkins.proxy = proxyConfiguration;
+
+        ScribeOkHttpClient client = newClient("https://graph.microsoft.com/common");
+
+        assertNotNull(clientProxy(client));
+        assertEquals(Proxy.Type.HTTP, clientProxy(client).type());
+    }
+
     private ScribeOkHttpClient newClient() {
-        ScribeOkHttpClient client = new ScribeOkHttpClient("https://login.microsoftonline.com/common");
+        return newClient("https://login.microsoftonline.com/common");
+    }
+
+    private ScribeOkHttpClient newClient(String authorityHost) {
+        ScribeOkHttpClient client = new ScribeOkHttpClient(authorityHost);
         clients.add(client);
         return client;
+    }
+
+    private static Proxy clientProxy(ScribeOkHttpClient client) throws Exception {
+        java.lang.reflect.Field field = ScribeOkHttpClient.class.getDeclaredField("client");
+        field.setAccessible(true);
+        OkHttpClient okHttpClient = (OkHttpClient) field.get(client);
+        return okHttpClient.proxy();
     }
 
     private void startServer(CapturedExchange capturedExchange, HttpHandler handler) throws IOException {
