@@ -97,13 +97,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URLEncoder;
 import java.security.GeneralSecurityException;
-import java.security.KeyFactory;
 import java.security.MessageDigest;
 import java.security.PrivateKey;
-import java.security.cert.CertificateException;
-import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
-import java.security.spec.PKCS8EncodedKeySpec;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.UUID;
@@ -171,6 +167,8 @@ public class AzureSecurityRealm extends SecurityRealm {
     private String azureEnvironmentName = "Azure";
     private String credentialType = "Secret";
     private String domainHint = "";
+    private transient ScribeOkHttpClient oAuthHttpClient;
+    private transient String oAuthHttpClientCacheKey;
 
     public AccessToken getAccessToken() {
         TokenRequestContext tokenRequestContext = new TokenRequestContext();
@@ -365,11 +363,46 @@ public class AzureSecurityRealm extends SecurityRealm {
     OAuth20Service getOAuthService() {
         return new ServiceBuilder(clientId.getPlainText())
                 .apiSecret("Certificate".equals(credentialType) ? clientCertificate.getPlainText() : clientSecret.getPlainText())
-                .httpClient(new ScribeOkHttpClient(getAuthorityHost(getAzureEnvironmentName())))
+                .httpClient(getSharedOAuthHttpClient())
                 .responseType("code")
                 .defaultScope("openid profile email")
                 .callback(getRootUrl() + CALLBACK_URL)
                 .build(AzureAdApi.custom(getTenant(), getAuthorityHost(getAzureEnvironmentName())));
+    }
+
+    synchronized ScribeOkHttpClient getSharedOAuthHttpClient() {
+        String authorityHost = getAuthorityHost(getAzureEnvironmentName());
+        String cacheKey = authorityHost + "|" + currentProxyCacheKey();
+        if (oAuthHttpClient == null || !cacheKey.equals(oAuthHttpClientCacheKey)) {
+            closeSharedOAuthHttpClient();
+            oAuthHttpClient = new ScribeOkHttpClient(authorityHost);
+            oAuthHttpClientCacheKey = cacheKey;
+        }
+        return oAuthHttpClient;
+    }
+
+    private String currentProxyCacheKey() {
+        Jenkins jenkins = Jenkins.getInstanceOrNull();
+        ProxyConfiguration proxyConfiguration = jenkins != null ? jenkins.getProxy() : null;
+        if (proxyConfiguration == null) {
+            return "no-proxy";
+        }
+        return String.join(
+                "|",
+                StringUtils.defaultString(proxyConfiguration.getName()),
+                String.valueOf(proxyConfiguration.getPort()),
+                StringUtils.defaultString(proxyConfiguration.getUserName()),
+                proxyConfiguration.getSecretPassword() != null
+                        ? proxyConfiguration.getSecretPassword().getPlainText()
+                        : "");
+    }
+
+    private void closeSharedOAuthHttpClient() {
+        if (oAuthHttpClient != null) {
+            oAuthHttpClient.close();
+            oAuthHttpClient = null;
+            oAuthHttpClientCacheKey = null;
+        }
     }
 
     GraphServiceClient<Request> getAzureClient() {

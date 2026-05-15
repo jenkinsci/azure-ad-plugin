@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.scribejava.core.builder.api.DefaultApi20;
 import com.github.scribejava.core.model.OAuth2AccessToken;
 import com.github.scribejava.core.oauth.OAuth20Service;
+import com.microsoft.jenkins.azuread.scribe.ScribeOkHttpClient;
 import com.microsoft.jenkins.azuread.utils.CertificateHelper;
 import com.microsoft.jenkins.azuread.oauth.StateCache;
 import com.thoughtworks.xstream.io.binary.BinaryStreamReader;
@@ -42,6 +43,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -308,6 +311,32 @@ class AzureSecurityRealmTest {
 
         assertNotNull(service);
         assertEquals("openid profile email", service.getDefaultScope());
+    }
+
+    @Test
+    void testGetSharedOAuthHttpClientReusesClientAcrossServiceCalls(JenkinsRule j) {
+        JenkinsLocationConfiguration.get().setUrl("http://localhost/jenkins/");
+        AzureSecurityRealm realm = new AzureSecurityRealm("tenant", "client-id", Secret.fromString("secret"), 0);
+
+        ScribeOkHttpClient firstClient = realm.getSharedOAuthHttpClient();
+        realm.getOAuthService();
+        ScribeOkHttpClient secondClient = realm.getSharedOAuthHttpClient();
+
+        assertSame(firstClient, secondClient);
+    }
+
+    @Test
+    void testGetSharedOAuthHttpClientRecreatesClientWhenEnvironmentChanges(JenkinsRule j) {
+        JenkinsLocationConfiguration.get().setUrl("http://localhost/jenkins/");
+        AzureSecurityRealm realm = new AzureSecurityRealm("tenant", "client-id", Secret.fromString("secret"), 0);
+
+        ScribeOkHttpClient firstClient = realm.getSharedOAuthHttpClient();
+
+        realm.setAzureEnvironmentName(AzureEnvironment.AZURE_CHINA);
+
+        ScribeOkHttpClient secondClient = realm.getSharedOAuthHttpClient();
+
+        assertNotSame(firstClient, secondClient);
     }
 
     @Test

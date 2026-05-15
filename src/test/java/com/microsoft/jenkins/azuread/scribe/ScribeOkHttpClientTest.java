@@ -34,9 +34,11 @@ import java.util.Locale;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -164,6 +166,48 @@ class ScribeOkHttpClientTest {
         assertNull(callback.throwable);
         assertEquals("payload", capturedExchange.bodyAsString());
         assertEquals("true", capturedExchange.header("X-Async"));
+    }
+
+    @Test
+    void executeAsyncReturnsBeforeNetworkRequestCompletes() throws Exception {
+        CapturedExchange capturedExchange = new CapturedExchange();
+        CountDownLatch requestStarted = new CountDownLatch(1);
+        CountDownLatch releaseResponse = new CountDownLatch(1);
+        startServer(capturedExchange, exchange -> {
+            requestStarted.countDown();
+            try {
+                assertTrue(releaseResponse.await(5, TimeUnit.SECONDS));
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IOException("Interrupted while waiting to release async response", e);
+            }
+            writeResponse(exchange, 200, "async-delayed");
+        });
+
+        ScribeOkHttpClient client = newClient();
+        TrackingCallback callback = new TrackingCallback();
+
+        Future<String> future = client.executeAsync(
+                "agent/4.0",
+                Map.of("X-Async", "delayed"),
+                Verb.POST,
+                serverUrl("/async-delayed"),
+                "payload",
+                callback,
+                Response::getBody);
+
+        assertTrue(requestStarted.await(5, TimeUnit.SECONDS));
+        assertTrue(future instanceof java.util.concurrent.CompletableFuture);
+        assertEquals(false, ((java.util.concurrent.CompletableFuture<?>) future).isDone());
+        assertNull(callback.completed);
+
+        releaseResponse.countDown();
+
+        assertEquals("async-delayed", future.get(5, TimeUnit.SECONDS));
+        assertEquals("async-delayed", callback.completed);
+        assertNull(callback.throwable);
+        assertEquals("payload", capturedExchange.bodyAsString());
+        assertEquals("delayed", capturedExchange.header("X-Async"));
     }
 
     @Test

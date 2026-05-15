@@ -10,6 +10,8 @@ import com.github.scribejava.core.model.Verb;
 import hudson.ProxyConfiguration;
 import jenkins.model.Jenkins;
 import jenkins.util.JenkinsJVM;
+import okhttp3.Call;
+import okhttp3.Callback;
 import okhttp3.Credentials;
 import okhttp3.Headers;
 import okhttp3.MediaType;
@@ -100,25 +102,48 @@ public class ScribeOkHttpClient implements HttpClient {
             String completeUrl, RequestBody body, OAuthAsyncRequestCallback<T> callback,
             OAuthRequest.ResponseConverter<T> converter) {
         CompletableFuture<T> future = new CompletableFuture<>();
-        try {
-            Response response = executeInternal(userAgent, headers, httpVerb, completeUrl, body);
-            @SuppressWarnings("unchecked")
-            T result = converter == null ? (T) response : converter.convert(response);
-            if (callback != null) {
-                callback.onCompleted(result);
+        okhttp3.Request request = buildRequest(userAgent, headers, httpVerb, completeUrl, body);
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                if (callback != null) {
+                    callback.onThrowable(e);
+                }
+                future.completeExceptionally(e);
             }
-            future.complete(result);
-        } catch (IOException | RuntimeException e) {
-            if (callback != null) {
-                callback.onThrowable(e);
+
+            @Override
+            public void onResponse(Call call, okhttp3.Response okHttpResponse) {
+                try (okhttp3.Response response = okHttpResponse) {
+                    Response scribeResponse = toScribeResponse(response);
+                    @SuppressWarnings("unchecked")
+                    T result = converter == null ? (T) scribeResponse : converter.convert(scribeResponse);
+                    if (callback != null) {
+                        callback.onCompleted(result);
+                    }
+                    future.complete(result);
+                } catch (IOException | RuntimeException e) {
+                    if (callback != null) {
+                        callback.onThrowable(e);
+                    }
+                    future.completeExceptionally(e);
+                }
             }
-            future.completeExceptionally(e);
-        }
+        });
         return future;
     }
 
     private Response executeInternal(String userAgent, Map<String, String> headers, Verb httpVerb, String completeUrl,
             RequestBody requestBody) throws IOException {
+        okhttp3.Request request = buildRequest(userAgent, headers, httpVerb, completeUrl, requestBody);
+
+        try (okhttp3.Response response = client.newCall(request).execute()) {
+            return toScribeResponse(response);
+        }
+    }
+
+    private static okhttp3.Request buildRequest(String userAgent, Map<String, String> headers, Verb httpVerb,
+            String completeUrl, RequestBody requestBody) {
         okhttp3.Request.Builder requestBuilder = new okhttp3.Request.Builder().url(completeUrl);
         if (StringUtils.isNotBlank(userAgent)) {
             requestBuilder.header("User-Agent", userAgent);
@@ -137,11 +162,13 @@ public class ScribeOkHttpClient implements HttpClient {
             requestBuilder.method(httpVerb.name(), null);
         }
 
-        try (okhttp3.Response response = client.newCall(requestBuilder.build()).execute()) {
-            okhttp3.ResponseBody responseBody = response.body();
-            String body = responseBody != null ? responseBody.string() : null;
-            return new Response(response.code(), response.message(), flattenHeaders(response.headers()), body);
-        }
+        return requestBuilder.build();
+    }
+
+    private static Response toScribeResponse(okhttp3.Response response) throws IOException {
+        okhttp3.ResponseBody responseBody = response.body();
+        String body = responseBody != null ? responseBody.string() : null;
+        return new Response(response.code(), response.message(), flattenHeaders(response.headers()), body);
     }
 
     private static Map<String, String> flattenHeaders(Headers headers) {
