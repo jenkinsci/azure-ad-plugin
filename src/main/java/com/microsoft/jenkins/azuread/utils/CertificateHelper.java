@@ -51,7 +51,7 @@ public final class CertificateHelper {
         throw new IllegalArgumentException("Unsupported private key format. Expected PKCS#8 or PKCS#1 RSA PEM.");
     }
 
-    private static byte[] wrapPkcs1RsaKey(byte[] pkcs1Bytes) {
+    static byte[] wrapPkcs1RsaKey(byte[] pkcs1Bytes) {
         byte[] rsaAlgorithmIdentifier = new byte[] {
             0x30, 0x0D,
             0x06, 0x09,
@@ -66,15 +66,15 @@ public final class CertificateHelper {
         return concat(derEncodeSequenceHeader(totalLength), version, rsaAlgorithmIdentifier, privateKeyOctetString);
     }
 
-    private static byte[] derEncodeOctetString(byte[] value) {
+    static byte[] derEncodeOctetString(byte[] value) {
         return concat(new byte[] {0x04}, derEncodeLength(value.length), value);
     }
 
-    private static  byte[] derEncodeSequenceHeader(int length) {
+    static byte[] derEncodeSequenceHeader(int length) {
         return concat(new byte[] {0x30}, derEncodeLength(length));
     }
 
-    private static  byte[] derEncodeLength(int length) {
+    static byte[] derEncodeLength(int length) {
         if (length < 128) {
             return new byte[] {(byte) length};
         } else if (length < 256) {
@@ -84,7 +84,7 @@ public final class CertificateHelper {
         }
     }
 
-    private static  byte[] concat(byte[]... arrays) {
+    static byte[] concat(byte[]... arrays) {
         int total = 0;
         for (byte[] array : arrays) {
             total += array.length;
