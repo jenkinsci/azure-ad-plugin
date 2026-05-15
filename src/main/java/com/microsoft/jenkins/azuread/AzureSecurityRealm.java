@@ -517,7 +517,7 @@ public class AzureSecurityRealm extends SecurityRealm {
 
 
             try {
-                if (getCredentialType().equals("Certificate")) {
+                if ("Certificate".equals(getCredentialType())) {
                     LOGGER.log(Level.FINE, "Using certificate-based authentication to exchange authorization code for tokens.");
                     final OAuthRequest tokenRequest = new OAuthRequest(Verb.POST, service.getApi().getAccessTokenEndpoint());
                     tokenRequest.addBodyParameter("client_id", getClientId());
