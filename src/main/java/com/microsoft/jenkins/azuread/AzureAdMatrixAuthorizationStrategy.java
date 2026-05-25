@@ -21,12 +21,14 @@ import hudson.init.InitMilestone;
 import hudson.init.Initializer;
 import hudson.model.AbstractItem;
 import hudson.model.AutoCompletionCandidates;
+import hudson.model.Descriptor;
 import hudson.model.Item;
 import hudson.model.ItemGroup;
 import hudson.model.Job;
 import hudson.model.Node;
 import hudson.security.ACL;
 import hudson.security.AccessControlled;
+import hudson.security.AuthorizationStrategy;
 import hudson.security.Permission;
 import hudson.security.SecurityRealm;
 import hudson.security.SidACL;
@@ -239,6 +241,13 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
     }
 
     @Extension
+    public static final DescriptorImpl DESCRIPTOR = new DescriptorImpl();
+
+    @Override
+    public Descriptor<AuthorizationStrategy> getDescriptor() {
+        return DESCRIPTOR;
+    }
+
     public static class DescriptorImpl extends GlobalMatrixAuthorizationStrategy.DescriptorImpl {
         @Override
         protected GlobalMatrixAuthorizationStrategy create() {
