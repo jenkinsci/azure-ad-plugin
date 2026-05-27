@@ -155,18 +155,11 @@ public class AzureSecurityRealm extends SecurityRealm {
         String graphResource = AzureEnvironment.getGraphResource(getAzureEnvironmentName());
         tokenRequestContext.setScopes(singletonList(graphResource + ".default"));
 
-        AccessToken accessToken;
-        switch (credentialType) {
-            case "Certificate":
-                accessToken = getClientCertificateCredential().getToken(tokenRequestContext).block();
-                break;
-            case "WorkloadIdentity":
-                accessToken = getWorkloadIdentityCredential().getToken(tokenRequestContext).block();
-                break;
-            default:
-                accessToken = getClientSecretCredential().getToken(tokenRequestContext).block();
-                break;
-        }
+        AccessToken accessToken = switch (credentialType) {
+            case "Certificate" -> getClientCertificateCredential().getToken(tokenRequestContext).block();
+            case "WorkloadIdentity" -> getWorkloadIdentityCredential().getToken(tokenRequestContext).block();
+            default -> getClientSecretCredential().getToken(tokenRequestContext).block();
+        };
 
         if (accessToken == null) {
             throw new IllegalStateException("Access token null when it is required");
