@@ -260,7 +260,6 @@ public class AzureSecurityRealm extends SecurityRealm {
     }
 
     String getCredentialCacheKey() {
-        String credentialComponent;
         String credentialComponent = switch (credentialType) {
             case "Certificate" -> clientId.getPlainText()
                     + clientCertificate.getPlainText()
@@ -366,23 +365,23 @@ public class AzureSecurityRealm extends SecurityRealm {
     OAuth20Service getOAuthService() {
         LOGGER.log(Level.FINE, "getOAuthService: building OAuth service with credentialType={0}, environment={1}",
                 new Object[]{credentialType, getAzureEnvironmentName()});
-        if ("WorkloadIdentity".equals(credentialType)) {
-            // For Workload Identity, use a custom API that sends client_assertion
-            // instead of client_secret during the authorization code exchange.
-            return new ServiceBuilder(clientId.getPlainText())
-                    .apiSecret("unused") // ScribeJava requires a non-null apiSecret
-                    .responseType("id_token")
-                    .defaultScope("openid profile email")
-                    .callback(getRootUrl() + CALLBACK_URL)
-                    .build(AzureWorkloadIdentityApi.custom(
-                            getTenant(), getAuthorityHost(getAzureEnvironmentName())));
-        }
-        return new ServiceBuilder(clientId.getPlainText())
-                .apiSecret("Certificate".equals(credentialType) ? clientCertificate.getPlainText() : clientSecret.getPlainText())
+        String authorityHost = getAuthorityHost(getAzureEnvironmentName());
+        var builder = new ServiceBuilder(clientId.getPlainText())
                 .responseType("id_token")
                 .defaultScope("openid profile email")
-                .callback(getRootUrl() + CALLBACK_URL)
-                .build(AzureAdApi.custom(getTenant(), getAuthorityHost(getAzureEnvironmentName())));
+                .callback(getRootUrl() + CALLBACK_URL);
+
+        if ("WorkloadIdentity".equals(credentialType)) {
+            return builder
+                    .apiSecret("unused") // ScribeJava requires a non-null apiSecret
+                    .build(AzureWorkloadIdentityApi.custom(getTenant(), authorityHost));
+        }
+        String apiSecret = "Certificate".equals(credentialType)
+                ? clientCertificate.getPlainText()
+                : clientSecret.getPlainText();
+        return builder
+                .apiSecret(apiSecret)
+                .build(AzureAdApi.custom(getTenant(), authorityHost));
     }
 
     GraphServiceClient<Request> getAzureClient() {
@@ -945,7 +944,6 @@ public class AzureSecurityRealm extends SecurityRealm {
 
         public DescriptorImpl() {
             super();
-            LOGGER.log(Level.FINE, "AzureSecurityRealm DescriptorImpl initialized");
         }
 
         public DescriptorImpl(Class<? extends SecurityRealm> clazz) {

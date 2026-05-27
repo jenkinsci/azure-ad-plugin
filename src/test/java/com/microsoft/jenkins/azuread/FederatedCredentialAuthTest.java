@@ -1,8 +1,3 @@
-/*
- * Copyright (c) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See LICENSE file in the project root for license information.
- */
-
 package com.microsoft.jenkins.azuread;
 
 import com.azure.identity.CredentialUnavailableException;
@@ -333,8 +328,8 @@ class FederatedCredentialAuthTest {
 
     @Test
     @Tag("unit")
-    @DisplayName("3.2 Missing token file throws on authentication attempt")
-    void testMissingTokenFileThrowsOnAuthentication() {
+    @DisplayName("3.2 Credential builds with non-existent token file path")
+    void testCredentialBuildsWithNonExistentTokenFile() {
         String nonExistentPath = tempDir.resolve("nonexistent_token.jwt").toAbsolutePath().toString();
 
         WorkloadIdentityCredential credential = new WorkloadIdentityCredentialBuilder()
@@ -350,8 +345,8 @@ class FederatedCredentialAuthTest {
 
     @Test
     @Tag("unit")
-    @DisplayName("3.3 GraphClientCache builds WorkloadIdentity credential correctly")
-    void testGraphClientCacheBuildsWorkloadIdentityCredential() throws Exception {
+    @DisplayName("3.3 GraphClientCacheKey stores WorkloadIdentity credential type")
+    void testGraphClientCacheKeyStoresWorkloadIdentityType() throws Exception {
         String jwt = generateTestJwt(DEFAULT_ISSUER, DEFAULT_SUBJECT, DEFAULT_AUDIENCE,
                 1800, DEFAULT_KID, keyPair.getPrivate());
         String tokenFilePath = writeTokenFile(jwt);

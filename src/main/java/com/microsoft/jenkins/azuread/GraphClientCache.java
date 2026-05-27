@@ -74,20 +74,12 @@ public class GraphClientCache {
     private static TokenCredentialAuthProvider getAuthProvider(GraphClientCacheKey key) {
         String graphResource = AzureEnvironment.getGraphResource(key.getAzureEnvironmentName());
 
-        TokenCredential tokenCredential;
-        switch (key.getCredentialType()) {
-            case "Secret":
-                tokenCredential = getClientSecretCredential(key);
-                break;
-            case "Certificate":
-                tokenCredential = getClientCertificateCredential(key);
-                break;
-            case "WorkloadIdentity":
-                tokenCredential = getWorkloadIdentityCredential(key);
-                break;
-            default:
-                throw new IllegalArgumentException("Invalid credential type: " + key.getCredentialType());
-        }
+        TokenCredential tokenCredential = switch (key.getCredentialType()) {
+            case "Secret" -> getClientSecretCredential(key);
+            case "Certificate" -> getClientCertificateCredential(key);
+            case "WorkloadIdentity" -> getWorkloadIdentityCredential(key);
+            default -> throw new IllegalArgumentException("Invalid credential type: " + key.getCredentialType());
+        };
         return new TokenCredentialAuthProvider(
                 singletonList(graphResource + ".default"),
                 tokenCredential);

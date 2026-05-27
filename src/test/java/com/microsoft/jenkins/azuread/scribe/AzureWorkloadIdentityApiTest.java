@@ -1,8 +1,3 @@
-/*
- * Copyright (c) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See LICENSE file in the project root for license information.
- */
-
 package com.microsoft.jenkins.azuread.scribe;
 
 import com.github.scribejava.core.model.OAuthRequest;
@@ -16,10 +11,14 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.endsWith;
+import static org.hamcrest.Matchers.startsWith;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AzureWorkloadIdentityApiTest {
 
@@ -36,15 +35,15 @@ class AzureWorkloadIdentityApiTest {
                 "test-tenant", "https://login.microsoftonline.com/");
         ClientAuthentication auth = api.getClientAuthentication();
         assertNotNull(auth);
-        assertTrue(auth instanceof AzureWorkloadIdentityApi.WorkloadIdentityClientAuthentication);
+        assertInstanceOf(AzureWorkloadIdentityApi.WorkloadIdentityClientAuthentication.class, auth);
     }
 
     @Test
     void readFederatedTokenThrowsWhenEnvVarNotSet() {
         IOException ex = assertThrows(IOException.class, AzureWorkloadIdentityApi::readFederatedToken);
         assertNotNull(ex.getMessage());
-        assertTrue(ex.getMessage().contains("AZURE_FEDERATED_TOKEN_FILE environment variable is not set"));
-        assertTrue(ex.getMessage().contains("OIDC identity provider"));
+        assertThat(ex.getMessage(), containsString("AZURE_FEDERATED_TOKEN_FILE environment variable is not set"));
+        assertThat(ex.getMessage(), containsString("OIDC identity provider"));
     }
 
     @Test
@@ -80,7 +79,7 @@ class AzureWorkloadIdentityApiTest {
         // the test readFederatedTokenThrowsWhenEnvVarNotSet covers the null case;
         // this validates the error message mentions both possibilities
         IOException ex = assertThrows(IOException.class, AzureWorkloadIdentityApi::readFederatedToken);
-        assertTrue(ex.getMessage().contains("is not set"));
+        assertThat(ex.getMessage(), containsString("is not set"));
     }
 
     @Test
@@ -94,14 +93,13 @@ class AzureWorkloadIdentityApiTest {
         RuntimeException ex = assertThrows(RuntimeException.class,
                 () -> auth.addClientAuthentication(request, "test-client-id", "ignored-secret"));
 
-        assertTrue(ex.getMessage().contains("federated token"));
-        assertTrue(ex.getMessage().contains("AZURE_FEDERATED_TOKEN_FILE"));
-        assertTrue(ex.getCause() instanceof IOException);
+        assertThat(ex.getMessage(), containsString("federated token"));
+        assertThat(ex.getMessage(), containsString("AZURE_FEDERATED_TOKEN_FILE"));
+        assertInstanceOf(IOException.class, ex.getCause());
 
         // client_id is set before readFederatedToken() is called
         String bodyContent = request.getBodyParams().asFormUrlEncodedString();
-        assertTrue(bodyContent.contains("client_id=test-client-id"),
-                "client_id should be set even when token read fails");
+        assertThat(bodyContent, containsString("client_id=test-client-id"));
     }
 
     @Test
@@ -120,8 +118,7 @@ class AzureWorkloadIdentityApiTest {
         }
 
         String bodyContent = request.getBodyParams().asFormUrlEncodedString();
-        assertTrue(bodyContent.contains("client_assertion_type="),
-                "client_assertion_type should be set");
+        assertThat(bodyContent, containsString("client_assertion_type="));
     }
 
     @Test
@@ -131,9 +128,8 @@ class AzureWorkloadIdentityApiTest {
         AzureWorkloadIdentityApi api = AzureWorkloadIdentityApi.custom(tenant, authorityHost);
 
         String tokenEndpoint = api.getAccessTokenEndpoint();
-        assertTrue(tokenEndpoint.contains(tenant), "Token endpoint should contain tenant");
-        assertTrue(tokenEndpoint.endsWith("/token"), "Token endpoint should end with /token");
-        assertTrue(tokenEndpoint.startsWith(authorityHost),
-                "Token endpoint should start with authority host");
+        assertThat(tokenEndpoint, containsString(tenant));
+        assertThat(tokenEndpoint, endsWith("/token"));
+        assertThat(tokenEndpoint, startsWith(authorityHost));
     }
 }
