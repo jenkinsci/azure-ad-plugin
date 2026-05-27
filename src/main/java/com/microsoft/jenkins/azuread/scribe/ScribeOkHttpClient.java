@@ -218,7 +218,8 @@ public class ScribeOkHttpClient implements HttpClient {
     }
 
     private static OkHttpClient.Builder addProxyToHttpClientIfRequired(OkHttpClient.Builder builder, String authorityHost) {
-        ProxyConfiguration proxyConfiguration = JenkinsJVM.isJenkinsJVM() ? Jenkins.get().getProxy() : null;
+        Jenkins jenkins = JenkinsJVM.isJenkinsJVM() ? Jenkins.getInstanceOrNull() : null;
+        ProxyConfiguration proxyConfiguration = jenkins != null ? jenkins.getProxy() : null;
         return addProxyToHttpClientIfRequired(builder, authorityHost, proxyConfiguration);
     }
 
