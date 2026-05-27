@@ -63,6 +63,7 @@ import io.jenkins.plugins.azuresdk.HttpClientRetriever;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.security.Signature;
 import jakarta.servlet.http.HttpSession;
 
 import jenkins.model.Jenkins;
@@ -556,7 +557,6 @@ public class AzureSecurityRealm extends SecurityRealm {
             ObjectMapper mapper = new ObjectMapper();
             JsonNode tokenJson = mapper.readTree(tokenResponse);
 
-            // String accessToken = tokenJson.get("access_token").asText();
             final String idToken = tokenJson.has("id_token") ? tokenJson.get("id_token").asText() : null;
 
             if (StringUtils.isBlank(idToken)) {
@@ -674,9 +674,10 @@ public class AzureSecurityRealm extends SecurityRealm {
         ObjectMapper mapper = new ObjectMapper();
 
         // Header
-        Map<String, Object> headerMap = new HashMap<>();
-        headerMap.put("alg", "RS256");
-        headerMap.put("x5t", thumbprint);
+        Map<String, Object> headerMap = Map.of(
+            "alg", "RS256",
+            "x5t", thumbprint
+        );
 
         String headerJson = mapper.writeValueAsString(headerMap);
 
@@ -685,14 +686,14 @@ public class AzureSecurityRealm extends SecurityRealm {
                 .encodeToString(headerJson.getBytes(StandardCharsets.UTF_8));
 
         // Payload
-        Map<String, Object> payloadMap = new HashMap<>();
-
-        payloadMap.put("aud", tokenEndpoint);
-        payloadMap.put("iss", getClientId());
-        payloadMap.put("sub", getClientId());
-        payloadMap.put("jti", UUID.randomUUID().toString());
-        payloadMap.put("exp", exp);
-        payloadMap.put("iat", now);
+        Map<String, Object> payloadMap = Map.of(
+            "aud", tokenEndpoint,
+            "iss", getClientId(),
+            "sub", getClientId(),
+            "jti", UUID.randomUUID().toString(),
+            "exp", exp,
+            "iat", now
+        );
 
         String payloadJson = mapper.writeValueAsString(payloadMap);
 
@@ -703,7 +704,7 @@ public class AzureSecurityRealm extends SecurityRealm {
 
         // Sign header.payload
         String signingInput = header + "." + payload;
-        java.security.Signature signature = java.security.Signature.getInstance("SHA256withRSA");
+        Signature signature = Signature.getInstance("SHA256withRSA");
         signature.initSign(privateKey);
         signature.update(signingInput.getBytes(StandardCharsets.UTF_8));
         byte[] sigBytes = signature.sign();
