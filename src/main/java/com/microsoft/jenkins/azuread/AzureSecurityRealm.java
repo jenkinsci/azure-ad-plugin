@@ -261,26 +261,20 @@ public class AzureSecurityRealm extends SecurityRealm {
 
     String getCredentialCacheKey() {
         String credentialComponent;
-        switch (credentialType) {
-            case "Certificate":
-                credentialComponent = clientId.getPlainText()
-                        + clientCertificate.getPlainText()
-                        + tenant.getPlainText()
-                        + azureEnvironmentName;
-                break;
-            case "WorkloadIdentity":
-                credentialComponent = clientId.getPlainText()
-                        + "WorkloadIdentity"
-                        + tenant.getPlainText()
-                        + azureEnvironmentName;
-                break;
-            default:
-                credentialComponent = clientId.getPlainText()
-                        + clientSecret.getPlainText()
-                        + tenant.getPlainText()
-                        + azureEnvironmentName;
-                break;
-        }
+        String credentialComponent = switch (credentialType) {
+            case "Certificate" -> clientId.getPlainText()
+                    + clientCertificate.getPlainText()
+                    + tenant.getPlainText()
+                    + azureEnvironmentName;
+            case "WorkloadIdentity" -> clientId.getPlainText()
+                    + "WorkloadIdentity"
+                    + tenant.getPlainText()
+                    + azureEnvironmentName;
+            default -> clientId.getPlainText()
+                    + clientSecret.getPlainText()
+                    + tenant.getPlainText()
+                    + azureEnvironmentName;
+        };
         return Util.getDigestOf(credentialComponent);
     }
 
