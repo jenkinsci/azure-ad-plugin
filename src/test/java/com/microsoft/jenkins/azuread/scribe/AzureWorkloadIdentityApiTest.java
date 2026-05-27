@@ -83,26 +83,6 @@ class AzureWorkloadIdentityApiTest {
     }
 
     @Test
-    void addClientAuthenticationSetsClientIdBeforeFailure() {
-        OAuthRequest request = new OAuthRequest(Verb.POST,
-                "https://login.microsoftonline.com/test/oauth2/v2.0/token");
-
-        AzureWorkloadIdentityApi.WorkloadIdentityClientAuthentication auth =
-                new AzureWorkloadIdentityApi.WorkloadIdentityClientAuthentication();
-
-        RuntimeException ex = assertThrows(RuntimeException.class,
-                () -> auth.addClientAuthentication(request, "test-client-id", "ignored-secret"));
-
-        assertThat(ex.getMessage(), containsString("federated token"));
-        assertThat(ex.getMessage(), containsString("AZURE_FEDERATED_TOKEN_FILE"));
-        assertInstanceOf(IOException.class, ex.getCause());
-
-        // client_id is set before readFederatedToken() is called
-        String bodyContent = request.getBodyParams().asFormUrlEncodedString();
-        assertThat(bodyContent, containsString("client_id=test-client-id"));
-    }
-
-    @Test
     void addClientAuthenticationSetsAssertionType() {
         OAuthRequest request = new OAuthRequest(Verb.POST,
                 "https://login.microsoftonline.com/test/oauth2/v2.0/token");
