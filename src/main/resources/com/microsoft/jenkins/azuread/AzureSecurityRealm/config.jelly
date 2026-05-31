@@ -25,12 +25,14 @@
                 </f:entry>
             </f:radioBlock>
             <f:radioBlock name="credentialType" value="WorkloadIdentity" title="Workload Identity (Federated Credentials)"
-                          help="/descriptor/com.microsoft.jenkins.azuread.AzureSecurityRealm/help-workloadIdentity.html"
+                          help="${null}"
                           checked="${instance.credentialType == 'WorkloadIdentity'}" inline="true">
-                <f:description>
-                    No secret or certificate required. Jenkins will use a federated token
-                    provided via the AZURE_FEDERATED_TOKEN_FILE environment variable.
-                </f:description>
+                <f:entry field="workloadIdentity" title="">
+                    <f:description>
+                        No secret or certificate required. Jenkins will use a federated token
+                        provided via the AZURE_FEDERATED_TOKEN_FILE environment variable.
+                    </f:description>
+                </f:entry>
             </f:radioBlock>
         </f:entry>
 
