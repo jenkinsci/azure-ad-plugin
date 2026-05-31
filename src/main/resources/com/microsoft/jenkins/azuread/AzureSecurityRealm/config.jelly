@@ -25,9 +25,9 @@
                 </f:entry>
             </f:radioBlock>
             <f:radioBlock name="credentialType" value="WorkloadIdentity" title="Workload Identity (Federated Credentials)"
-                          help="${null}"
+                          help="/plugin/azure-ad/help/workloadIdentity.html"
                           checked="${instance.credentialType == 'WorkloadIdentity'}" inline="true">
-                <f:entry field="workloadIdentity" title="">
+                <f:entry field="workloadIdentity">
                     <f:description>
                         No secret or certificate required. Jenkins will use a federated token
                         provided via the AZURE_FEDERATED_TOKEN_FILE environment variable.
