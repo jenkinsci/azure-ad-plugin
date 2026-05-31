@@ -41,6 +41,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
  * Comprehensive tests for the federated credential (Workload Identity) implementation.
@@ -557,11 +558,13 @@ class FederatedCredentialAuthTest {
         String clientId = System.getenv("AZURE_CLIENT_ID");
         String tenantId = System.getenv("AZURE_TENANT_ID");
         String blobIssuerUrl = System.getenv("AZURE_BLOB_ISSUER_URL");
+        String tokenFilePath = System.getenv("AZURE_FEDERATED_TOKEN_FILE");
         String privateKeyPath = System.getenv().getOrDefault("PRIVATE_KEY_PATH", "./private_key.pem");
 
-        assertNotNull(clientId, "AZURE_CLIENT_ID must be set");
-        assertNotNull(tenantId, "AZURE_TENANT_ID must be set");
-        assertNotNull(blobIssuerUrl, "AZURE_BLOB_ISSUER_URL must be set");
+        assumeTrue(tenantId != null, "AZURE_TENANT_ID must be set for e2e tests");
+        assumeTrue(blobIssuerUrl != null, "AZURE_BLOB_ISSUER_URL must be set for e2e tests");
+        assumeTrue(tokenFilePath != null, "AZURE_FEDERATED_TOKEN_FILE must be set for e2e tests");
+        assumeTrue(Files.exists(Path.of(privateKeyPath)), "Private key file must exist at " + privateKeyPath);
 
         // Step 1: Validate OIDC discovery endpoint
         HttpURLConnection discoveryConn = (HttpURLConnection) new URL(
@@ -576,11 +579,8 @@ class FederatedCredentialAuthTest {
 
         // Step 2: Read the private key and generate a JWT
         Path keyPath = Path.of(privateKeyPath);
-        assertTrue(Files.exists(keyPath), "Private key file should exist at " + privateKeyPath);
 
         // Step 3: Verify token file exists
-        String tokenFilePath = System.getenv("AZURE_FEDERATED_TOKEN_FILE");
-        assertNotNull(tokenFilePath, "AZURE_FEDERATED_TOKEN_FILE must be set for e2e tests");
         assertTrue(Files.exists(Path.of(tokenFilePath)),
                 "Token file should exist at " + tokenFilePath);
 

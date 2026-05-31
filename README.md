@@ -216,7 +216,7 @@ jenkins:
 ### Troubleshooting
 
 - If you see `AZURE_FEDERATED_TOKEN_FILE environment variable is not set`, ensure the environment variable points to a valid JWT token file.
-- Verify the Federated Identity Credential on the App Registration has the correct **Issuer**, **Subject**, and **Audience** values matching your OIDC provider's tokens. Decode the token (`cat $AZURE_FEDERATED_TOKEN_FILE | cut -d. -f2 | base64 -d`) to inspect the `iss`, `sub`, and `aud` claims.
+- Verify the Federated Identity Credential on the App Registration has the correct **Issuer**, **Subject**, and **Audience** values matching your OIDC provider's tokens. Decode the token (`cat $AZURE_FEDERATED_TOKEN_FILE | cut -d. -f2 | tr '_-' '/+' | base64 -d 2>/dev/null`) to inspect the `iss`, `sub`, and `aud` claims, or use a tool like [jwt-cli](https://github.com/mike-engel/jwt-cli) (`jwt decode $(cat $AZURE_FEDERATED_TOKEN_FILE)`).
 - A `400` error from the token endpoint typically means a mismatch between the token claims and the federated credential configuration.
 
 ## FAQ

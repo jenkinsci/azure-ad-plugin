@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 class AzureWorkloadIdentityApiTest {
 
@@ -40,6 +41,8 @@ class AzureWorkloadIdentityApiTest {
 
     @Test
     void readFederatedTokenThrowsWhenEnvVarNotSet() {
+        assumeTrue(System.getenv("AZURE_FEDERATED_TOKEN_FILE") == null,
+                "Skipped: AZURE_FEDERATED_TOKEN_FILE is set in this environment");
         IOException ex = assertThrows(IOException.class, AzureWorkloadIdentityApi::readFederatedToken);
         assertNotNull(ex.getMessage());
         assertThat(ex.getMessage(), containsString("AZURE_FEDERATED_TOKEN_FILE environment variable is not set"));
@@ -74,6 +77,8 @@ class AzureWorkloadIdentityApiTest {
 
     @Test
     void readFederatedTokenThrowsWhenEnvVarIsEmpty() {
+        assumeTrue(System.getenv("AZURE_FEDERATED_TOKEN_FILE") == null,
+                "Skipped: AZURE_FEDERATED_TOKEN_FILE is set in this environment");
         // The no-arg overload checks for null OR empty
         // Since we can't set env vars, we test indirectly:
         // the test readFederatedTokenThrowsWhenEnvVarNotSet covers the null case;
