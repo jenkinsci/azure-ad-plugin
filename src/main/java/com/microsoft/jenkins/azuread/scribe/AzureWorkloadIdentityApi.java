@@ -11,11 +11,10 @@ import java.nio.file.Paths;
 /**
  * Custom ScribeJava API for Workload Identity Federation.
  *
- * <p>During the OIDC authorization code exchange, Entra ID expects a
- * {@code client_assertion} and {@code client_assertion_type} instead of
- * the normal {@code client_secret} parameter. This class overrides the
- * default client authentication to send the federated token
- * (read from {@code AZURE_FEDERATED_TOKEN_FILE}) as a signed JWT
+ * <p>When authenticating to Entra ID, this class replaces the normal
+ * {@code client_secret} parameter with a {@code client_assertion} and
+ * {@code client_assertion_type}. The federated token (read from
+ * {@code AZURE_FEDERATED_TOKEN_FILE}) is sent as a signed JWT
  * client assertion.</p>
  */
 public class AzureWorkloadIdentityApi extends AzureAdApi {
