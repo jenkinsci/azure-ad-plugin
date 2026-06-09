@@ -313,32 +313,6 @@ class AzureSecurityRealmTest {
     }
 
     @Test
-    void testGetSharedOAuthHttpClientReusesClientAcrossServiceCalls(JenkinsRule j) {
-        JenkinsLocationConfiguration.get().setUrl("http://localhost/jenkins/");
-        AzureSecurityRealm realm = new AzureSecurityRealm("tenant", "client-id", Secret.fromString("secret"), 0);
-
-        // ScribeOkHttpClient firstClient = realm.getSharedOAuthHttpClient();
-        // realm.getOAuthService();
-        // ScribeOkHttpClient secondClient = realm.getSharedOAuthHttpClient();
-
-        // assertSame(firstClient, secondClient);
-    }
-
-    @Test
-    void testGetSharedOAuthHttpClientRecreatesClientWhenEnvironmentChanges(JenkinsRule j) {
-        JenkinsLocationConfiguration.get().setUrl("http://localhost/jenkins/");
-        AzureSecurityRealm realm = new AzureSecurityRealm("tenant", "client-id", Secret.fromString("secret"), 0);
-
-        // ScribeOkHttpClient firstClient = realm.getSharedOAuthHttpClient();
-
-        realm.setAzureEnvironmentName(AzureEnvironment.AZURE_CHINA);
-
-        // ScribeOkHttpClient secondClient = realm.getSharedOAuthHttpClient();
-
-        // assertNotSame(firstClient, secondClient);
-    }
-
-    @Test
     void testDoCommenceLoginStoresSessionStateAndUsesTrimmedReferer() {
         TestAzureSecurityRealm realm = new TestAzureSecurityRealm("tenant", "client-id", Secret.fromString("secret"), 0);
         FakeOAuth20Service service = new FakeOAuth20Service("https://login.example/authorize", null);

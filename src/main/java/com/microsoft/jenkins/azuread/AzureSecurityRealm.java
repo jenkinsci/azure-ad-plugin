@@ -45,7 +45,6 @@ import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
-import hudson.ProxyConfiguration;
 import hudson.Util;
 import hudson.model.Descriptor;
 import hudson.model.User;
@@ -377,22 +376,6 @@ public class AzureSecurityRealm extends SecurityRealm {
                 .defaultScope("openid profile email")
                 .callback(getRootUrl() + CALLBACK_URL)
                 .build(AzureAdApi.custom(getTenant(), getAuthorityHost(getAzureEnvironmentName())));
-    }
-
-    private String currentProxyCacheKey() {
-        Jenkins jenkins = Jenkins.getInstanceOrNull();
-        ProxyConfiguration proxyConfiguration = jenkins != null ? jenkins.getProxy() : null;
-        if (proxyConfiguration == null) {
-            return "no-proxy";
-        }
-        return String.join(
-                "|",
-                StringUtils.defaultString(proxyConfiguration.getName()),
-                String.valueOf(proxyConfiguration.getPort()),
-                StringUtils.defaultString(proxyConfiguration.getUserName()),
-                proxyConfiguration.getSecretPassword() != null
-                        ? proxyConfiguration.getSecretPassword().getPlainText()
-                        : "");
     }
 
     GraphServiceClient<Request> getAzureClient() {
