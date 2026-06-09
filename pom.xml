@@ -41,6 +41,7 @@
         <jenkins.version>${jenkins.baseline}.3</jenkins.version>
         <node.version>22.20.0</node.version>
         <npm.version>10.9.3</npm.version>
+        <scribe.version>8.3.3</scribe.version>
         <hpi.compatibleSinceVersion>391.v252da_e1dd39c</hpi.compatibleSinceVersion>
 
         <checkstyle.skip>true</checkstyle.skip>
@@ -189,7 +190,7 @@
         <dependency>
             <groupId>com.github.scribejava</groupId>
             <artifactId>scribejava-apis</artifactId>
-            <version>8.3.3</version>
+            <version>${scribe.version}</version>
             <exclusions>
                 <!-- loaded via jackson2-api plugin -->
                 <exclusion>
@@ -201,6 +202,11 @@
                     <artifactId>*</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.github.scribejava</groupId>
+            <artifactId>scribejava-httpclient-okhttp</artifactId>
+            <version>${scribe.version}</version>
         </dependency>
         <dependency>
             <groupId>org.bitbucket.b_c</groupId>

@@ -17,14 +17,17 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.scribejava.core.builder.ServiceBuilder;
+import com.github.scribejava.core.httpclient.HttpClientConfig;
 import com.github.scribejava.core.model.OAuth2AccessToken;
 import com.github.scribejava.core.model.OAuthRequest;
 import com.github.scribejava.core.oauth.OAuth20Service;
 import com.github.scribejava.core.model.Response;
 import com.github.scribejava.core.model.Verb;
+import com.github.scribejava.httpclient.okhttp.OkHttpHttpClientConfig;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
 import com.microsoft.graph.http.GraphServiceException;
+import com.microsoft.graph.httpcore.HttpClients;
 import com.microsoft.graph.models.Group;
 import com.microsoft.graph.models.ProfilePhoto;
 import com.microsoft.graph.options.Option;
@@ -35,7 +38,6 @@ import com.microsoft.graph.requests.ProfilePhotoRequestBuilder;
 import com.microsoft.jenkins.azuread.avatar.EntraAvatarProperty;
 import com.microsoft.jenkins.azuread.oauth.StateCache;
 import com.microsoft.jenkins.azuread.scribe.AzureAdApi;
-import com.microsoft.jenkins.azuread.scribe.ScribeOkHttpClient;
 import com.microsoft.jenkins.azuread.utils.UUIDValidator;
 import com.thoughtworks.xstream.converters.Converter;
 import com.thoughtworks.xstream.converters.MarshallingContext;
@@ -69,6 +71,7 @@ import jakarta.servlet.http.HttpSession;
 import jenkins.model.Jenkins;
 import jenkins.security.SecurityListener;
 import jenkins.util.SystemProperties;
+import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -122,6 +125,7 @@ import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_PUBLIC_CLOUD;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_US_GOVERNMENT_L4;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_US_GOVERNMENT_L5;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.getAuthorityHost;
+import static com.microsoft.jenkins.azuread.GraphClientCache.addProxyToHttpClientIfRequired;
 import static com.microsoft.jenkins.azuread.utils.CertificateHelper.loadCertificateFromString;
 import static com.microsoft.jenkins.azuread.utils.CertificateHelper.loadPrivateKeyFromString;
 import static java.util.Collections.emptyList;
@@ -168,7 +172,6 @@ public class AzureSecurityRealm extends SecurityRealm {
     private String azureEnvironmentName = "Azure";
     private String credentialType = "Secret";
     private String domainHint = "";
-    private transient ScribeOkHttpClient oAuthHttpClient;
     private transient String oAuthHttpClientCacheKey;
 
     public AccessToken getAccessToken() {
@@ -362,24 +365,21 @@ public class AzureSecurityRealm extends SecurityRealm {
     }
 
     OAuth20Service getOAuthService() {
+
+        OkHttpClient.Builder builder = addProxyToHttpClientIfRequired(
+                new OkHttpClient.Builder(),
+                getAzureEnvironmentName()
+        );
+
+        OkHttpHttpClientConfig okHttpHttpClientConfig = new OkHttpHttpClientConfig(builder);        
+
         return new ServiceBuilder(clientId.getPlainText())
                 .apiSecret("Certificate".equals(credentialType) ? clientCertificate.getPlainText() : clientSecret.getPlainText())
-                .httpClient(getSharedOAuthHttpClient())
+                .httpClientConfig(okHttpHttpClientConfig)
                 .responseType("code")
                 .defaultScope("openid profile email")
                 .callback(getRootUrl() + CALLBACK_URL)
                 .build(AzureAdApi.custom(getTenant(), getAuthorityHost(getAzureEnvironmentName())));
-    }
-
-    synchronized ScribeOkHttpClient getSharedOAuthHttpClient() {
-        String authorityHost = getAuthorityHost(getAzureEnvironmentName());
-        String cacheKey = authorityHost + "|" + currentProxyCacheKey();
-        if (oAuthHttpClient == null || !cacheKey.equals(oAuthHttpClientCacheKey)) {
-            closeSharedOAuthHttpClient();
-            oAuthHttpClient = new ScribeOkHttpClient(authorityHost);
-            oAuthHttpClientCacheKey = cacheKey;
-        }
-        return oAuthHttpClient;
     }
 
     private String currentProxyCacheKey() {
@@ -396,14 +396,6 @@ public class AzureSecurityRealm extends SecurityRealm {
                 proxyConfiguration.getSecretPassword() != null
                         ? proxyConfiguration.getSecretPassword().getPlainText()
                         : "");
-    }
-
-    private void closeSharedOAuthHttpClient() {
-        if (oAuthHttpClient != null) {
-            oAuthHttpClient.close();
-            oAuthHttpClient = null;
-            oAuthHttpClientCacheKey = null;
-        }
     }
 
     GraphServiceClient<Request> getAzureClient() {
