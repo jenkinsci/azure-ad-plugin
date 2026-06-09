@@ -17,17 +17,15 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.scribejava.core.builder.ServiceBuilder;
-import com.github.scribejava.core.httpclient.HttpClientConfig;
+import com.github.scribejava.httpclient.okhttp.OkHttpHttpClientConfig;
 import com.github.scribejava.core.model.OAuth2AccessToken;
 import com.github.scribejava.core.model.OAuthRequest;
 import com.github.scribejava.core.oauth.OAuth20Service;
 import com.github.scribejava.core.model.Response;
 import com.github.scribejava.core.model.Verb;
-import com.github.scribejava.httpclient.okhttp.OkHttpHttpClientConfig;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
 import com.microsoft.graph.http.GraphServiceException;
-import com.microsoft.graph.httpcore.HttpClients;
 import com.microsoft.graph.models.Group;
 import com.microsoft.graph.models.ProfilePhoto;
 import com.microsoft.graph.options.Option;
@@ -172,7 +170,6 @@ public class AzureSecurityRealm extends SecurityRealm {
     private String azureEnvironmentName = "Azure";
     private String credentialType = "Secret";
     private String domainHint = "";
-    private transient String oAuthHttpClientCacheKey;
 
     public AccessToken getAccessToken() {
         TokenRequestContext tokenRequestContext = new TokenRequestContext();
