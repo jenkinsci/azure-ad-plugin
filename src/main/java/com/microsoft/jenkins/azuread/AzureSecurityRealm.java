@@ -18,6 +18,7 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.scribejava.core.builder.ServiceBuilder;
 import com.github.scribejava.httpclient.okhttp.OkHttpHttpClientConfig;
+import com.github.scribejava.httpclient.okhttp.OkHttpHttpClient;
 import com.github.scribejava.core.model.OAuth2AccessToken;
 import com.github.scribejava.core.model.OAuthRequest;
 import com.github.scribejava.core.oauth.OAuth20Service;
@@ -368,11 +369,13 @@ public class AzureSecurityRealm extends SecurityRealm {
         );
 
         OkHttpHttpClientConfig okHttpHttpClientConfig = new OkHttpHttpClientConfig(builder);        
-
+        OkHttpHttpClient okHttpHttpClient = new OkHttpHttpClient(okHttpHttpClientConfig);
+        
         return new ServiceBuilder(clientId.getPlainText())
                 .apiSecret("Certificate".equals(credentialType) ? clientCertificate.getPlainText() : clientSecret.getPlainText())
                 .httpClientConfig(okHttpHttpClientConfig)
                 .responseType("code")
+                .httpClient(okHttpHttpClient)
                 .defaultScope("openid profile email")
                 .callback(getRootUrl() + CALLBACK_URL)
                 .build(AzureAdApi.custom(getTenant(), getAuthorityHost(getAzureEnvironmentName())));
