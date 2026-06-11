@@ -17,7 +17,7 @@ class CertificateHelperTest {
 
     @Test
     void testLoadCertificateFromString() throws Exception {
-    X509Certificate cert = CertificateHelper.loadCertificateFromString(TestPemFixtures.certificatePem());
+        X509Certificate cert = CertificateHelper.loadCertificateFromString(TestPemFixtures.certificatePem());
 
         assertNotNull(cert);
         assertEquals("X.509", cert.getType());
@@ -60,5 +60,17 @@ class CertificateHelperTest {
     @Test
     void testDerEncodeLengthUsesThreeByteFormForValues256AndAbove() {
         assertArrayEquals(new byte[] {(byte) 0x82, (byte) 0x01, (byte) 0x00}, CertificateHelper.derEncodeLength(256));
+    }
+
+    @Test
+    void testDerEncodeLengthUsesFourByteFormForValues65536AndAbove() {
+        assertArrayEquals(
+                new byte[] {(byte) 0x83, (byte) 0x01, (byte) 0x00, (byte) 0x00},
+                CertificateHelper.derEncodeLength(65536));
+    }
+
+    @Test
+    void testDerEncodeLengthRejectsNegativeLengths() {
+        assertThrows(IllegalArgumentException.class, () -> CertificateHelper.derEncodeLength(-1));
     }
 }

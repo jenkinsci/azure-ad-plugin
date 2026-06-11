@@ -124,13 +124,17 @@ public class GraphClientCache {
         return TOKEN_CACHE.get(key);
     }
 
-    public static OkHttpClient.Builder addProxyToHttpClientIfRequired(OkHttpClient.Builder builder, String targetHostOrUrl) {
+    /**
+     * @param targetUrl the full URL (including scheme) of the service the client will talk to,
+     *                  used to evaluate the proxy exclusion list
+     */
+    public static OkHttpClient.Builder addProxyToHttpClientIfRequired(OkHttpClient.Builder builder, String targetUrl) {
         if (JenkinsJVM.isJenkinsJVM()) {
             ProxyConfiguration proxyConfiguration = Jenkins.get().getProxy();
             if (proxyConfiguration != null && StringUtils.isNotBlank(proxyConfiguration.getName())) {
 
-                String graphHost = URI.create(targetHostOrUrl).getHost();
-                Proxy proxy = proxyConfiguration.createProxy(graphHost);
+                String targetHost = URI.create(targetUrl).getHost();
+                Proxy proxy = proxyConfiguration.createProxy(targetHost);
 
                 builder = builder.proxy(proxy);
                 if (StringUtils.isNotBlank(proxyConfiguration.getUserName())) {

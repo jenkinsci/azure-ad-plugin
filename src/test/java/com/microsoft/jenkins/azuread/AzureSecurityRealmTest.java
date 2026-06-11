@@ -41,6 +41,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -101,12 +102,14 @@ class AzureSecurityRealmTest {
 
     @ParameterizedTest(name = "{index}: credentialType={0}")
     @MethodSource("data")
-    void testSavedConfig() {
+    void testSavedConfig(String credentialType) {
         BinaryStreamWriter writer = null;
         try {
             String secretString = "thisIsSpecialSecret";
             String certificateString = "thisIsSpecialCertificate";
             AzureSecurityRealm securityRealm = new AzureSecurityRealm("tenant", "clientId", Secret.fromString(secretString), 0);
+            securityRealm.setClientCertificate(certificateString);
+            securityRealm.setCredentialType(credentialType);
             AzureSecurityRealm.ConverterImpl converter = new AzureSecurityRealm.ConverterImpl();
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             writer = new BinaryStreamWriter(outputStream);
@@ -152,8 +155,8 @@ class AzureSecurityRealmTest {
         assertEquals(tokenEndpoint, payload.get("aud").asText());
         assertEquals(clientId, payload.get("iss").asText());
         assertEquals(clientId, payload.get("sub").asText());
-         assertTrue(payload.hasNonNull("jti"));
-         assertFalse(payload.get("jti").asText().isBlank());
+        assertTrue(payload.hasNonNull("jti"));
+        assertFalse(payload.get("jti").asText().isBlank());
         assertTrue(payload.get("exp").asLong() > payload.get("iat").asLong());
 
         // Verify signature is valid
@@ -194,6 +197,22 @@ class AzureSecurityRealmTest {
             TestPemFixtures.certificatePem() + "\n"
                 + TestPemFixtures.certificatePem() + "\n"
                 + TestPemFixtures.pkcs8PrivateKeyPem());
+        realm.setCredentialType("Certificate");
+
+        String jwt = realm.getClientAssertion("https://login.microsoftonline.com/test-tenant/oauth2/v2.0/token");
+
+        assertNotNull(jwt);
+        assertEquals(3, jwt.split("\\.").length);
+    }
+
+    @Test
+    void testGetClientAssertionUsesFirstPrivateKeyWhenMultipleArePresent() throws Exception {
+        AzureSecurityRealm realm = new AzureSecurityRealm("test-tenant", "test-client-id", Secret.fromString("unused"), 0);
+        // the second key is invalid, so this only passes if the first one is used
+        realm.setClientCertificate(
+            TestPemFixtures.certificatePem() + "\n"
+                + TestPemFixtures.pkcs8PrivateKeyPem()
+                + "\n-----BEGIN PRIVATE KEY-----\nAQID\n-----END PRIVATE KEY-----");
         realm.setCredentialType("Certificate");
 
         String jwt = realm.getClientAssertion("https://login.microsoftonline.com/test-tenant/oauth2/v2.0/token");
@@ -246,6 +265,7 @@ class AzureSecurityRealmTest {
 
         assertNotNull(service);
         assertEquals("openid profile email", service.getDefaultScope());
+        assertEquals("secret", service.getApiSecret());
     }
 
     @Test
@@ -259,6 +279,8 @@ class AzureSecurityRealmTest {
 
         assertNotNull(service);
         assertEquals("openid profile email", service.getDefaultScope());
+        // the certificate flow authenticates with a client assertion, the PEM must not be used as a secret
+        assertNull(service.getApiSecret());
     }
 
     @Test
@@ -284,6 +306,16 @@ class AzureSecurityRealmTest {
         assertEquals("select_account", service.lastAuthorizationParams().get("prompt"));
         assertEquals("contoso.com", service.lastAuthorizationParams().get("domain_hint"));
         assertNotNull(service.lastAuthorizationParams().get("state"));
+    }
+
+    @Test
+    void testDoFinishLoginRedirectsToContextRootWhenStateParameterIsAbsent() throws Exception {
+        TestAzureSecurityRealm realm = new TestAzureSecurityRealm("tenant", "client-id", Secret.fromString("secret"), 0);
+        RequestStub requestStub = new RequestStub(true);
+
+        HttpResponse response = realm.doFinishLogin(requestStub.request());
+
+        assertFalse(response instanceof HttpRedirect);
     }
 
     @Test
