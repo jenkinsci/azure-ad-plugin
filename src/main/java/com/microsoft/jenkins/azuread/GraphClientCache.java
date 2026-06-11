@@ -45,7 +45,10 @@ public class GraphClientCache {
         OkHttpClient.Builder builder = HttpClients.createDefault(authProvider)
                 .newBuilder();
 
-        builder = addProxyToHttpClientIfRequired(builder, key.getAzureEnvironmentName());
+        String azureEnv = key.getAzureEnvironmentName();
+        String targetUrl = getGraphResource(azureEnv);
+
+        builder = addProxyToHttpClientIfRequired(builder, targetUrl);
         final OkHttpClient graphHttpClient = builder.build();
 
         GraphServiceClient<Request> graphServiceClient = GraphServiceClient
@@ -53,7 +56,7 @@ public class GraphClientCache {
                 .httpClient(graphHttpClient)
                 .buildClient();
 
-        String azureEnv = key.getAzureEnvironmentName();
+
 
         if (!azureEnv.equals(AZURE_PUBLIC_CLOUD)) {
             graphServiceClient.setServiceRoot(getServiceRoot(azureEnv));
@@ -121,12 +124,12 @@ public class GraphClientCache {
         return TOKEN_CACHE.get(key);
     }
 
-    public static OkHttpClient.Builder addProxyToHttpClientIfRequired(OkHttpClient.Builder builder, String azureEnvironmentName) {
+    public static OkHttpClient.Builder addProxyToHttpClientIfRequired(OkHttpClient.Builder builder, String targetHostOrUrl) {
         if (JenkinsJVM.isJenkinsJVM()) {
             ProxyConfiguration proxyConfiguration = Jenkins.get().getProxy();
             if (proxyConfiguration != null && StringUtils.isNotBlank(proxyConfiguration.getName())) {
 
-                String graphHost = URI.create(getGraphResource(azureEnvironmentName)).getHost();
+                String graphHost = URI.create(targetHostOrUrl).getHost();
                 Proxy proxy = proxyConfiguration.createProxy(graphHost);
 
                 builder = builder.proxy(proxy);

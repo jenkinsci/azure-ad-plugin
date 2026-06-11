@@ -363,9 +363,10 @@ public class AzureSecurityRealm extends SecurityRealm {
 
     OAuth20Service getOAuthService() {
 
+        String targetHost = getAuthorityHost(getAzureEnvironmentName());
         OkHttpClient.Builder builder = addProxyToHttpClientIfRequired(
                 new OkHttpClient.Builder(),
-                getAzureEnvironmentName()
+                targetHost
         );
 
         OkHttpHttpClientConfig okHttpHttpClientConfig = new OkHttpHttpClientConfig(builder);        
@@ -378,7 +379,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                 .httpClient(okHttpHttpClient)
                 .defaultScope("openid profile email")
                 .callback(getRootUrl() + CALLBACK_URL)
-                .build(AzureAdApi.custom(getTenant(), getAuthorityHost(getAzureEnvironmentName())));
+                .build(AzureAdApi.custom(getTenant(), targetHost));
     }
 
     GraphServiceClient<Request> getAzureClient() {

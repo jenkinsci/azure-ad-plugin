@@ -37,6 +37,7 @@ import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static com.microsoft.jenkins.azuread.AzureEnvironment.getGraphResource;
 import static com.microsoft.jenkins.azuread.GraphClientCache.addProxyToHttpClientIfRequired;
 
 /**
@@ -169,9 +170,9 @@ public class GraphProxy implements RootAction, StaplerProxy {
             SecurityRealm securityRealm = Jenkins.get().getSecurityRealm();
             AzureSecurityRealm azureSecurityRealm = ((AzureSecurityRealm) securityRealm);
 
-            String azureEnvironmentName = azureSecurityRealm.getAzureEnvironmentName();
+            String targetHostOrUrl = getGraphResource(azureSecurityRealm.getAzureEnvironmentName());
 
-            return addProxyToHttpClientIfRequired(new OkHttpClient().newBuilder(), azureEnvironmentName).build();
+            return addProxyToHttpClientIfRequired(new OkHttpClient().newBuilder(), targetHostOrUrl).build();
         }
         return DEFAULT_CLIENT;
     }
