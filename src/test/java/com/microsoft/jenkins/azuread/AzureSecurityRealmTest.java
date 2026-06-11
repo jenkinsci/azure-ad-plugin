@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.scribejava.core.builder.api.DefaultApi20;
 import com.github.scribejava.core.model.OAuth2AccessToken;
 import com.github.scribejava.core.oauth.OAuth20Service;
-import com.microsoft.jenkins.azuread.utils.CertificateHelper;
 import com.microsoft.jenkins.azuread.oauth.StateCache;
 import com.thoughtworks.xstream.io.binary.BinaryStreamReader;
 import com.thoughtworks.xstream.io.binary.BinaryStreamWriter;
@@ -31,8 +30,8 @@ import java.io.OutputStream;
 import java.lang.reflect.Proxy;
 import java.nio.charset.StandardCharsets;
 import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.Signature;
-import java.security.cert.X509Certificate;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
@@ -42,8 +41,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNotSame;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -123,65 +120,13 @@ class AzureSecurityRealmTest {
         }
     }
 
-    // Test certificate and private key generated with keytool (RSA 2048, CN=Test)
-    private static final String TEST_CERT_PEM =
-            "-----BEGIN CERTIFICATE-----\n" +
-            "MIICwTCCAamgAwIBAgIIMfYaT3KZZsUwDQYJKoZIhvcNAQEMBQAwDzENMAsGA1UE\n" +
-            "AxMEVGVzdDAeFw0yNjA1MTMxOTM4MjFaFw0yNzA1MTMxOTM4MjFaMA8xDTALBgNV\n" +
-            "BAMTBFRlc3QwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDnJgKN5pFq\n" +
-            "nWU2axCG0/j4sQPU/KZ3b8V+Zsi0VHXujIJ5c2243HNX/F/6mLFWHPehrR+YVY20\n" +
-            "5ej+TbRwKNPmZmSJwzltKm82lic+ppKd47Krid037aWDG+KKrkjSbjz3ReavoLwi\n" +
-            "ZFyXVnz7ZNswpk6IZ0r0f4yF0j/5MXlLGd3tHl/wv/KhqfrKoeS/+JcYtckHLBIY\n" +
-            "6zjTVZ7eWU47Ty4586uBEmejWz+RM7vjpb8BTLxpkeH3tJRYRKiQZuWp70VGdbsx\n" +
-            "gcqKZtSwqwj1EVE7eFAYpq8qQymD+ZzjOHlukyou4X1792sxUarzBrH+JSilDxl8\n" +
-            "VsmnVbKYo2KpAgMBAAGjITAfMB0GA1UdDgQWBBQFO//s6Kg2WT/kGVCy62vtdSk5\n" +
-            "lTANBgkqhkiG9w0BAQwFAAOCAQEApHk5GLUtBAGVDotCmmc7KkMkwQivbsPYY3F4\n" +
-            "vooTUnkjrSX3bUtqpf7MVX0LMwCbHfYbeAF6OEnW+yFLDdFDvsegcrJAhcg5xP7c\n" +
-            "KVX0xIGwibid/oi62C0TA/f94wmjPcnO64JC3RqFo7/2dKmdX+Y2HlMNM1PQB+/0\n" +
-            "+UWkvZQPiXOKVM6z9uOcCsEsDqHHQFkJ43cfQeAdQYOMztBVgCbUfSxZTBDhPAvc\n" +
-            "T/SxSRVU0NEOolw7cNxkO3cJ1QDJOR0bE2th/DT0IpglcONpYtyvSOTIfugo11oD\n" +
-            "DQ8E6L9cI2tKONchbBum+rL9XXZH2xazgfKsL/iMkgdbhfm6TQ==\n" +
-            "-----END CERTIFICATE-----";
-
-    private static final String TEST_KEY_PEM =
-            "-----BEGIN PRIVATE KEY-----\n" +
-            "MIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQDnJgKN5pFqnWU2\n" +
-            "axCG0/j4sQPU/KZ3b8V+Zsi0VHXujIJ5c2243HNX/F/6mLFWHPehrR+YVY205ej+\n" +
-            "TbRwKNPmZmSJwzltKm82lic+ppKd47Krid037aWDG+KKrkjSbjz3ReavoLwiZFyX\n" +
-            "Vnz7ZNswpk6IZ0r0f4yF0j/5MXlLGd3tHl/wv/KhqfrKoeS/+JcYtckHLBIY6zjT\n" +
-            "VZ7eWU47Ty4586uBEmejWz+RM7vjpb8BTLxpkeH3tJRYRKiQZuWp70VGdbsxgcqK\n" +
-            "ZtSwqwj1EVE7eFAYpq8qQymD+ZzjOHlukyou4X1792sxUarzBrH+JSilDxl8Vsmn\n" +
-            "VbKYo2KpAgMBAAECggEAA2FJ6PCghbzsIvc+fvTl5Mpp3O5zh2GUs2bQs9pcUx2u\n" +
-            "Nr/FBflV8nPCpN52EWVLtbXbYBXi2ZdXEzOTBOTZRxA46M7NrdamA61Ua5Ucpb8T\n" +
-            "o3CDp0gMAzZ1ge5PKvc+YFCfBp3EwoKnMUtWzoeeBkBtpjmkc0jThuLD2WKrfGP1\n" +
-            "qKoLooGdb/+xMEPUvrJiuvHUEqmV62OC0EgT8/ej0T+yy4+sZdERtXbLgXcH1J53\n" +
-            "viVfpO32ORkYl0AQo/pNcBXL6YiA+Gj9kM3d2e+nyyzyjBftVFydl8vYiP95Crsh\n" +
-            "YExeffsCLHX4mfPea5SBpAxa0tV0W29MrWEVE5ExdQKBgQDtS6cl27V68WTg7wTD\n" +
-            "ZJAcgmtnXqXdZigQdZYPoEdrZi45p9FGoKTJye3k4yBoxmPJMYyGxb20nXMFWT5u\n" +
-            "dXJ7IgPSQQGc0kll2wTCJWzhjfsaxPF6886knbeuxLSenMNBG3RRotQVJgqiJTFj\n" +
-            "ahzXmgqP3ah2Z9jWHX+VWJXcPwKBgQD5XlEgHLiQAvTpbf78h7eGQKjaF5BKV7vk\n" +
-            "IBHzfko4E610R2QHsgA4SU8tMsj7xGbRDPtNJ860amBzY6V3RElAqn66WJkdgSgE\n" +
-            "Cen0rZE28P7HgP8EcBmtp9pfXQ1rY1na5IHrEFOIWt9phisLCx1ZqgETV2YkC2mH\n" +
-            "yub/9aEnFwKBgQCtd+GP7mZjorXxLSnZQNmMzdaAMZOlHvno1lzFvZCYNZFTOpfl\n" +
-            "PqhYj1JmQZc+oNDvklY9a667q2IbJdta2ma/FuWePUFVh/B6EjsPRlarKKTJM/Gn\n" +
-            "xTVp55YQn+G+FbEzFkPZLeRGNZIOaIwLNdYx0n0oIIz3SgEcvWG4JpMe9wKBgQCg\n" +
-            "0YOuGven4FBEDm0IPRpNWXvLkrC6URRaTZhmGMcSnRYazEOldtUPd6+5LWxSedn4\n" +
-            "7c9PdeGnlob3Q4cdgIthSdMKqEKutXGyERaxdhIVhZw522YbXZQh2wNIxwD1hZAY\n" +
-            "S4/BobjNUhWMvzsZFyTpg2rIJ3A2xKldKqyI28b/JwKBgQCouFbakhhKeyo4QuPQ\n" +
-            "AvuzsMNyR0KMoaKF+43p4IWk/napw6BVIlQbqec3/RbFUYlQQSFzgg8WJ6K9aqvT\n" +
-            "twFGB7vyfdXzDW2yS5ZkMnnwWhXK7w0AtKEet2TENtfz1DEvWm6/OVbkTVL46oDj\n" +
-            "fvjLUPapqv+8g/k7SdTipmkpbg==\n" +
-            "-----END PRIVATE KEY-----";
-
-    private static final String COMBINED_PEM = TEST_CERT_PEM + "\n" + TEST_KEY_PEM;
-
     @Test
     void testGenerateClientAssertion() throws Exception {
         AzureSecurityRealm realm = new AzureSecurityRealm();
 
-        PrivateKey privateKey = CertificateHelper.loadPrivateKeyFromString(TEST_KEY_PEM);
-        X509Certificate cert = CertificateHelper.loadCertificateFromString(TEST_CERT_PEM);
-        String thumbprint = realm.calculateThumbprint(cert);
+        PrivateKey privateKey = TestPemFixtures.privateKey();
+        PublicKey publicKey = TestPemFixtures.publicKey();
+        String thumbprint = "test-thumbprint";
 
         String clientId = "test-client-id";
         realm.setClientId(clientId);
@@ -207,14 +152,15 @@ class AzureSecurityRealmTest {
         assertEquals(tokenEndpoint, payload.get("aud").asText());
         assertEquals(clientId, payload.get("iss").asText());
         assertEquals(clientId, payload.get("sub").asText());
-        assertNotNull(payload.get("jti").asText());
+         assertTrue(payload.hasNonNull("jti"));
+         assertFalse(payload.get("jti").asText().isBlank());
         assertTrue(payload.get("exp").asLong() > payload.get("iat").asLong());
 
         // Verify signature is valid
         String signingInput = parts[0] + "." + parts[1];
         byte[] sigBytes = Base64.getUrlDecoder().decode(parts[2]);
         Signature sig = Signature.getInstance("SHA256withRSA");
-        sig.initVerify(cert.getPublicKey());
+        sig.initVerify(publicKey);
         sig.update(signingInput.getBytes(StandardCharsets.UTF_8));
         assertTrue(sig.verify(sigBytes));
     }
@@ -224,7 +170,7 @@ class AzureSecurityRealmTest {
         String tokenEndpoint = "https://login.microsoftonline.com/test-tenant/oauth2/v2.0/token";
 
         AzureSecurityRealm realm = new AzureSecurityRealm("test-tenant", "test-client-id", Secret.fromString("unused"), 0);
-        realm.setClientCertificate(COMBINED_PEM);
+        realm.setClientCertificate(TestPemFixtures.combinedPem());
         realm.setCredentialType("Certificate");
 
         String jwt = realm.getClientAssertion(tokenEndpoint);
@@ -244,7 +190,10 @@ class AzureSecurityRealmTest {
     @Test
     void testGetClientAssertionUsesFirstCertificateWhenMultipleArePresent() throws Exception {
         AzureSecurityRealm realm = new AzureSecurityRealm("test-tenant", "test-client-id", Secret.fromString("unused"), 0);
-        realm.setClientCertificate(TEST_CERT_PEM + "\n" + TEST_CERT_PEM + "\n" + TEST_KEY_PEM);
+        realm.setClientCertificate(
+            TestPemFixtures.certificatePem() + "\n"
+                + TestPemFixtures.certificatePem() + "\n"
+                + TestPemFixtures.pkcs8PrivateKeyPem());
         realm.setCredentialType("Certificate");
 
         String jwt = realm.getClientAssertion("https://login.microsoftonline.com/test-tenant/oauth2/v2.0/token");
@@ -257,7 +206,7 @@ class AzureSecurityRealmTest {
     void testGetClientAssertionWrapsCertificateParsingErrors() {
         AzureSecurityRealm realm = new AzureSecurityRealm("test-tenant", "test-client-id", Secret.fromString("unused"), 0);
         realm.setClientCertificate(
-                "-----BEGIN CERTIFICATE-----\nAQID\n-----END CERTIFICATE-----\n" + TEST_KEY_PEM);
+            "-----BEGIN CERTIFICATE-----\nAQID\n-----END CERTIFICATE-----\n" + TestPemFixtures.pkcs8PrivateKeyPem());
         realm.setCredentialType("Certificate");
 
         RuntimeException exception = assertThrows(RuntimeException.class, () ->
@@ -270,7 +219,7 @@ class AzureSecurityRealmTest {
     @Test
     void testGetClientAssertionMissingCertificate() throws Exception {
         AzureSecurityRealm realm = new AzureSecurityRealm("test-tenant", "test-client-id", Secret.fromString("unused"), 0);
-        realm.setClientCertificate(TEST_KEY_PEM); // only key, no certificate
+        realm.setClientCertificate(TestPemFixtures.pkcs8PrivateKeyPem()); // only key, no certificate
         realm.setCredentialType("Certificate");
 
         assertThrows(Exception.class, () ->
@@ -280,7 +229,7 @@ class AzureSecurityRealmTest {
     @Test
     void testGetClientAssertionMissingKey() throws Exception {
         AzureSecurityRealm realm = new AzureSecurityRealm("test-tenant", "test-client-id", Secret.fromString("unused"), 0);
-        realm.setClientCertificate(TEST_CERT_PEM); // only cert, no key
+        realm.setClientCertificate(TestPemFixtures.certificatePem()); // only cert, no key
         realm.setCredentialType("Certificate");
 
         assertThrows(Exception.class, () ->
