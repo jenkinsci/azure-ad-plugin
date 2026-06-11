@@ -515,9 +515,8 @@ public class AzureSecurityRealm extends SecurityRealm {
                     } else {
                         LOGGER.log(Level.SEVERE,
                                 "Failed to obtain tokens using certificate-based authentication. HTTP Status: "
-                                        + response.getCode() + ", Response: " + response.getBody());
+                                        + response.getCode() + ", Message: " + response.getMessage());
                         throw new IOException("Authentication failed: " + response.getCode() + " " + response.getMessage());
-                    }
                 } else {
                     LOGGER.log(Level.FINE, "Using client secret-based authentication to exchange authorization code for tokens.");
                     final OAuth2AccessToken accessToken = service.getAccessToken(authorizationCode);
@@ -614,7 +613,9 @@ public class AzureSecurityRealm extends SecurityRealm {
                     certPem = part.trim();
                 }
             } else if (part.contains("PRIVATE KEY")) {
-                keyPem = part.trim();
+                if (keyPem == null) {
+                    keyPem = part.trim();
+                }
             }
         }
         if (certPem == null || keyPem == null) {

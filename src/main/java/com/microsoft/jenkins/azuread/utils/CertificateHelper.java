@@ -75,13 +75,27 @@ public final class CertificateHelper {
     }
 
     static byte[] derEncodeLength(int length) {
+        if (length < 0) {
+            throw new IllegalArgumentException("length must be non-negative");
+        }
         if (length < 128) {
             return new byte[] {(byte) length};
-        } else if (length < 256) {
-            return new byte[] {(byte) 0x81, (byte) length};
-        } else {
-            return new byte[] {(byte) 0x82, (byte) (length >> 8), (byte) length};
         }
+
+        int numBytes = 0;
+        int tmp = length;
+        while (tmp > 0) {
+            numBytes++;
+            tmp >>= 8;
+        }
+
+        byte[] result = new byte[1 + numBytes];
+        result[0] = (byte) (0x80 | numBytes);
+        for (int i = numBytes; i > 0; i--) {
+            result[i] = (byte) (length & 0xFF);
+            length >>= 8;
+        }
+        return result;
     }
 
     static byte[] concat(byte[]... arrays) {
