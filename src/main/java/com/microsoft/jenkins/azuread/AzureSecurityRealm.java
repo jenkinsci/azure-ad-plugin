@@ -517,6 +517,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                                 "Failed to obtain tokens using certificate-based authentication. HTTP Status: "
                                         + response.getCode() + ", Message: " + response.getMessage());
                         throw new IOException("Authentication failed: " + response.getCode() + " " + response.getMessage());
+                    }
                 } else {
                     LOGGER.log(Level.FINE, "Using client secret-based authentication to exchange authorization code for tokens.");
                     final OAuth2AccessToken accessToken = service.getAccessToken(authorizationCode);
