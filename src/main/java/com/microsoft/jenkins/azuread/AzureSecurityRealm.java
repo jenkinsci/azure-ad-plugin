@@ -482,7 +482,10 @@ public class AzureSecurityRealm extends SecurityRealm {
 
             long endTime = System.currentTimeMillis();
             LOGGER.info("Requesting oauth code time = " + (endTime - beginTime) + " ms");
+
             // Extract the authorization code from the request
+            String authorizationCode = request.getParameter("code");
+
             if (StringUtils.isBlank(authorizationCode)) {
                 LOGGER.info("No `code` parameter found. Redirecting to context root.");
                 return HttpResponses.redirectToContextRoot();
