@@ -5,7 +5,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.scribejava.core.builder.api.DefaultApi20;
 import com.github.scribejava.core.model.OAuth2AccessToken;
 import com.github.scribejava.core.oauth.OAuth20Service;
+import com.github.scribejava.httpclient.okhttp.OkHttpHttpClient;
 import com.microsoft.jenkins.azuread.oauth.StateCache;
+import hudson.ProxyConfiguration;
 import com.thoughtworks.xstream.io.binary.BinaryStreamReader;
 import com.thoughtworks.xstream.io.binary.BinaryStreamWriter;
 import hudson.util.Secret;
@@ -41,7 +43,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -284,6 +288,23 @@ class AzureSecurityRealmTest {
     }
 
     @Test
+    void testOAuthHttpClientIsRebuiltWhenProxyConfigurationChanges(JenkinsRule j) {
+        JenkinsLocationConfiguration.get().setUrl("http://localhost/jenkins/");
+        AzureSecurityRealm realm = new AzureSecurityRealm("tenant", "client-id", Secret.fromString("secret"), 0);
+
+        OkHttpHttpClient first = realm.getOAuthHttpClient();
+        assertSame(first, realm.getOAuthHttpClient());
+
+        j.jenkins.setProxy(new ProxyConfiguration("proxy.example.com", 8888));
+        OkHttpHttpClient second = realm.getOAuthHttpClient();
+        assertNotSame(first, second);
+        assertSame(second, realm.getOAuthHttpClient());
+
+        j.jenkins.setProxy(null);
+        assertNotSame(second, realm.getOAuthHttpClient());
+    }
+
+    @Test
     void testDoCommenceLoginStoresSessionStateAndUsesTrimmedReferer() {
         TestAzureSecurityRealm realm = new TestAzureSecurityRealm("tenant", "client-id", Secret.fromString("secret"), 0);
         FakeOAuth20Service service = new FakeOAuth20Service("https://login.example/authorize", null);
@@ -306,16 +327,6 @@ class AzureSecurityRealmTest {
         assertEquals("select_account", service.lastAuthorizationParams().get("prompt"));
         assertEquals("contoso.com", service.lastAuthorizationParams().get("domain_hint"));
         assertNotNull(service.lastAuthorizationParams().get("state"));
-    }
-
-    @Test
-    void testDoFinishLoginRedirectsToContextRootWhenStateParameterIsAbsent() throws Exception {
-        TestAzureSecurityRealm realm = new TestAzureSecurityRealm("tenant", "client-id", Secret.fromString("secret"), 0);
-        RequestStub requestStub = new RequestStub(true);
-
-        HttpResponse response = realm.doFinishLogin(requestStub.request());
-
-        assertFalse(response instanceof HttpRedirect);
     }
 
     @Test

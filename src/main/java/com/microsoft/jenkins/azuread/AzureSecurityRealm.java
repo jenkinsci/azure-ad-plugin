@@ -361,15 +361,32 @@ public class AzureSecurityRealm extends SecurityRealm {
         return jwtConsumer.get();
     }
 
-    // a single shared client to avoid creating a new connection pool per login,
-    // the realm instance is replaced whenever the configuration changes
-    private final Supplier<OkHttpHttpClient> oAuthHttpClient = Suppliers.memoize(() -> {
-        OkHttpClient.Builder builder = addProxyToHttpClientIfRequired(
-                new OkHttpClient.Builder(),
-                getAuthorityHost(getAzureEnvironmentName())
-        );
-        return new OkHttpHttpClient(new OkHttpHttpClientConfig(builder));
-    });
+    // a single shared client so logins share one connection pool, rebuilt if the
+    // Jenkins proxy configuration changes
+    private record CachedOAuthHttpClient(String proxyFingerprint, OkHttpHttpClient client) {
+    }
+
+    private transient volatile CachedOAuthHttpClient cachedOAuthHttpClient;
+
+    OkHttpHttpClient getOAuthHttpClient() {
+        String proxyFingerprint = GraphClientCache.proxyConfigurationFingerprint();
+        CachedOAuthHttpClient cached = cachedOAuthHttpClient;
+        if (cached == null || !cached.proxyFingerprint().equals(proxyFingerprint)) {
+            synchronized (this) {
+                cached = cachedOAuthHttpClient;
+                if (cached == null || !cached.proxyFingerprint().equals(proxyFingerprint)) {
+                    OkHttpClient.Builder builder = addProxyToHttpClientIfRequired(
+                            new OkHttpClient.Builder(),
+                            getAuthorityHost(getAzureEnvironmentName())
+                    );
+                    cached = new CachedOAuthHttpClient(proxyFingerprint,
+                            new OkHttpHttpClient(new OkHttpHttpClientConfig(builder)));
+                    cachedOAuthHttpClient = cached;
+                }
+            }
+        }
+        return cached.client();
+    }
 
     OAuth20Service getOAuthService() {
         ServiceBuilder serviceBuilder = new ServiceBuilder(clientId.getPlainText());
@@ -380,7 +397,7 @@ public class AzureSecurityRealm extends SecurityRealm {
         }
         return serviceBuilder
                 .responseType("code")
-                .httpClient(oAuthHttpClient.get())
+                .httpClient(getOAuthHttpClient())
                 .defaultScope("openid profile email")
                 .callback(getRootUrl() + CALLBACK_URL)
                 .build(AzureAdApi.custom(getTenant(), getAuthorityHost(getAzureEnvironmentName())));
@@ -1119,7 +1136,8 @@ public class AzureSecurityRealm extends SecurityRealm {
                             Secret.toString(clientCertificate),
                             credentialType,
                             tenant,
-                            azureEnvironmentName
+                            azureEnvironmentName,
+                            GraphClientCache.proxyConfigurationFingerprint()
                     )
             );
             try {

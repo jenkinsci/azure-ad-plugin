@@ -11,6 +11,7 @@ import com.microsoft.graph.authentication.TokenCredentialAuthProvider;
 import com.microsoft.graph.httpcore.HttpClients;
 import com.microsoft.graph.requests.GraphServiceClient;
 import hudson.ProxyConfiguration;
+import hudson.Util;
 import hudson.util.Secret;
 import io.jenkins.plugins.azuresdk.HttpClientRetriever;
 import java.net.URI;
@@ -45,7 +46,7 @@ public class GraphClientCache {
         OkHttpClient.Builder builder = HttpClients.createDefault(authProvider)
                 .newBuilder();
 
-        String azureEnv = key.getAzureEnvironmentName();
+        String azureEnv = key.azureEnvironmentName();
         String targetUrl = getGraphResource(azureEnv);
 
         builder = addProxyToHttpClientIfRequired(builder, targetUrl);
@@ -65,12 +66,12 @@ public class GraphClientCache {
     }
 
     private static TokenCredentialAuthProvider getAuthProvider(GraphClientCacheKey key) {
-        String graphResource = AzureEnvironment.getGraphResource(key.getAzureEnvironmentName());
+        String graphResource = AzureEnvironment.getGraphResource(key.azureEnvironmentName());
 
         TokenCredential tokenCredential;
-        if ("Secret".equals(key.getCredentialType())) {
+        if ("Secret".equals(key.credentialType())) {
             tokenCredential = getClientSecretCredential(key);
-        } else if ("Certificate".equals(key.getCredentialType())) {
+        } else if ("Certificate".equals(key.credentialType())) {
             tokenCredential = getClientCertificateCredential(key);
         } else {
             throw new IllegalArgumentException("Invalid credential type");
@@ -82,28 +83,28 @@ public class GraphClientCache {
 
     static ClientCertificateCredential getClientCertificateCredential(GraphClientCacheKey key) {
         return new ClientCertificateCredentialBuilder()
-                .clientId(key.getClientId())
+                .clientId(key.clientId())
                 .pemCertificate(getCertificate(key))
-                .tenantId(key.getTenantId())
+                .tenantId(key.tenantId())
                 .sendCertificateChain(true)
-                .authorityHost(getAuthorityHost(key.getAzureEnvironmentName()))
+                .authorityHost(getAuthorityHost(key.azureEnvironmentName()))
                 .httpClient(HttpClientRetriever.get())
                 .build();
     }
 
     static ClientSecretCredential getClientSecretCredential(GraphClientCacheKey key) {
         return new ClientSecretCredentialBuilder()
-                .clientId(key.getClientId())
-                .clientSecret(key.getClientSecret())
-                .tenantId(key.getTenantId())
-                .authorityHost(getAuthorityHost(key.getAzureEnvironmentName()))
+                .clientId(key.clientId())
+                .clientSecret(key.clientSecret())
+                .tenantId(key.tenantId())
+                .authorityHost(getAuthorityHost(key.azureEnvironmentName()))
                 .httpClient(HttpClientRetriever.get())
                 .build();
     }
 
     static InputStream getCertificate(GraphClientCacheKey key) {
 
-        String secretString = key.getClientCertificate();
+        String secretString = key.clientCertificate();
         return new ByteArrayInputStream(secretString.getBytes(StandardCharsets.UTF_8));
     }
 
@@ -118,10 +119,31 @@ public class GraphClientCache {
                 Secret.toString(azureSecurityRealm.getClientCertificate()),
                 azureSecurityRealm.getCredentialType(),
                 azureSecurityRealm.getTenant(),
-                azureSecurityRealm.getAzureEnvironmentName()
+                azureSecurityRealm.getAzureEnvironmentName(),
+                proxyConfigurationFingerprint()
         );
 
         return TOKEN_CACHE.get(key);
+    }
+
+    /**
+     * Identifies the parts of the Jenkins proxy configuration that clients are built with, so
+     * cached clients can be replaced when the proxy configuration changes.
+     */
+    static String proxyConfigurationFingerprint() {
+        if (JenkinsJVM.isJenkinsJVM()) {
+            ProxyConfiguration proxy = Jenkins.get().getProxy();
+            if (proxy != null) {
+                // digest so the password is not retained as plain text
+                return Util.getDigestOf(String.join("|",
+                        String.valueOf(proxy.getName()),
+                        String.valueOf(proxy.getPort()),
+                        String.valueOf(proxy.getNoProxyHost()),
+                        String.valueOf(proxy.getUserName()),
+                        Secret.toString(proxy.getSecretPassword())));
+            }
+        }
+        return "";
     }
 
     /**
