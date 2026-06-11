@@ -10,11 +10,13 @@ import java.util.Base64;
 
 public final class CertificateHelper {
 
+    private CertificateHelper() {
+    }
+
     private static final String PKCS8_PRIVATE_KEY_HEADER = "-----BEGIN PRIVATE KEY-----";
     private static final String PKCS8_PRIVATE_KEY_FOOTER = "-----END PRIVATE KEY-----";
     private static final String PKCS1_RSA_PRIVATE_KEY_HEADER = "-----BEGIN RSA PRIVATE KEY-----";
     private static final String PKCS1_RSA_PRIVATE_KEY_FOOTER = "-----END RSA PRIVATE KEY-----";
-
     // Load certificate from PEM string (single-line or multi-line)
     public static X509Certificate loadCertificateFromString(String certPem) throws GeneralSecurityException {
         String certClean = certPem.replaceAll("-----BEGIN CERTIFICATE-----", "")

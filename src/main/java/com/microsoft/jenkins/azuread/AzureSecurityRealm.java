@@ -482,16 +482,13 @@ public class AzureSecurityRealm extends SecurityRealm {
             long endTime = System.currentTimeMillis();
             LOGGER.info("Requesting oauth code time = " + (endTime - beginTime) + " ms");
             // Extract the authorization code from the request
-            String authorizationCode = request.getParameter("code");
             if (StringUtils.isBlank(authorizationCode)) {
-                LOGGER.info("No `authorization_code` found. Redirecting to context root.");
+                LOGGER.info("No `code` parameter found. Redirecting to context root.");
                 return HttpResponses.redirectToContextRoot();
             }
 
-            // Replace these values with your app's configuration
             String redirectUri = getRootUrl() + CALLBACK_URL;
 
-            // The token endpoint for Azure AD
             OAuth20Service service = getOAuthService();
             String tokenResponse = "";
 
@@ -588,7 +585,7 @@ public class AzureSecurityRealm extends SecurityRealm {
             // This is important for jenkins.security.ResourceDomainRootAction,
             // whose resource URIs encode the user ID but not the groups.
             SecurityListener.fireLoggedIn(currentUser.getId());
-        } catch (IOException ex) {
+        } catch (IOException | InvalidJwtException | RuntimeException ex) {
             LOGGER.log(Level.SEVERE, "error", ex);
             throw ex;
         }
