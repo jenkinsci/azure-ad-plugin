@@ -2,6 +2,7 @@ package com.microsoft.jenkins.azuread;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.microsoft.graph.http.GraphServiceException;
 import com.microsoft.graph.models.DirectoryObject;
 import com.microsoft.graph.models.Group;
 import com.microsoft.graph.requests.DirectoryObjectCollectionWithReferencesPage;
@@ -16,6 +17,8 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import static java.net.HttpURLConnection.HTTP_FORBIDDEN;
 
 public final class AzureCachePool {
     private static final Logger LOGGER = Logger.getLogger(AzureCachePool.class.getName());
@@ -32,58 +35,62 @@ public final class AzureCachePool {
     }
 
     public List<AzureAdGroup> getBelongingGroupsByOid(final String oid) {
-        List<AzureAdGroup> cachedResult = belongingGroupsByOid.getIfPresent(oid);
-        if (cachedResult != null) {
-            return cachedResult;
-        }
+        List<AzureAdGroup> result = belongingGroupsByOid.get(oid,
+                (cacheKey) -> {
+                    try {
+                        DirectoryObjectCollectionWithReferencesPage collection = azure
+                                .users(oid)
+                                // TODO asGroup isn't working json error, and neither is $filter on securityEnabled
+                                .transitiveMemberOf()
+                                .buildRequest()
+                                .get();
 
-        try {
-            DirectoryObjectCollectionWithReferencesPage collection = azure
-                    .users(oid)
-                    // TODO asGroup isn't working json error, and neither is $filter on securityEnabled
-                    .transitiveMemberOf()
-                    .buildRequest()
-                    .get();
+                        List<AzureAdGroup> groups = new ArrayList<>();
 
-            List<AzureAdGroup> groups = new ArrayList<>();
+                        while (collection != null) {
+                            final List<DirectoryObject> directoryObjects = collection.getCurrentPage();
 
-            while (collection != null) {
-                final List<DirectoryObject> directoryObjects = collection.getCurrentPage();
+                            List<AzureAdGroup> groupsFromPage = directoryObjects.stream()
+                                    .map(group -> {
+                                        if (group instanceof Group) {
+                                            return new AzureAdGroup(group.id, ((Group) group).displayName);
+                                        }
+                                        return null;
+                                    })
+                                    .filter(Objects::nonNull)
+                                    .toList();
+                            groups.addAll(groupsFromPage);
 
-                List<AzureAdGroup> groupsFromPage = directoryObjects.stream()
-                        .map(group -> {
-                            if (group instanceof Group) {
-                                return new AzureAdGroup(group.id, ((Group) group).displayName);
+                            DirectoryObjectCollectionWithReferencesRequestBuilder nextPage = collection
+                                    .getNextPage();
+                            if (nextPage == null) {
+                                break;
+                            } else {
+                                collection = nextPage.buildRequest().get();
                             }
-                            return null;
-                        })
-                        .filter(Objects::nonNull)
-                        .toList();
-                groups.addAll(groupsFromPage);
+                        }
 
-                DirectoryObjectCollectionWithReferencesRequestBuilder nextPage = collection
-                        .getNextPage();
-                if (nextPage == null) {
-                    break;
-                } else {
-                    collection = nextPage.buildRequest().get();
-                }
-            }
-
-            // Only cache successful results
-            belongingGroupsByOid.put(oid, groups);
-
-            if (Constants.DEBUG) {
-                belongingGroupsByOid.invalidate(oid);
-            }
-
-            return groups;
-        } catch (Exception e) {
-            LOGGER.log(Level.WARNING, "Do not have sufficient privileges to "
-                    + "fetch your belonging groups' authorities.", e);
-            // Return empty list but DO NOT cache it - let the next request try again
-            return Collections.emptyList();
+                        return groups;
+                    } catch (GraphServiceException e) {
+                        if (e.getResponseCode() == HTTP_FORBIDDEN) {
+                            LOGGER.log(Level.WARNING, "Do not have sufficient privileges to "
+                                    + "fetch your belonging groups' authorities.", e);
+                            // cache the empty list to avoid re-checking permissions on every request
+                            return Collections.emptyList();
+                        }
+                        LOGGER.log(Level.WARNING, "Failed to fetch the belonging groups of " + oid, e);
+                        // returning null skips the cache so the next request retries
+                        return null;
+                    } catch (Exception e) {
+                        LOGGER.log(Level.WARNING, "Failed to fetch the belonging groups of " + oid, e);
+                        // returning null skips the cache so the next request retries
+                        return null;
+                    }
+                });
+        if (Constants.DEBUG) {
+            belongingGroupsByOid.invalidate(oid);
         }
+        return result == null ? Collections.emptyList() : result;
     }
 
     public static void invalidateBelongingGroupsByOid(String userId) {
