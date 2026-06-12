@@ -32,6 +32,7 @@ public final class AzureCachePool {
     }
 
     public List<AzureAdGroup> getBelongingGroupsByOid(final String oid) {
+        LOGGER.log(Level.FINE, "getBelongingGroupsByOid: fetching groups for oid ''{0}''", oid);
         List<AzureAdGroup> result = belongingGroupsByOid.get(oid,
                 (cacheKey) -> {
                     try {
@@ -68,6 +69,8 @@ public final class AzureCachePool {
                             }
                         }
 
+                        LOGGER.log(Level.FINE, "getBelongingGroupsByOid: found {0} groups for oid ''{1}''",
+                                new Object[]{groups.size(), oid});
                         return groups;
                     } catch (Exception e) {
                         LOGGER.log(Level.WARNING, "Do not have sufficient privileges to "

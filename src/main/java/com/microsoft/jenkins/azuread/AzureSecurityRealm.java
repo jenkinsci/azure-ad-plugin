@@ -12,6 +12,8 @@ import com.azure.identity.ClientSecretCredentialBuilder;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.azure.identity.ClientCertificateCredential;
 import com.azure.identity.ClientCertificateCredentialBuilder;
+import com.azure.identity.WorkloadIdentityCredential;
+import com.azure.identity.WorkloadIdentityCredentialBuilder;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.github.benmanes.caffeine.cache.Cache;
@@ -37,6 +39,7 @@ import com.microsoft.graph.requests.ProfilePhotoRequestBuilder;
 import com.microsoft.jenkins.azuread.avatar.EntraAvatarProperty;
 import com.microsoft.jenkins.azuread.oauth.StateCache;
 import com.microsoft.jenkins.azuread.scribe.AzureAdApi;
+import com.microsoft.jenkins.azuread.scribe.AzureWorkloadIdentityApi;
 import com.microsoft.jenkins.azuread.utils.UUIDValidator;
 import com.thoughtworks.xstream.converters.Converter;
 import com.thoughtworks.xstream.converters.MarshallingContext;
@@ -176,9 +179,11 @@ public class AzureSecurityRealm extends SecurityRealm {
         String graphResource = AzureEnvironment.getGraphResource(getAzureEnvironmentName());
         tokenRequestContext.setScopes(singletonList(graphResource + ".default"));
 
-        AccessToken accessToken = ("Certificate".equals(credentialType) ? getClientCertificateCredential() : getClientSecretCredential())
-                .getToken(tokenRequestContext)
-                .block();
+        AccessToken accessToken = switch (credentialType) {
+            case "Certificate" -> getClientCertificateCredential().getToken(tokenRequestContext).block();
+            case "WorkloadIdentity" -> getWorkloadIdentityCredential().getToken(tokenRequestContext).block();
+            default -> getClientSecretCredential().getToken(tokenRequestContext).block();
+        };
 
         if (accessToken == null) {
             throw new IllegalStateException("Access token null when it is required");
@@ -212,6 +217,17 @@ public class AzureSecurityRealm extends SecurityRealm {
                 .pemCertificate(getCertificate())
                 .tenantId(tenant.getPlainText())
                 .sendCertificateChain(true)
+                .authorityHost(getAuthorityHost(azureEnv))
+                .httpClient(HttpClientRetriever.get())
+                .build();
+    }
+
+    WorkloadIdentityCredential getWorkloadIdentityCredential() {
+        String azureEnv = getAzureEnvironmentName();
+        return new WorkloadIdentityCredentialBuilder()
+                .clientId(clientId.getPlainText())
+                .tenantId(tenant.getPlainText())
+                .tokenFilePath(System.getenv("AZURE_FEDERATED_TOKEN_FILE"))
                 .authorityHost(getAuthorityHost(azureEnv))
                 .httpClient(HttpClientRetriever.get())
                 .build();
@@ -268,11 +284,20 @@ public class AzureSecurityRealm extends SecurityRealm {
     }
 
     String getCredentialCacheKey() {
-        String credentialComponent = clientId.getPlainText()
-                + ("Certificate".equals(credentialType) ? clientCertificate.getPlainText() : clientSecret.getPlainText())
-                + tenant.getPlainText()
-                + azureEnvironmentName;
-
+        String credentialComponent = switch (credentialType) {
+            case "Certificate" -> clientId.getPlainText()
+                    + clientCertificate.getPlainText()
+                    + tenant.getPlainText()
+                    + azureEnvironmentName;
+            case "WorkloadIdentity" -> clientId.getPlainText()
+                    + "WorkloadIdentity"
+                    + tenant.getPlainText()
+                    + azureEnvironmentName;
+            default -> clientId.getPlainText()
+                    + clientSecret.getPlainText()
+                    + tenant.getPlainText()
+                    + azureEnvironmentName;
+        };
         return Util.getDigestOf(credentialComponent);
     }
 
@@ -389,18 +414,25 @@ public class AzureSecurityRealm extends SecurityRealm {
     }
 
     OAuth20Service getOAuthService() {
+        LOGGER.log(Level.FINE, "getOAuthService: building OAuth service with credentialType={0}, environment={1}",
+                new Object[]{credentialType, getAzureEnvironmentName()});
+        String authorityHost = getAuthorityHost(getAzureEnvironmentName());
         ServiceBuilder serviceBuilder = new ServiceBuilder(clientId.getPlainText());
-        if (!"Certificate".equals(credentialType)) {
-            // the certificate flow authenticates with a signed client assertion instead of a shared
-            // secret, see #getClientAssertion
+        if (!"Certificate".equals(credentialType) && !"WorkloadIdentity".equals(credentialType)) {
+            // the certificate and workload identity flows authenticate with a client assertion
+            // instead of a shared secret, see #getClientAssertion and AzureWorkloadIdentityApi
             serviceBuilder.apiSecret(clientSecret.getPlainText());
         }
-        return serviceBuilder
+        var builder = serviceBuilder
                 .responseType("code")
                 .httpClient(getOAuthHttpClient())
                 .defaultScope("openid profile email")
-                .callback(getRootUrl() + CALLBACK_URL)
-                .build(AzureAdApi.custom(getTenant(), getAuthorityHost(getAzureEnvironmentName())));
+                .callback(getRootUrl() + CALLBACK_URL);
+
+        if ("WorkloadIdentity".equals(credentialType)) {
+            return builder.build(AzureWorkloadIdentityApi.custom(getTenant(), authorityHost));
+        }
+        return builder.build(AzureAdApi.custom(getTenant(), authorityHost));
     }
 
     GraphServiceClient<Request> getAzureClient() {
@@ -437,6 +469,7 @@ public class AzureSecurityRealm extends SecurityRealm {
 
     @SuppressWarnings("unused") // used by stapler
     public HttpResponse doCommenceLogin(StaplerRequest2 request, @Header("Referer") final String referer) {
+        LOGGER.log(Level.FINE, "doCommenceLogin: initiating OAuth login flow");
         String trimmedReferrer = getReferer(referer);
 
         recreateSession(request);
@@ -489,10 +522,12 @@ public class AzureSecurityRealm extends SecurityRealm {
 
     public HttpResponse doFinishLogin(StaplerRequest2 request)
             throws InvalidJwtException, IOException {
+        LOGGER.log(Level.FINE, "doFinishLogin: processing login callback");
         recreateSession(request);
         String state = request.getParameter("state");
         StateCache.CacheHolder cachedStateValue = StateCache.CACHE.getIfPresent(state);
         if (cachedStateValue == null || cachedStateValue.nonce() == null) {
+            LOGGER.log(Level.WARNING, "doFinishLogin: no cached state or nonce found, redirecting to root");
             // no nonce, probably some issue with an old session, force the user to re-auth
             return HttpResponses.redirectToContextRoot();
         }
@@ -788,17 +823,20 @@ public class AzureSecurityRealm extends SecurityRealm {
 
     @Override
     public SecurityComponents createSecurityComponents() {
+        LOGGER.log(Level.FINE, "createSecurityComponents: initializing authentication manager and user details service");
         return new SecurityComponents((AuthenticationManager) authentication -> {
             if (authentication instanceof AzureAuthenticationToken) {
                 return authentication;
             }
             throw new BadCredentialsException("Unexpected authentication type: " + authentication);
         }, username -> {
+            LOGGER.log(Level.FINE, "loadUserByUsername: looking up user ''{0}''", username);
             if (username == null) {
                 throw new UserMayOrMayNotExistException2("Can't find a user with no username");
             }
 
             if (isDisableGraphIntegration()) {
+                LOGGER.log(Level.FINE, "loadUserByUsername: graph integration disabled, cannot lookup user");
                 throw new UserMayOrMayNotExistException2("Can't lookup a user if graph integration is disabled");
             }
 
@@ -819,6 +857,7 @@ public class AzureSecurityRealm extends SecurityRealm {
 
                     if (activeDirectoryUser != null & activeDirectoryUser.id == null) {
                         // known to happen when subject is a group with display name only and starts with a #
+                        LOGGER.log(Level.FINE, "loadUserByUsername: user object has null id for ''{0}''", userId);
                         return null;
                     }
 
@@ -831,9 +870,11 @@ public class AzureSecurityRealm extends SecurityRealm {
                     // Enforce updating added identity
                     updateIdentity(user, getByIdOrCreate(user));
 
+                    LOGGER.log(Level.FINE, "loadUserByUsername: successfully loaded user ''{0}''", userId);
                     return user;
                 } catch (GraphServiceException e) {
                     if (e.getResponseCode() == NOT_FOUND) {
+                        LOGGER.log(Level.FINE, "loadUserByUsername: user ''{0}'' not found (404)", userId);
                         return null;
                     } else if (e.getResponseCode() == BAD_REQUEST) {
                         if (LOGGER.isLoggable(Level.FINE)) {
@@ -844,6 +885,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                         }
                         return null;
                     }
+                    LOGGER.log(Level.WARNING, "loadUserByUsername: unexpected graph error for ''{0}''", userId);
                     throw e;
                 }
             });
@@ -869,7 +911,9 @@ public class AzureSecurityRealm extends SecurityRealm {
      */
     @Override
     public GroupDetails loadGroupByGroupname2(String groupName, boolean fetchMembers) {
+        LOGGER.log(Level.FINE, "loadGroupByGroupname2: looking up group ''{0}''", groupName);
         if (isDisableGraphIntegration()) {
+            LOGGER.log(Level.FINE, "loadGroupByGroupname2: graph integration disabled, cannot lookup group");
             throw new UserMayOrMayNotExistException2("Can't lookup a group if graph integration is disabled");
         }
 
@@ -892,9 +936,12 @@ public class AzureSecurityRealm extends SecurityRealm {
         }
 
         if (group == null || group.id == null) {
+            LOGGER.log(Level.WARNING, "loadGroupByGroupname2: group ''{0}'' not found", groupName);
             throw new UsernameNotFoundException("Group: " + groupName + " not found");
         }
 
+        LOGGER.log(Level.FINE, "loadGroupByGroupname2: found group ''{0}'' with id ''{1}''",
+                new Object[]{group.displayName, group.id});
         return new AzureAdGroupDetails(group.id, group.displayName);
     }
 
@@ -963,11 +1010,12 @@ public class AzureSecurityRealm extends SecurityRealm {
                 writer.startNode(CONVERTER_NODE_CLIENT_SECRET);
                 writer.setValue(realm.getClientSecretSecret());
                 writer.endNode();
-            } else {
+            } else if ("Certificate".equals(realm.getCredentialType())) {
                 writer.startNode(CONVERTER_NODE_CLIENT_CERTIFICATE);
                 writer.setValue(realm.getClientCertificateSecret());
                 writer.endNode();
             }
+            // WorkloadIdentity: no secret or certificate to persist
 
             writer.startNode(CONVERTER_NODE_TENANT);
             writer.setValue(realm.getTenantSecret());
@@ -1004,6 +1052,7 @@ public class AzureSecurityRealm extends SecurityRealm {
 
         @Override
         public Object unmarshal(HierarchicalStreamReader reader, UnmarshallingContext context) {
+            LOGGER.log(Level.FINE, "ConverterImpl: unmarshalling AzureSecurityRealm configuration");
             AzureSecurityRealm realm = new AzureSecurityRealm();
             while (reader.hasMoreChildren()) {
                 reader.moveDown();
@@ -1047,6 +1096,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                         realm.setDomainHint(value);
                         break;
                     default:
+                        LOGGER.log(Level.WARNING, "ConverterImpl: unknown node ''{0}'' during unmarshal", node);
                         break;
                 }
                 reader.moveUp();
@@ -1055,6 +1105,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                     .expireAfterWrite(realm.getCacheDuration(), TimeUnit.SECONDS)
                     .build();
             realm.setCaches(caches);
+            LOGGER.log(Level.FINE, "ConverterImpl: successfully unmarshalled AzureSecurityRealm");
             return realm;
         }
 
@@ -1110,6 +1161,8 @@ public class AzureSecurityRealm extends SecurityRealm {
                                                     @QueryParameter final String tenant,
                                                     @QueryParameter final String testObject,
                                                     @QueryParameter final String azureEnvironmentName) {
+            LOGGER.log(Level.FINE, "doVerifyConfiguration: verifying with credentialType={0}, environment={1}",
+                    new Object[]{credentialType, azureEnvironmentName});
             switch (credentialType) {
                 case "Secret":
                     if (Secret.toString(clientSecret).isEmpty()) {
@@ -1119,6 +1172,17 @@ public class AzureSecurityRealm extends SecurityRealm {
                 case "Certificate":
                     if (Secret.toString(clientCertificate).isEmpty()) {
                         return FormValidation.error("Please set a certificate");
+                    }
+                    break;
+                case "WorkloadIdentity":
+                    // No client secret or certificate needed — credentials come from
+                    // a federated token file provided by an OIDC identity provider.
+                    String tokenFile = System.getenv("AZURE_FEDERATED_TOKEN_FILE");
+                    if (tokenFile == null || tokenFile.isEmpty()) {
+                        return FormValidation.warning(
+                                "AZURE_FEDERATED_TOKEN_FILE environment variable is not set. "
+                                + "Workload Identity requires a token file "
+                                + "provided by an OIDC identity provider.");
                     }
                     break;
                 default:

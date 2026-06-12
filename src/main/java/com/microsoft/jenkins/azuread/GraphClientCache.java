@@ -5,6 +5,8 @@ import com.azure.identity.ClientSecretCredential;
 import com.azure.identity.ClientSecretCredentialBuilder;
 import com.azure.identity.ClientCertificateCredential;
 import com.azure.identity.ClientCertificateCredentialBuilder;
+import com.azure.identity.WorkloadIdentityCredential;
+import com.azure.identity.WorkloadIdentityCredentialBuilder;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.microsoft.graph.authentication.TokenCredentialAuthProvider;
@@ -15,6 +17,8 @@ import hudson.Util;
 import hudson.util.Secret;
 import io.jenkins.plugins.azuresdk.HttpClientRetriever;
 import java.net.URI;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import jenkins.model.Jenkins;
 import jenkins.util.JenkinsJVM;
 import okhttp3.Credentials;
@@ -35,12 +39,17 @@ import static java.util.Collections.singletonList;
 
 public class GraphClientCache {
 
+    private static final Logger LOGGER =
+            Logger.getLogger(GraphClientCache.class.getName());
     private static final int TEN = 10;
     private static final LoadingCache<GraphClientCacheKey, GraphServiceClient<Request>> TOKEN_CACHE = Caffeine.newBuilder()
             .maximumSize(TEN)
             .build(GraphClientCache::createGraphClient);
 
     private static GraphServiceClient<Request> createGraphClient(GraphClientCacheKey key) {
+        LOGGER.log(Level.FINE,
+                "createGraphClient: creating client for credentialType={0}, environment={1}",
+                new Object[]{key.credentialType(), key.azureEnvironmentName()});
         TokenCredentialAuthProvider authProvider = getAuthProvider(key);
 
         OkHttpClient.Builder builder = HttpClients.createDefault(authProvider)
@@ -62,20 +71,19 @@ public class GraphClientCache {
         if (!azureEnv.equals(AZURE_PUBLIC_CLOUD)) {
             graphServiceClient.setServiceRoot(getServiceRoot(azureEnv));
         }
+        LOGGER.log(Level.FINE, "createGraphClient: client created successfully");
         return graphServiceClient;
     }
 
     private static TokenCredentialAuthProvider getAuthProvider(GraphClientCacheKey key) {
         String graphResource = AzureEnvironment.getGraphResource(key.azureEnvironmentName());
 
-        TokenCredential tokenCredential;
-        if ("Secret".equals(key.credentialType())) {
-            tokenCredential = getClientSecretCredential(key);
-        } else if ("Certificate".equals(key.credentialType())) {
-            tokenCredential = getClientCertificateCredential(key);
-        } else {
-            throw new IllegalArgumentException("Invalid credential type");
-        }
+        TokenCredential tokenCredential = switch (key.credentialType()) {
+            case "Secret" -> getClientSecretCredential(key);
+            case "Certificate" -> getClientCertificateCredential(key);
+            case "WorkloadIdentity" -> getWorkloadIdentityCredential(key);
+            default -> throw new IllegalArgumentException("Invalid credential type: " + key.credentialType());
+        };
         return new TokenCredentialAuthProvider(
                 singletonList(graphResource + ".default"),
                 tokenCredential);
@@ -87,6 +95,16 @@ public class GraphClientCache {
                 .pemCertificate(getCertificate(key))
                 .tenantId(key.tenantId())
                 .sendCertificateChain(true)
+                .authorityHost(getAuthorityHost(key.azureEnvironmentName()))
+                .httpClient(HttpClientRetriever.get())
+                .build();
+    }
+
+    static WorkloadIdentityCredential getWorkloadIdentityCredential(GraphClientCacheKey key) {
+        return new WorkloadIdentityCredentialBuilder()
+                .clientId(key.clientId())
+                .tenantId(key.tenantId())
+                .tokenFilePath(System.getenv("AZURE_FEDERATED_TOKEN_FILE"))
                 .authorityHost(getAuthorityHost(key.azureEnvironmentName()))
                 .httpClient(HttpClientRetriever.get())
                 .build();

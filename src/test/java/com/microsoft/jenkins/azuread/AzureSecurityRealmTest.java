@@ -61,7 +61,8 @@ class AzureSecurityRealmTest {
     static Object[][] data() {
         return new Object[][]{
                 {"Secret"},
-                {"Certificate"}
+                {"Certificate"},
+                {"WorkloadIdentity"}
         };
     }
 
@@ -93,6 +94,7 @@ class AzureSecurityRealmTest {
             } else if ("Certificate".equals(credentialType)) {
                 assertEquals(securityRealm.getClientCertificate().getPlainText(), result.getClientCertificate().getPlainText());
             }
+            // WorkloadIdentity has no secret or certificate to compare
             assertEquals(securityRealm.getCacheDuration(), result.getCacheDuration());
         } finally {
             if (writer != null) {

@@ -30,7 +30,8 @@ class AzureAdConfigurationSaveTest {
     static Object[][] data() {
         return new Object[][]{
                 {"Secret"},
-                {"Certificate"}
+                {"Certificate"},
+                {"WorkloadIdentity"}
         };
     }
 
@@ -43,22 +44,18 @@ class AzureAdConfigurationSaveTest {
                 Secret.fromString(CLIENT_SECRET),
                 CACHE_DURATION);
         realm.setFromRequest(true);
+        realm.setCredentialType(credentialType);
+        if ("Certificate".equals(credentialType)) {
+            realm.setClientCertificate(CLIENT_CERTIFICATE);
+        }
         r.jenkins.setSecurityRealm(realm);
 
         AzureSecurityRealm result = (AzureSecurityRealm) r.jenkins.getSecurityRealm();
-        result.setCredentialType(credentialType);
-        if ("Certificate".equals(credentialType)) {
-            result.setClientCertificate(CLIENT_CERTIFICATE);
-        }
         verifyRealm(result, credentialType);
 
         r.restart();
 
         result = (AzureSecurityRealm) r.jenkins.getSecurityRealm();
-        result.setCredentialType(credentialType);
-        if ("Certificate".equals(credentialType)) {
-            result.setClientCertificate(CLIENT_CERTIFICATE);
-        }
         verifyRealm(result, credentialType);
     }
 
