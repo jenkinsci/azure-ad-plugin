@@ -356,13 +356,14 @@ class FederatedCredentialAuthTest {
         // but we can directly invoke the static method with a custom key
         GraphClientCacheKey key = new GraphClientCacheKey(
                 DEFAULT_CLIENT_ID, "", "", "WorkloadIdentity",
-                DEFAULT_TENANT_ID, "Azure Public Cloud");
+                DEFAULT_TENANT_ID, "Azure Public Cloud",
+                GraphClientCache.proxyConfigurationFingerprint());
 
         // We can't test the full flow without setting env vars,
         // but we verify the credential type switch works
-        assertEquals("WorkloadIdentity", key.getCredentialType());
-        assertEquals(DEFAULT_CLIENT_ID, key.getClientId());
-        assertEquals(DEFAULT_TENANT_ID, key.getTenantId());
+        assertEquals("WorkloadIdentity", key.credentialType());
+        assertEquals(DEFAULT_CLIENT_ID, key.clientId());
+        assertEquals(DEFAULT_TENANT_ID, key.tenantId());
     }
 
     // ═══════════════════════════════════════════════════════════════════════

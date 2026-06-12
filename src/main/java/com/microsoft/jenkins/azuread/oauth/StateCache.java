@@ -15,7 +15,8 @@ public class StateCache {
             .build();
 
     public String generateValue(HttpSession session) {
-        final String referer = session.getAttribute(AzureSecurityRealm.REFERER_ATTRIBUTE).toString();
+        Object refererAttribute = session.getAttribute(AzureSecurityRealm.REFERER_ATTRIBUTE);
+        final String referer = refererAttribute == null ? null : refererAttribute.toString();
         final Long beginTime = (Long) session.getAttribute(AzureSecurityRealm.TIMESTAMP_ATTRIBUTE);
         final String nonce = session.getAttribute(AzureSecurityRealm.NONCE_ATTRIBUTE).toString();
 
