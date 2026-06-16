@@ -2,6 +2,7 @@ package com.microsoft.jenkins.azuread;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.microsoft.graph.http.GraphServiceException;
 import com.microsoft.graph.models.DirectoryObject;
 import com.microsoft.graph.models.Group;
 import com.microsoft.graph.requests.DirectoryObjectCollectionWithReferencesPage;
@@ -16,6 +17,8 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import static java.net.HttpURLConnection.HTTP_FORBIDDEN;
 
 public final class AzureCachePool {
     private static final Logger LOGGER = Logger.getLogger(AzureCachePool.class.getName());
@@ -42,7 +45,6 @@ public final class AzureCachePool {
                                 .transitiveMemberOf()
                                 .buildRequest()
                                 .get();
-
 
                         List<AzureAdGroup> groups = new ArrayList<>();
 
@@ -72,18 +74,26 @@ public final class AzureCachePool {
                         LOGGER.log(Level.FINE, "getBelongingGroupsByOid: found {0} groups for oid ''{1}''",
                                 new Object[]{groups.size(), oid});
                         return groups;
+                    } catch (GraphServiceException e) {
+                        if (e.getResponseCode() == HTTP_FORBIDDEN) {
+                            LOGGER.log(Level.WARNING, "Do not have sufficient privileges to "
+                                    + "fetch your belonging groups' authorities.", e);
+                            // cache the empty list to avoid re-checking permissions on every request
+                            return Collections.emptyList();
+                        }
+                        LOGGER.log(Level.WARNING, "Failed to fetch the belonging groups of " + oid, e);
+                        // returning null skips the cache so the next request retries
+                        return null;
                     } catch (Exception e) {
-                        LOGGER.log(Level.WARNING, "Do not have sufficient privileges to "
-                                + "fetch your belonging groups' authorities.", e);
-                        return Collections.emptyList();
+                        LOGGER.log(Level.WARNING, "Failed to fetch the belonging groups of " + oid, e);
+                        // returning null skips the cache so the next request retries
+                        return null;
                     }
-
                 });
         if (Constants.DEBUG) {
             belongingGroupsByOid.invalidate(oid);
         }
-        return result;
-
+        return result == null ? Collections.emptyList() : result;
     }
 
     public static void invalidateBelongingGroupsByOid(String userId) {
