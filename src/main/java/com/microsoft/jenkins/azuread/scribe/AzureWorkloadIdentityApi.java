@@ -3,6 +3,7 @@ package com.microsoft.jenkins.azuread.scribe;
 import com.github.scribejava.core.model.OAuthRequest;
 import com.github.scribejava.core.oauth2.clientauthentication.ClientAuthentication;
 
+import com.microsoft.jenkins.azuread.GraphClientCache;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -56,7 +57,7 @@ public class AzureWorkloadIdentityApi extends AzureAdApi {
      * @throws IOException if the file cannot be read
      */
     static String readFederatedToken(String tokenFilePath) throws IOException {
-        return new String(Files.readAllBytes(Paths.get(tokenFilePath)), StandardCharsets.UTF_8).trim();
+        return Files.readString(Paths.get(tokenFilePath)).trim();
     }
 
     /**
@@ -76,12 +77,7 @@ public class AzureWorkloadIdentityApi extends AzureAdApi {
         public void addClientAuthentication(OAuthRequest request, String apiKey, String apiSecret) {
             request.addBodyParameter("client_id", apiKey);
             request.addBodyParameter("client_assertion_type", CLIENT_ASSERTION_TYPE);
-            try {
-                request.addBodyParameter("client_assertion", readFederatedToken());
-            } catch (IOException e) {
-                throw new RuntimeException("Failed to read federated token for Workload Identity "
-                        + "authentication. Ensure AZURE_FEDERATED_TOKEN_FILE is set and readable.", e);
-            }
+            request.addBodyParameter("client_assertion", GraphClientCache.getWorkloadIdentityToken(apiSecret));
         }
     }
 }

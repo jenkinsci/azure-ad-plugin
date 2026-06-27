@@ -21,7 +21,8 @@ class GraphClientCacheTest {
                 "Secret",
                 "tenant",
                 "Azure",
-                GraphClientCache.proxyConfigurationFingerprint()
+                GraphClientCache.proxyConfigurationFingerprint(),
+                null
         ));
     }
 

@@ -1,12 +1,14 @@
 package com.microsoft.jenkins.azuread;
 
 import com.azure.core.credential.TokenCredential;
+import com.azure.identity.ClientAssertionCredential;
+import com.azure.identity.ClientAssertionCredentialBuilder;
 import com.azure.identity.ClientSecretCredential;
 import com.azure.identity.ClientSecretCredentialBuilder;
 import com.azure.identity.ClientCertificateCredential;
 import com.azure.identity.ClientCertificateCredentialBuilder;
-import com.azure.identity.WorkloadIdentityCredential;
-import com.azure.identity.WorkloadIdentityCredentialBuilder;
+import com.cloudbees.plugins.credentials.CredentialsProvider;
+import com.cloudbees.plugins.credentials.common.StandardCredentials;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.microsoft.graph.authentication.TokenCredentialAuthProvider;
@@ -14,9 +16,14 @@ import com.microsoft.graph.httpcore.HttpClients;
 import com.microsoft.graph.requests.GraphServiceClient;
 import hudson.ProxyConfiguration;
 import hudson.Util;
+import hudson.security.ACL;
 import hudson.util.Secret;
 import io.jenkins.plugins.azuresdk.HttpClientRetriever;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import jenkins.model.Jenkins;
@@ -24,12 +31,15 @@ import jenkins.util.JenkinsJVM;
 import okhttp3.Credentials;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import java.net.Proxy;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import org.jenkinsci.plugins.plaincredentials.FileCredentials;
+import org.jenkinsci.plugins.plaincredentials.StringCredentials;
 
 import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_PUBLIC_CLOUD;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.getAuthorityHost;
@@ -100,14 +110,41 @@ public class GraphClientCache {
                 .build();
     }
 
-    static WorkloadIdentityCredential getWorkloadIdentityCredential(GraphClientCacheKey key) {
-        return new WorkloadIdentityCredentialBuilder()
+     static ClientAssertionCredential getWorkloadIdentityCredential(GraphClientCacheKey key) {
+        String azureFederatedToken = getWorkloadIdentityToken(key.federatedCredentialsId());
+        return new ClientAssertionCredentialBuilder()
                 .clientId(key.clientId())
                 .tenantId(key.tenantId())
-                .tokenFilePath(System.getenv("AZURE_FEDERATED_TOKEN_FILE"))
+                .clientAssertion(() -> azureFederatedToken)
                 .authorityHost(getAuthorityHost(key.azureEnvironmentName()))
                 .httpClient(HttpClientRetriever.get())
                 .build();
+    }
+
+    public static String getWorkloadIdentityToken(String federatedCredentialsId) {
+        String azureFederatedToken = null;
+        try {
+            if (Util.fixEmpty(federatedCredentialsId) != null) {
+                StandardCredentials creds = CredentialsProvider.findCredentialByIdInItemGroup(
+                        federatedCredentialsId,
+                        StandardCredentials.class,
+                        null,
+                        ACL.SYSTEM2,
+                        null);
+
+                if (creds instanceof StringCredentials stringCreds) {
+                    azureFederatedToken = stringCreds.getSecret().getPlainText();
+                } else if (creds instanceof FileCredentials fileCreds) {
+                    azureFederatedToken = IOUtils.toString(fileCreds.getContent(), StandardCharsets.UTF_8);
+
+                }
+            } else {
+                azureFederatedToken = Files.readString(Path.of(System.getenv("AZURE_FEDERATED_TOKEN_FILE")), StandardCharsets.UTF_8);
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        return azureFederatedToken;
     }
 
     static ClientSecretCredential getClientSecretCredential(GraphClientCacheKey key) {
@@ -131,17 +168,7 @@ public class GraphClientCache {
     }
 
     public static GraphServiceClient<Request> getClient(AzureSecurityRealm azureSecurityRealm) {
-        GraphClientCacheKey key = new GraphClientCacheKey(
-                azureSecurityRealm.getClientId(),
-                Secret.toString(azureSecurityRealm.getClientSecret()),
-                Secret.toString(azureSecurityRealm.getClientCertificate()),
-                azureSecurityRealm.getCredentialType(),
-                azureSecurityRealm.getTenant(),
-                azureSecurityRealm.getAzureEnvironmentName(),
-                proxyConfigurationFingerprint()
-        );
-
-        return TOKEN_CACHE.get(key);
+        return TOKEN_CACHE.get(azureSecurityRealm.getGraphClientCacheKey());
     }
 
     /**

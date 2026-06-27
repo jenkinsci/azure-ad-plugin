@@ -7,25 +7,21 @@ package com.microsoft.jenkins.azuread;
 
 import com.azure.core.credential.AccessToken;
 import com.azure.core.credential.TokenRequestContext;
-import com.azure.identity.ClientSecretCredential;
-import com.azure.identity.ClientSecretCredentialBuilder;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.azure.identity.ClientCertificateCredential;
-import com.azure.identity.ClientCertificateCredentialBuilder;
-import com.azure.identity.WorkloadIdentityCredential;
-import com.azure.identity.WorkloadIdentityCredentialBuilder;
+import com.cloudbees.plugins.credentials.common.StandardCredentials;
+import com.cloudbees.plugins.credentials.common.StandardListBoxModel;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.scribejava.core.builder.ServiceBuilder;
-import com.github.scribejava.httpclient.okhttp.OkHttpHttpClientConfig;
-import com.github.scribejava.httpclient.okhttp.OkHttpHttpClient;
 import com.github.scribejava.core.model.OAuth2AccessToken;
 import com.github.scribejava.core.model.OAuthRequest;
-import com.github.scribejava.core.oauth.OAuth20Service;
 import com.github.scribejava.core.model.Response;
 import com.github.scribejava.core.model.Verb;
+import com.github.scribejava.core.oauth.OAuth20Service;
+import com.github.scribejava.httpclient.okhttp.OkHttpHttpClient;
+import com.github.scribejava.httpclient.okhttp.OkHttpHttpClientConfig;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
 import com.microsoft.graph.http.GraphServiceException;
@@ -52,6 +48,7 @@ import hudson.Extension;
 import hudson.Util;
 import hudson.model.Descriptor;
 import hudson.model.User;
+import hudson.security.ACL;
 import hudson.security.GroupDetails;
 import hudson.security.SecurityRealm;
 import hudson.security.UserMayOrMayNotExistException2;
@@ -61,14 +58,35 @@ import hudson.tasks.Mailer.UserProperty;
 import hudson.util.FormValidation;
 import hudson.util.ListBoxModel;
 import hudson.util.Secret;
-import io.jenkins.plugins.azuresdk.HttpClientRetriever;
-
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.security.GeneralSecurityException;
+import java.security.MessageDigest;
+import java.security.PrivateKey;
 import java.security.Signature;
-import jakarta.servlet.http.HttpSession;
-
+import java.security.cert.X509Certificate;
+import java.time.Instant;
+import java.util.Base64;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import jenkins.model.Jenkins;
 import jenkins.security.SecurityListener;
 import jenkins.util.SystemProperties;
@@ -76,6 +94,8 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.jenkinsci.plugins.plaincredentials.FileCredentials;
+import org.jenkinsci.plugins.plaincredentials.StringCredentials;
 import org.jose4j.jwt.JwtClaims;
 import org.jose4j.jwt.consumer.InvalidJwtException;
 import org.jose4j.jwt.consumer.JwtConsumer;
@@ -93,40 +113,18 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URLEncoder;
-import java.security.GeneralSecurityException;
-import java.security.MessageDigest;
-import java.security.PrivateKey;
-import java.security.cert.X509Certificate;
-import java.time.Instant;
-import java.util.Base64;
-import java.util.UUID;
-
-
-import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import java.util.stream.Collectors;
-
+import static com.cloudbees.plugins.credentials.CredentialsMatchers.anyOf;
+import static com.cloudbees.plugins.credentials.CredentialsMatchers.instanceOf;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_CHINA;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_PUBLIC_CLOUD;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_US_GOVERNMENT_L4;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_US_GOVERNMENT_L5;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.getAuthorityHost;
 import static com.microsoft.jenkins.azuread.GraphClientCache.addProxyToHttpClientIfRequired;
+import static com.microsoft.jenkins.azuread.GraphClientCache.getClientCertificateCredential;
+import static com.microsoft.jenkins.azuread.GraphClientCache.getClientSecretCredential;
+import static com.microsoft.jenkins.azuread.GraphClientCache.getWorkloadIdentityCredential;
+import static com.microsoft.jenkins.azuread.GraphClientCache.proxyConfigurationFingerprint;
 import static com.microsoft.jenkins.azuread.utils.CertificateHelper.loadCertificateFromString;
 import static com.microsoft.jenkins.azuread.utils.CertificateHelper.loadPrivateKeyFromString;
 import static java.util.Collections.emptyList;
@@ -145,6 +143,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     private static final String CONVERTER_NODE_CLIENT_ID = "clientid";
     private static final String CONVERTER_NODE_CLIENT_SECRET = "clientsecret";
     private static final String CONVERTER_NODE_CLIENT_CERTIFICATE = "clientCertificate";
+    private static final String CONVERTER_NODE_FEDERATED_CREDENTIALS_ID = "federatedCredentialsId";
     private static final String CONVERTER_NODE_CREDENTIAL_TYPE = "credentialType";
     private static final String CONVERTER_NODE_TENANT = "tenant";
     private static final String CONVERTER_NODE_CACHE_DURATION = "cacheduration";
@@ -173,16 +172,19 @@ public class AzureSecurityRealm extends SecurityRealm {
     private String azureEnvironmentName = "Azure";
     private String credentialType = "Secret";
     private String domainHint = "";
+    private String federatedCredentialsId;
 
     public AccessToken getAccessToken() {
         TokenRequestContext tokenRequestContext = new TokenRequestContext();
         String graphResource = AzureEnvironment.getGraphResource(getAzureEnvironmentName());
         tokenRequestContext.setScopes(singletonList(graphResource + ".default"));
 
+        var cacheKey = getGraphClientCacheKey();
+
         AccessToken accessToken = switch (credentialType) {
-            case "Certificate" -> getClientCertificateCredential().getToken(tokenRequestContext).block();
-            case "WorkloadIdentity" -> getWorkloadIdentityCredential().getToken(tokenRequestContext).block();
-            default -> getClientSecretCredential().getToken(tokenRequestContext).block();
+            case "Certificate" -> getClientCertificateCredential(cacheKey).getToken(tokenRequestContext).block();
+            case "WorkloadIdentity" -> getWorkloadIdentityCredential(cacheKey).getToken(tokenRequestContext).block();
+            default -> getClientSecretCredential(cacheKey).getToken(tokenRequestContext).block();
         };
 
         if (accessToken == null) {
@@ -192,46 +194,19 @@ public class AzureSecurityRealm extends SecurityRealm {
         return accessToken;
     }
 
-    InputStream getCertificate() {
-
-        String secretString = clientCertificate.getPlainText();
-
-        return new ByteArrayInputStream(secretString.getBytes(StandardCharsets.UTF_8));
+    GraphClientCacheKey getGraphClientCacheKey() {
+        return new GraphClientCacheKey(
+                getClientId(),
+                Secret.toString(getClientSecret()),
+                Secret.toString(getClientCertificate()),
+                getCredentialType(),
+                getTenant(),
+                getAzureEnvironmentName(),
+                proxyConfigurationFingerprint(),
+                getFederatedCredentialsId()
+        );
     }
 
-    ClientSecretCredential getClientSecretCredential() {
-        String azureEnv = getAzureEnvironmentName();
-        return new ClientSecretCredentialBuilder()
-                .clientId(clientId.getPlainText())
-                .clientSecret(clientSecret.getPlainText())
-                .tenantId(tenant.getPlainText())
-                .authorityHost(getAuthorityHost(azureEnv))
-                .httpClient(HttpClientRetriever.get())
-                .build();
-    }
-
-    ClientCertificateCredential getClientCertificateCredential() {
-        String azureEnv = getAzureEnvironmentName();
-        return new ClientCertificateCredentialBuilder()
-                .clientId(clientId.getPlainText())
-                .pemCertificate(getCertificate())
-                .tenantId(tenant.getPlainText())
-                .sendCertificateChain(true)
-                .authorityHost(getAuthorityHost(azureEnv))
-                .httpClient(HttpClientRetriever.get())
-                .build();
-    }
-
-    WorkloadIdentityCredential getWorkloadIdentityCredential() {
-        String azureEnv = getAzureEnvironmentName();
-        return new WorkloadIdentityCredentialBuilder()
-                .clientId(clientId.getPlainText())
-                .tenantId(tenant.getPlainText())
-                .tokenFilePath(System.getenv("AZURE_FEDERATED_TOKEN_FILE"))
-                .authorityHost(getAuthorityHost(azureEnv))
-                .httpClient(HttpClientRetriever.get())
-                .build();
-    }
 
     public boolean isPromptAccount() {
         return promptAccount;
@@ -253,6 +228,15 @@ public class AzureSecurityRealm extends SecurityRealm {
 
     public boolean isSingleLogout() {
         return singleLogout;
+    }
+
+    public String getFederatedCredentialsId() {
+        return federatedCredentialsId;
+    }
+
+    @DataBoundSetter
+    public void setFederatedCredentialsId(String federatedCredentialsId) {
+        this.federatedCredentialsId = federatedCredentialsId;
     }
 
     @DataBoundSetter
@@ -394,7 +378,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     private transient volatile CachedOAuthHttpClient cachedOAuthHttpClient;
 
     OkHttpHttpClient getOAuthHttpClient() {
-        String proxyFingerprint = GraphClientCache.proxyConfigurationFingerprint();
+        String proxyFingerprint = proxyConfigurationFingerprint();
         CachedOAuthHttpClient cached = cachedOAuthHttpClient;
         if (cached == null || !cached.proxyFingerprint().equals(proxyFingerprint)) {
             synchronized (this) {
@@ -430,6 +414,9 @@ public class AzureSecurityRealm extends SecurityRealm {
                 .callback(getRootUrl() + CALLBACK_URL);
 
         if ("WorkloadIdentity".equals(credentialType)) {
+            if (Util.fixEmpty(federatedCredentialsId) != null) {
+                builder = builder.apiSecret(federatedCredentialsId);
+            }
             return builder.build(AzureWorkloadIdentityApi.custom(getTenant(), authorityHost));
         }
         return builder.build(AzureAdApi.custom(getTenant(), authorityHost));
@@ -583,7 +570,7 @@ public class AzureSecurityRealm extends SecurityRealm {
             } catch (ExecutionException | RuntimeException e) {
                 LOGGER.log(Level.SEVERE, "Error during token exchange", e);
                 throw new IOException("Failed to exchange authorization code for tokens", e);
-            } catch (InterruptedException  e) {
+            } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 LOGGER.log(Level.SEVERE, "Error during token exchange", e);
                 throw new IOException("Failed to exchange authorization code for tokens", e);
@@ -709,8 +696,8 @@ public class AzureSecurityRealm extends SecurityRealm {
 
         // Header
         Map<String, Object> headerMap = Map.of(
-            "alg", "RS256",
-            "x5t", thumbprint
+                "alg", "RS256",
+                "x5t", thumbprint
         );
 
         String headerJson = mapper.writeValueAsString(headerMap);
@@ -721,19 +708,19 @@ public class AzureSecurityRealm extends SecurityRealm {
 
         // Payload
         Map<String, Object> payloadMap = Map.of(
-            "aud", tokenEndpoint,
-            "iss", getClientId(),
-            "sub", getClientId(),
-            "jti", UUID.randomUUID().toString(),
-            "exp", exp,
-            "iat", now
+                "aud", tokenEndpoint,
+                "iss", getClientId(),
+                "sub", getClientId(),
+                "jti", UUID.randomUUID().toString(),
+                "exp", exp,
+                "iat", now
         );
 
         String payloadJson = mapper.writeValueAsString(payloadMap);
 
         String payload = Base64.getUrlEncoder()
-            .withoutPadding()
-            .encodeToString(payloadJson.getBytes(StandardCharsets.UTF_8));
+                .withoutPadding()
+                .encodeToString(payloadJson.getBytes(StandardCharsets.UTF_8));
 
 
         // Sign header.payload
@@ -752,7 +739,7 @@ public class AzureSecurityRealm extends SecurityRealm {
             return;
         }
         try {
-            if (SystemProperties.getBoolean(AzureSecurityRealm.class.getName() + ".disableAvatar",  false)) {
+            if (SystemProperties.getBoolean(AzureSecurityRealm.class.getName() + ".disableAvatar", false)) {
                 return;
             }
             ProfilePhotoRequestBuilder photosRequestBuilder = getAzureClient()
@@ -1014,8 +1001,13 @@ public class AzureSecurityRealm extends SecurityRealm {
                 writer.startNode(CONVERTER_NODE_CLIENT_CERTIFICATE);
                 writer.setValue(realm.getClientCertificateSecret());
                 writer.endNode();
+            } else if ("WorkloadIdentity".equals(realm.getCredentialType())) {
+                if (Util.fixEmpty(realm.getFederatedCredentialsId()) != null) {
+                    writer.startNode(CONVERTER_NODE_FEDERATED_CREDENTIALS_ID);
+                    writer.setValue(realm.getFederatedCredentialsId());
+                    writer.endNode();
+                }
             }
-            // WorkloadIdentity: no secret or certificate to persist
 
             writer.startNode(CONVERTER_NODE_TENANT);
             writer.setValue(realm.getTenantSecret());
@@ -1070,6 +1062,9 @@ public class AzureSecurityRealm extends SecurityRealm {
                         break;
                     case CONVERTER_NODE_CREDENTIAL_TYPE:
                         realm.setCredentialType(value);
+                        break;
+                    case CONVERTER_NODE_FEDERATED_CREDENTIALS_ID:
+                        realm.setFederatedCredentialsId(value);
                         break;
                     case CONVERTER_NODE_TENANT:
                         realm.setTenant(value);
@@ -1154,13 +1149,32 @@ public class AzureSecurityRealm extends SecurityRealm {
             return model;
         }
 
+        public ListBoxModel doFillFederatedCredentialsIdItems(@QueryParameter String credentialsId) {
+            StandardListBoxModel result = new StandardListBoxModel();
+            if (!Jenkins.get().hasPermission(Jenkins.ADMINISTER)) {
+                return result.includeCurrentValue(credentialsId); // (2)
+            }
+
+            return result
+                    .includeEmptyValue()
+                    .includeMatchingAs(
+                            ACL.SYSTEM2,
+                            Jenkins.get(),
+                            StandardCredentials.class,
+                            emptyList(),
+                            anyOf(instanceOf(FileCredentials.class), instanceOf(StringCredentials.class)
+                            ))
+                    .includeCurrentValue(credentialsId);
+        }
+
         public FormValidation doVerifyConfiguration(@QueryParameter final String clientId,
                                                     @QueryParameter final Secret clientSecret,
                                                     @QueryParameter final Secret clientCertificate,
                                                     @QueryParameter final String credentialType,
                                                     @QueryParameter final String tenant,
                                                     @QueryParameter final String testObject,
-                                                    @QueryParameter final String azureEnvironmentName) {
+                                                    @QueryParameter final String azureEnvironmentName,
+                                                    @QueryParameter final String federatedCredentialsId) {
             LOGGER.log(Level.FINE, "doVerifyConfiguration: verifying with credentialType={0}, environment={1}",
                     new Object[]{credentialType, azureEnvironmentName});
             switch (credentialType) {
@@ -1175,14 +1189,16 @@ public class AzureSecurityRealm extends SecurityRealm {
                     }
                     break;
                 case "WorkloadIdentity":
-                    // No client secret or certificate needed — credentials come from
-                    // a federated token file provided by an OIDC identity provider.
-                    String tokenFile = System.getenv("AZURE_FEDERATED_TOKEN_FILE");
-                    if (tokenFile == null || tokenFile.isEmpty()) {
-                        return FormValidation.warning(
-                                "AZURE_FEDERATED_TOKEN_FILE environment variable is not set. "
-                                + "Workload Identity requires a token file "
-                                + "provided by an OIDC identity provider.");
+                    if (Util.fixEmpty(federatedCredentialsId) == null) {
+                        // No client secret or certificate needed — credentials come from
+                        // a federated token file provided by an OIDC identity provider.
+                        String tokenFile = System.getenv("AZURE_FEDERATED_TOKEN_FILE");
+                        if (tokenFile == null || tokenFile.isEmpty()) {
+                            return FormValidation.warning(
+                                    "AZURE_FEDERATED_TOKEN_FILE environment variable is not set. "
+                                            + "Workload Identity requires a token file "
+                                            + "provided by an OIDC identity provider.");
+                        }
                     }
                     break;
                 default:
@@ -1193,18 +1209,19 @@ public class AzureSecurityRealm extends SecurityRealm {
                 return FormValidation.error("Please set a test user principal name or object ID");
             }
 
-            GraphServiceClient<Request> graphServiceClient = GraphClientCache.getClient(
-                    new GraphClientCacheKey(
-                            clientId,
-                            Secret.toString(clientSecret),
-                            Secret.toString(clientCertificate),
-                            credentialType,
-                            tenant,
-                            azureEnvironmentName,
-                            GraphClientCache.proxyConfigurationFingerprint()
-                    )
-            );
             try {
+                GraphServiceClient<Request> graphServiceClient = GraphClientCache.getClient(
+                        new GraphClientCacheKey(
+                                clientId,
+                                Secret.toString(clientSecret),
+                                Secret.toString(clientCertificate),
+                                credentialType,
+                                tenant,
+                                azureEnvironmentName,
+                                proxyConfigurationFingerprint(),
+                                federatedCredentialsId
+                        )
+                );
                 com.microsoft.graph.models.User user = graphServiceClient.users(testObject).buildRequest().get();
 
                 return FormValidation.ok("Successfully verified, found display name: " + user.displayName);

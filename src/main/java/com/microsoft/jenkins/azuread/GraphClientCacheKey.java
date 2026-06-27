@@ -7,5 +7,6 @@ record GraphClientCacheKey(
         String credentialType,
         String tenantId,
         String azureEnvironmentName,
-        String proxyFingerprint) {
+        String proxyFingerprint,
+        String federatedCredentialsId) {
 }
