@@ -107,6 +107,7 @@ import org.kohsuke.stapler.HttpResponse;
 import org.kohsuke.stapler.HttpResponses;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest2;
+import org.kohsuke.stapler.verb.POST;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
@@ -203,7 +204,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                 getTenant(),
                 getAzureEnvironmentName(),
                 proxyConfigurationFingerprint(),
-                getFederatedCredentialsId()
+                Util.fixEmpty(getFederatedCredentialsId())
         );
     }
 
@@ -1149,6 +1150,7 @@ public class AzureSecurityRealm extends SecurityRealm {
             return model;
         }
 
+        @POST
         public ListBoxModel doFillFederatedCredentialsIdItems(@QueryParameter String credentialsId) {
             StandardListBoxModel result = new StandardListBoxModel();
             if (!Jenkins.get().hasPermission(Jenkins.ADMINISTER)) {

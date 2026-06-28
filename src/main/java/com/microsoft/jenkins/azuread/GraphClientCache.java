@@ -111,18 +111,16 @@ public class GraphClientCache {
     }
 
      static ClientAssertionCredential getWorkloadIdentityCredential(GraphClientCacheKey key) {
-        String azureFederatedToken = getWorkloadIdentityToken(key.federatedCredentialsId());
         return new ClientAssertionCredentialBuilder()
                 .clientId(key.clientId())
                 .tenantId(key.tenantId())
-                .clientAssertion(() -> azureFederatedToken)
+                .clientAssertion(() -> getWorkloadIdentityToken(key.federatedCredentialsId()))
                 .authorityHost(getAuthorityHost(key.azureEnvironmentName()))
                 .httpClient(HttpClientRetriever.get())
                 .build();
     }
 
     public static String getWorkloadIdentityToken(String federatedCredentialsId) {
-        String azureFederatedToken = null;
         try {
             if (Util.fixEmpty(federatedCredentialsId) != null) {
                 StandardCredentials creds = CredentialsProvider.findCredentialByIdInItemGroup(
@@ -132,19 +130,29 @@ public class GraphClientCache {
                         ACL.SYSTEM2,
                         null);
 
-                if (creds instanceof StringCredentials stringCreds) {
-                    azureFederatedToken = stringCreds.getSecret().getPlainText();
-                } else if (creds instanceof FileCredentials fileCreds) {
-                    azureFederatedToken = IOUtils.toString(fileCreds.getContent(), StandardCharsets.UTF_8);
-
+                switch (creds) {
+                    case null -> throw new IOException("No credentials found for id: " + federatedCredentialsId);
+                    case StringCredentials stringCreds -> {
+                        return stringCreds.getSecret().getPlainText();
+                    }
+                    case FileCredentials fileCreds -> {
+                        try (var is = fileCreds.getContent()) {
+                            return IOUtils.toString(is, StandardCharsets.UTF_8).trim();
+                        }
+                    }
+                    default -> throw new IOException("Unsupported credentials type: " + creds.getClass().getName());
                 }
+
             } else {
-                azureFederatedToken = Files.readString(Path.of(System.getenv("AZURE_FEDERATED_TOKEN_FILE")), StandardCharsets.UTF_8);
+                String tokenFile = System.getenv("AZURE_FEDERATED_TOKEN_FILE");
+                if (Util.fixEmpty(tokenFile) == null) {
+                    throw new IOException("AZURE_FEDERATED_TOKEN_FILE environment variable is not set or empty.");
+                }
+                return Files.readString(Path.of(tokenFile), StandardCharsets.UTF_8);
             }
         } catch (IOException e) {
-            throw new UncheckedIOException(e);
+            throw new UncheckedIOException("Failed to read federated token for Workload Identity authentication", e);
         }
-        return azureFederatedToken;
     }
 
     static ClientSecretCredential getClientSecretCredential(GraphClientCacheKey key) {
