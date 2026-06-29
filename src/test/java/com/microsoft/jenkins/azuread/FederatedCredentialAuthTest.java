@@ -357,7 +357,7 @@ class FederatedCredentialAuthTest {
         GraphClientCacheKey key = new GraphClientCacheKey(
                 DEFAULT_CLIENT_ID, "", "", "WorkloadIdentity",
                 DEFAULT_TENANT_ID, "Azure Public Cloud",
-                GraphClientCache.proxyConfigurationFingerprint());
+                GraphClientCache.proxyConfigurationFingerprint(), null);
 
         // We can't test the full flow without setting env vars,
         // but we verify the credential type switch works
