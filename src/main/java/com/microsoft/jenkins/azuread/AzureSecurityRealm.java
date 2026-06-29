@@ -1151,10 +1151,10 @@ public class AzureSecurityRealm extends SecurityRealm {
         }
 
         @POST
-        public ListBoxModel doFillFederatedCredentialsIdItems(@QueryParameter String credentialsId) {
+        public ListBoxModel doFillFederatedCredentialsIdItems(@QueryParameter String federatedCredentialsId) {
             StandardListBoxModel result = new StandardListBoxModel();
             if (!Jenkins.get().hasPermission(Jenkins.ADMINISTER)) {
-                return result.includeCurrentValue(credentialsId); // (2)
+                return result.includeCurrentValue(federatedCredentialsId);
             }
 
             return result
@@ -1166,7 +1166,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                             emptyList(),
                             anyOf(instanceOf(FileCredentials.class), instanceOf(StringCredentials.class)
                             ))
-                    .includeCurrentValue(credentialsId);
+                    .includeCurrentValue(federatedCredentialsId);
         }
 
         public FormValidation doVerifyConfiguration(@QueryParameter final String clientId,
