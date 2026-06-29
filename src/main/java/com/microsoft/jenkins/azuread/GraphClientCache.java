@@ -148,7 +148,7 @@ public class GraphClientCache {
                 if (Util.fixEmpty(tokenFile) == null) {
                     throw new IOException("AZURE_FEDERATED_TOKEN_FILE environment variable is not set or empty.");
                 }
-                return Files.readString(Path.of(tokenFile), StandardCharsets.UTF_8);
+                return Files.readString(Path.of(tokenFile), StandardCharsets.UTF_8).trim();
             }
         } catch (IOException e) {
             throw new UncheckedIOException("Failed to read federated token for Workload Identity authentication", e);

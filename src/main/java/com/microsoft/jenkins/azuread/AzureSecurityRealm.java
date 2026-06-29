@@ -1221,7 +1221,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                                 tenant,
                                 azureEnvironmentName,
                                 proxyConfigurationFingerprint(),
-                                federatedCredentialsId
+                                Util.fixEmpty(federatedCredentialsId)
                         )
                 );
                 com.microsoft.graph.models.User user = graphServiceClient.users(testObject).buildRequest().get();

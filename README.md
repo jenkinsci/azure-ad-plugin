@@ -192,8 +192,8 @@ You can use **Workload Identity** to authenticate with Entra ID without storing 
    - Save the credential
 
 3. One of:
-* **Federated Token File** — a file containing a valid JWT issued by your OIDC provider. Set the `AZURE_FEDERATED_TOKEN_FILE` environment variable to the path of this file.
-* Use the [OpenID Connect Provider](https://plugins.jenkins.io/oidc-provider/) plugin and set the `Federated Credentials` value to an `OpenID Connect id token` credential.
+   - **Federated Token File** — a file containing a valid JWT issued by your OIDC provider. Set the `AZURE_FEDERATED_TOKEN_FILE` environment variable to the path of this file.
+   - Use the [OpenID Connect Provider](https://plugins.jenkins.io/oidc-provider/) plugin and set the `Federated Credentials` value to an `OpenID Connect id token` credential.
 
 ### Configuring via Jenkins UI
 
