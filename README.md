@@ -184,13 +184,16 @@ You can use **Workload Identity** to authenticate with Entra ID without storing 
    - Kubernetes clusters with OIDC Issuer enabled
    - GitHub Actions
    - A custom OIDC provider (e.g. keys and metadata hosted on a storage account)
+   - Jenkins as an OIDC provider using [OpenID Connect Provider](https://plugins.jenkins.io/oidc-provider/) plugin
 
 2. **Entra ID App Registration** — the same one used for user login. On the App Registration:
    - Go to **Certificates & secrets** → **Federated credentials** → **Add credential**
    - Configure the **Issuer**, **Subject**, and **Audience** to match the tokens issued by your OIDC provider
    - Save the credential
 
-3. **Federated Token File** — a file containing a valid JWT issued by your OIDC provider. Set the `AZURE_FEDERATED_TOKEN_FILE` environment variable to the path of this file.
+3. One of:
+* **Federated Token File** — a file containing a valid JWT issued by your OIDC provider. Set the `AZURE_FEDERATED_TOKEN_FILE` environment variable to the path of this file.
+* Use the [OpenID Connect Provider](https://plugins.jenkins.io/oidc-provider/) plugin and set the `Federated Credentials` value to an `OpenID Connect id token` credential.
 
 ### Configuring via Jenkins UI
 
