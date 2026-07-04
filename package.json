@@ -21,7 +21,7 @@
   },
   "homepage": "https://github.com/jenkinsci/azure-ad-plugin#readme",
   "devDependencies": {
-    "typescript": "^5.0.0",
+    "typescript": "^6.0.0",
     "vite": "^7.0.0"
   },
   "dependencies": {
