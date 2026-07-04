@@ -1,11 +1,10 @@
 import { Providers } from '@microsoft/mgt-element/dist/es6';
 import { ProxyProvider } from '@microsoft/mgt-proxy-provider/dist/es6/ProxyProvider';
-import '@microsoft/mgt-components';
-import { registerMgtComponents } from '@microsoft/mgt-components/dist/es6/index.js';
+import { registerMgtPeoplePickerComponent } from '@microsoft/mgt-components/dist/es6/components/mgt-people-picker/mgt-people-picker.js';
 
 import { applyTheme } from "@microsoft/mgt-components";
 
-registerMgtComponents();
+registerMgtPeoplePickerComponent();
 
 document.addEventListener('DOMContentLoaded', () => {
     const peoplePicker = document.querySelector(".entra-id-people-picker");
