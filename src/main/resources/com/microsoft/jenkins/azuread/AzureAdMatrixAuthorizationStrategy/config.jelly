@@ -25,7 +25,7 @@ THE SOFTWARE.
 <j:jelly xmlns:j="jelly:core" xmlns:d="jelly:define" xmlns:f="/lib/form" xmlns:l="/lib/layout" xmlns:st="jelly:stapler">
 
   <j:if test="${!descriptor.disableGraphIntegration}">
-    <script src="${rootURL}/plugin/azure-ad/js/azure-ad-bundle.js"/>
+    <script src="${rootURL}/plugin/azure-ad/js/azure-ad-bundle.js" type="module"/>
   </j:if>
 
   <link rel="stylesheet" href="${rootURL}/plugin/azure-ad/css/azure-ad.css" />
