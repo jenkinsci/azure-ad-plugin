@@ -46,6 +46,9 @@
 
         <checkstyle.skip>true</checkstyle.skip>
         <ban-junit4-imports.skip>false</ban-junit4-imports.skip>
+
+        <hpi.bundledArtifacts>azure-core-http-okhttp,jakarta.annotation-api,jose4j,microsoft-graph,microsoft-graph-core,microsoft-kiota-abstractions,microsoft-kiota-authentication-azure,microsoft-kiota-http-okHttp,microsoft-kiota-serialization-form,microsoft-kiota-serialization-json,microsoft-kiota-serialization-multipart,microsoft-kiota-serialization-text,scribejava-apis,scribejava-core,scribejava-httpclient-okhttp,scribejava-java8,std-uritemplate</hpi.bundledArtifacts>
+        <hpi.strictBundledArtifacts>true</hpi.strictBundledArtifacts>
     </properties>
 
     <repositories>
@@ -128,11 +131,25 @@
                     <groupId>com.auth0</groupId>
                     <artifactId>jwks-rsa</artifactId>
                 </exclusion>
+                <!-- Comes from OpenTelemetry API plugin -->
+                <exclusion>
+                    <groupId>io.opentelemetry</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <!-- Part of the JDK since Java 6 (java.xml module) -->
+                <exclusion>
+                    <groupId>javax.xml.stream</groupId>
+                    <artifactId>stax-api</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
             <groupId>io.jenkins.plugins</groupId>
             <artifactId>commons-lang3-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.jenkins.plugins</groupId>
+            <artifactId>opentelemetry-api</artifactId>
         </dependency>
         <dependency>
             <groupId>io.jenkins.plugins</groupId>
