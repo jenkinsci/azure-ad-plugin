@@ -50,17 +50,17 @@ public final class AzureAdUser implements UserDetails {
         }
 
         AzureAdUser user = new AzureAdUser();
-        user.name = activeDirectoryUser.displayName;
+        user.name = activeDirectoryUser.getDisplayName();
 
         // this may not match what comes in preferred_username in the id_token :(
         // https://docs.microsoft.com/en-us/azure/active-directory/develop/active-directory-optional-claims
         // https://docs.microsoft.com/en-us/azure/active-directory/authentication/howto-authentication-use-email-signin
         // https://stackoverflow.com/questions/67017723/get-preferred-username-with-microsoft-graph-api
-        user.uniqueName = activeDirectoryUser.userPrincipalName;
-        user.objectID = activeDirectoryUser.id;
+        user.uniqueName = activeDirectoryUser.getUserPrincipalName();
+        user.objectID = activeDirectoryUser.getId();
         // may not be set if it is not linked as an office365 user
         // even if it will be set via the id_token
-        user.email = activeDirectoryUser.mail;
+        user.email = activeDirectoryUser.getMail();
         user.groupOIDs = new LinkedList<>();
 
         return user;

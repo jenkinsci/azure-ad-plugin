@@ -2,13 +2,11 @@ package com.microsoft.jenkins.azuread;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.microsoft.graph.http.GraphServiceException;
 import com.microsoft.graph.models.DirectoryObject;
+import com.microsoft.graph.models.DirectoryObjectCollectionResponse;
 import com.microsoft.graph.models.Group;
-import com.microsoft.graph.requests.DirectoryObjectCollectionWithReferencesPage;
-import com.microsoft.graph.requests.DirectoryObjectCollectionWithReferencesRequestBuilder;
-import com.microsoft.graph.requests.GraphServiceClient;
-import okhttp3.Request;
+import com.microsoft.graph.serviceclient.GraphServiceClient;
+import com.microsoft.kiota.ApiException;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -22,15 +20,15 @@ import static java.net.HttpURLConnection.HTTP_FORBIDDEN;
 
 public final class AzureCachePool {
     private static final Logger LOGGER = Logger.getLogger(AzureCachePool.class.getName());
-    private static Cache<String, List<AzureAdGroup>> belongingGroupsByOid =
+    private static final Cache<String, List<AzureAdGroup>> belongingGroupsByOid =
             Caffeine.newBuilder().expireAfterAccess(1, TimeUnit.HOURS).build();
-    private final GraphServiceClient<Request> azure;
+    private final GraphServiceClient azure;
 
-    private AzureCachePool(GraphServiceClient<Request> azure) {
+    private AzureCachePool(GraphServiceClient azure) {
         this.azure = azure;
     }
 
-    public static AzureCachePool get(GraphServiceClient<Request> azure) {
+    public static AzureCachePool get(GraphServiceClient azure) {
         return new AzureCachePool(azure);
     }
 
@@ -39,22 +37,25 @@ public final class AzureCachePool {
         List<AzureAdGroup> result = belongingGroupsByOid.get(oid,
                 (cacheKey) -> {
                     try {
-                        DirectoryObjectCollectionWithReferencesPage collection = azure
-                                .users(oid)
+                        DirectoryObjectCollectionResponse collection = azure
+                                .users()
+                                .byUserId(oid)
                                 // TODO asGroup isn't working json error, and neither is $filter on securityEnabled
                                 .transitiveMemberOf()
-                                .buildRequest()
                                 .get();
 
                         List<AzureAdGroup> groups = new ArrayList<>();
 
                         while (collection != null) {
-                            final List<DirectoryObject> directoryObjects = collection.getCurrentPage();
+                            final List<DirectoryObject> directoryObjects = collection.getValue();
+                            if (directoryObjects == null) {
+                                break;
+                            }
 
                             List<AzureAdGroup> groupsFromPage = directoryObjects.stream()
                                     .map(group -> {
                                         if (group instanceof Group) {
-                                            return new AzureAdGroup(group.id, ((Group) group).displayName);
+                                            return new AzureAdGroup(group.getId(), ((Group) group).getDisplayName());
                                         }
                                         return null;
                                     })
@@ -62,20 +63,24 @@ public final class AzureCachePool {
                                     .toList();
                             groups.addAll(groupsFromPage);
 
-                            DirectoryObjectCollectionWithReferencesRequestBuilder nextPage = collection
-                                    .getNextPage();
-                            if (nextPage == null) {
+                            String nextLink = collection.getOdataNextLink();
+                            if (nextLink == null) {
                                 break;
                             } else {
-                                collection = nextPage.buildRequest().get();
+                                collection = azure
+                                        .users()
+                                        .byUserId(oid)
+                                        .transitiveMemberOf()
+                                        .withUrl(nextLink)
+                                        .get();
                             }
                         }
 
                         LOGGER.log(Level.FINE, "getBelongingGroupsByOid: found {0} groups for oid ''{1}''",
                                 new Object[]{groups.size(), oid});
                         return groups;
-                    } catch (GraphServiceException e) {
-                        if (e.getResponseCode() == HTTP_FORBIDDEN) {
+                    } catch (ApiException e) {
+                        if (e.getResponseStatusCode() == HTTP_FORBIDDEN) {
                             LOGGER.log(Level.WARNING, "Do not have sufficient privileges to "
                                     + "fetch your belonging groups' authorities.", e);
                             // cache the empty list to avoid re-checking permissions on every request

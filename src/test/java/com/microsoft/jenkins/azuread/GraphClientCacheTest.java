@@ -1,8 +1,7 @@
 package com.microsoft.jenkins.azuread;
 
-import com.microsoft.graph.requests.GraphServiceClient;
+import com.microsoft.graph.serviceclient.GraphServiceClient;
 import hudson.ProxyConfiguration;
-import okhttp3.Request;
 import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
@@ -13,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 @WithJenkins
 class GraphClientCacheTest {
 
-    private static GraphServiceClient<Request> getClient() {
+    private static GraphServiceClient getClient() {
         return GraphClientCache.getClient(new GraphClientCacheKey(
                 "client-id",
                 "client-secret",
@@ -28,11 +27,11 @@ class GraphClientCacheTest {
 
     @Test
     void testGraphClientIsRebuiltWhenProxyConfigurationChanges(JenkinsRule j) {
-        GraphServiceClient<Request> first = getClient();
+        GraphServiceClient first = getClient();
         assertSame(first, getClient());
 
         j.jenkins.setProxy(new ProxyConfiguration("proxy.example.com", 8888));
-        GraphServiceClient<Request> second = getClient();
+        GraphServiceClient second = getClient();
         assertNotSame(first, second);
         assertSame(second, getClient());
 

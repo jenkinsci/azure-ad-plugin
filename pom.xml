@@ -119,6 +119,15 @@
                     <groupId>com.azure</groupId>
                     <artifactId>azure-core</artifactId>
                 </exclusion>
+                <!-- Only used for change-notification token validation, which this plugin does not use -->
+                <exclusion>
+                    <groupId>io.jsonwebtoken</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.auth0</groupId>
+                    <artifactId>jwks-rsa</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
