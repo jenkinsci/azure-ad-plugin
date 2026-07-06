@@ -16,9 +16,6 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.scribejava.core.builder.ServiceBuilder;
 import com.github.scribejava.core.model.OAuth2AccessToken;
-import com.github.scribejava.core.model.OAuthRequest;
-import com.github.scribejava.core.model.Response;
-import com.github.scribejava.core.model.Verb;
 import com.github.scribejava.core.oauth.OAuth20Service;
 import com.github.scribejava.httpclient.okhttp.OkHttpHttpClient;
 import com.github.scribejava.httpclient.okhttp.OkHttpHttpClientConfig;
@@ -34,7 +31,7 @@ import com.microsoft.kiota.ApiException;
 import com.microsoft.jenkins.azuread.avatar.EntraAvatarProperty;
 import com.microsoft.jenkins.azuread.oauth.StateCache;
 import com.microsoft.jenkins.azuread.scribe.AzureAdApi;
-import com.microsoft.jenkins.azuread.scribe.AzureWorkloadIdentityApi;
+import com.microsoft.jenkins.azuread.scribe.AzureClientAssertionApi;
 import com.microsoft.jenkins.azuread.utils.UUIDValidator;
 import com.thoughtworks.xstream.converters.Converter;
 import com.thoughtworks.xstream.converters.MarshallingContext;
@@ -401,7 +398,7 @@ public class AzureSecurityRealm extends SecurityRealm {
         ServiceBuilder serviceBuilder = new ServiceBuilder(clientId.getPlainText());
         if (!"Certificate".equals(credentialType) && !"WorkloadIdentity".equals(credentialType)) {
             // the certificate and workload identity flows authenticate with a client assertion
-            // instead of a shared secret, see #getClientAssertion and AzureWorkloadIdentityApi
+            // instead of a shared secret, see AzureClientAssertionApi
             serviceBuilder.apiSecret(clientSecret.getPlainText());
         }
         var builder = serviceBuilder
@@ -410,11 +407,13 @@ public class AzureSecurityRealm extends SecurityRealm {
                 .defaultScope("openid profile email")
                 .callback(getRootUrl() + CALLBACK_URL);
 
+        if ("Certificate".equals(credentialType)) {
+            return builder.build(AzureClientAssertionApi.custom(getTenant(), authorityHost,
+                    this::getClientAssertion));
+        }
         if ("WorkloadIdentity".equals(credentialType)) {
-            if (Util.fixEmpty(federatedCredentialsId) != null) {
-                builder = builder.apiSecret(federatedCredentialsId);
-            }
-            return builder.build(AzureWorkloadIdentityApi.custom(getTenant(), authorityHost));
+            return builder.build(AzureClientAssertionApi.custom(getTenant(), authorityHost,
+                    tokenEndpoint -> GraphClientCache.getWorkloadIdentityToken(federatedCredentialsId)));
         }
         return builder.build(AzureAdApi.custom(getTenant(), authorityHost));
     }
@@ -531,39 +530,12 @@ public class AzureSecurityRealm extends SecurityRealm {
                 return HttpResponses.redirectToContextRoot();
             }
 
-            String redirectUri = getRootUrl() + CALLBACK_URL;
-
             OAuth20Service service = getOAuthService();
-            String tokenResponse = "";
-
+            String tokenResponse;
 
             try {
-                if ("Certificate".equals(getCredentialType())) {
-                    LOGGER.log(Level.FINE, "Using certificate-based authentication to exchange authorization code for tokens.");
-                    final OAuthRequest tokenRequest = new OAuthRequest(Verb.POST, service.getApi().getAccessTokenEndpoint());
-                    tokenRequest.addBodyParameter("client_id", getClientId());
-                    tokenRequest.addBodyParameter("grant_type", "authorization_code");
-                    tokenRequest.addBodyParameter("code", authorizationCode);
-                    tokenRequest.addBodyParameter("redirect_uri", redirectUri);
-                    tokenRequest.addBodyParameter("scope", service.getDefaultScope());
-                    String clientAssertion = getClientAssertion(service.getApi().getAccessTokenEndpoint());
-                    tokenRequest.addBodyParameter("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer");
-                    tokenRequest.addBodyParameter("client_assertion", clientAssertion);
-                    Response response = service.execute(tokenRequest);
-                    if (response.isSuccessful()) {
-                        tokenResponse = response.getBody();
-                        LOGGER.log(Level.FINE, "Successfully obtained tokens using certificate-based authentication.");
-                    } else {
-                        LOGGER.log(Level.SEVERE,
-                                "Failed to obtain tokens using certificate-based authentication. HTTP Status: "
-                                        + response.getCode() + ", Message: " + response.getMessage());
-                        throw new IOException("Authentication failed: " + response.getCode() + " " + response.getMessage());
-                    }
-                } else {
-                    LOGGER.log(Level.FINE, "Using client secret-based authentication to exchange authorization code for tokens.");
-                    final OAuth2AccessToken accessToken = service.getAccessToken(authorizationCode);
-                    tokenResponse = accessToken.getRawResponse();
-                }
+                final OAuth2AccessToken accessToken = service.getAccessToken(authorizationCode);
+                tokenResponse = accessToken.getRawResponse();
             } catch (ExecutionException | RuntimeException e) {
                 LOGGER.log(Level.SEVERE, "Error during token exchange", e);
                 throw new IOException("Failed to exchange authorization code for tokens", e);

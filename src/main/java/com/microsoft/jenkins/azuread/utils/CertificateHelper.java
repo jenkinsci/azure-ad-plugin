@@ -19,8 +19,8 @@ public final class CertificateHelper {
     private static final String PKCS1_RSA_PRIVATE_KEY_FOOTER = "-----END RSA PRIVATE KEY-----";
     // Load certificate from PEM string (single-line or multi-line)
     public static X509Certificate loadCertificateFromString(String certPem) throws GeneralSecurityException {
-        String certClean = certPem.replaceAll("-----BEGIN CERTIFICATE-----", "")
-                                 .replaceAll("-----END CERTIFICATE-----", "")
+        String certClean = certPem.replace("-----BEGIN CERTIFICATE-----", "")
+                                 .replace("-----END CERTIFICATE-----", "")
                                  .replaceAll("\\s+", "");
         byte[] certBytes = Base64.getDecoder().decode(certClean);
         CertificateFactory cf = CertificateFactory.getInstance("X.509");
