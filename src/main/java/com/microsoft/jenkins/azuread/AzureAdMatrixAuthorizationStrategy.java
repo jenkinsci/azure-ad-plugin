@@ -6,14 +6,11 @@
 package com.microsoft.jenkins.azuread;
 
 import com.cloudbees.hudson.plugins.folder.AbstractFolder;
-import com.microsoft.graph.models.Group;
-import com.microsoft.graph.models.User;
-import com.microsoft.graph.options.HeaderOption;
-import com.microsoft.graph.options.Option;
-import com.microsoft.graph.options.QueryOption;
-import com.microsoft.graph.requests.GraphServiceClient;
-import com.microsoft.graph.requests.GroupCollectionPage;
-import com.microsoft.graph.requests.UserCollectionPage;
+import io.jenkins.plugins.microsoftgraph.models.Group;
+import io.jenkins.plugins.microsoftgraph.models.GroupCollectionResponse;
+import io.jenkins.plugins.microsoftgraph.models.User;
+import io.jenkins.plugins.microsoftgraph.models.UserCollectionResponse;
+import io.jenkins.plugins.microsoftgraph.GraphServiceClient;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.Functions;
@@ -34,7 +31,6 @@ import hudson.security.SecurityRealm;
 import hudson.security.SidACL;
 import hudson.util.FormValidation;
 import jenkins.model.Jenkins;
-import okhttp3.Request;
 import org.apache.commons.lang.StringUtils;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.DoNotUse;
@@ -43,7 +39,6 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import org.springframework.security.core.Authentication;
 
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -103,8 +98,7 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
     }
 
     public ACL getACL(ItemGroup<?> g) {
-        if (g instanceof Item) {
-            Item item = (Item) g;
+        if (g instanceof Item item) {
             return item.getACL();
         }
         return getRootACL();
@@ -180,25 +174,31 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
         if (!(realm instanceof AzureSecurityRealm)) {
             return null;
         }
-        GraphServiceClient<Request> graphClient = ((AzureSecurityRealm) realm).getAzureClient();
+        GraphServiceClient graphClient = ((AzureSecurityRealm) realm).getAzureClient();
 
         List<AzureObject> candidates = new ArrayList<>();
         LOGGER.info("search users with prefix: " + prefix);
         try {
-            UserCollectionPage users = lookupUsers(prefix, graphClient);
+            UserCollectionResponse usersResponse = lookupUsers(prefix, graphClient);
+            List<User> users = usersResponse == null ? null : usersResponse.getValue();
 
-            for (User user : users.getCurrentPage()) {
-                candidates.add(new AzureObject(user.id, user.displayName));
-                if (candidates.size() > maxCandidates) {
-                    break;
+            if (users != null) {
+                for (User user : users) {
+                    candidates.add(new AzureObject(user.getId(), user.getDisplayName()));
+                    if (candidates.size() > maxCandidates) {
+                        break;
+                    }
                 }
             }
 
             if (candidates.size() < maxCandidates) {
-                GroupCollectionPage groupCollectionPage = lookupGroups(prefix, graphClient);
+                GroupCollectionResponse groupsResponse = lookupGroups(prefix, graphClient);
+                List<Group> groups = groupsResponse == null ? null : groupsResponse.getValue();
 
-                for (Group group : groupCollectionPage.getCurrentPage()) {
-                    candidates.add(new AzureObject(group.id, group.displayName));
+                if (groups != null) {
+                    for (Group group : groups) {
+                        candidates.add(new AzureObject(group.getId(), group.getDisplayName()));
+                    }
                 }
             }
 
@@ -215,29 +215,33 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
         return c;
     }
 
-    private static GroupCollectionPage lookupGroups(String prefix, GraphServiceClient<Request> graphClient) {
-        LinkedList<Option> requestOptions = new LinkedList<>();
+        private static GroupCollectionResponse lookupGroups(String prefix, GraphServiceClient graphClient) {
         String search = String.format("\"displayName:%s\"", prefix);
-        requestOptions.add(new QueryOption("$search", search));
-        requestOptions.add(new HeaderOption("ConsistencyLevel", "eventual"));
 
         return graphClient.groups()
-                .buildRequest(requestOptions)
-                .orderBy("displayName")
-                .select("id,displayName")
-                .get();
+                .get(requestConfiguration -> {
+                    var queryParameters = requestConfiguration.queryParameters;
+                    if (queryParameters != null) {
+                        queryParameters.search = search;
+                        queryParameters.orderby = new String[]{"displayName"};
+                        queryParameters.select = new String[]{"id", "displayName"};
+                    }
+                    requestConfiguration.headers.add("ConsistencyLevel", "eventual");
+                });
     }
 
-    private static UserCollectionPage lookupUsers(String prefix, GraphServiceClient<Request> graphClient) {
-        LinkedList<Option> requestOptions = new LinkedList<>();
+    private static UserCollectionResponse lookupUsers(String prefix, GraphServiceClient graphClient) {
         String search = String.format("\"displayName:%s\" OR \"userPrincipalName:%s\"", prefix, prefix);
-        requestOptions.add(new QueryOption("$search", search));
-        requestOptions.add(new HeaderOption("ConsistencyLevel", "eventual"));
         return graphClient.users()
-                .buildRequest(requestOptions)
-                .select("id,displayName")
-                .orderBy("displayName")
-                .get();
+                .get(requestConfiguration -> {
+                    var queryParameters = requestConfiguration.queryParameters;
+                    if (queryParameters != null) {
+                        queryParameters.search = search;
+                        queryParameters.select = new String[]{"id", "displayName"};
+                        queryParameters.orderby = new String[]{"displayName"};
+                    }
+                    requestConfiguration.headers.add("ConsistencyLevel", "eventual");
+                });
     }
 
     @Extension
@@ -264,8 +268,7 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
         @SuppressWarnings("unused") // called by jelly
         public boolean isDisableGraphIntegration() {
             SecurityRealm securityRealm = Jenkins.get().getSecurityRealm();
-            if (securityRealm instanceof AzureSecurityRealm) {
-                AzureSecurityRealm azureSecurityRealm = (AzureSecurityRealm) securityRealm;
+            if (securityRealm instanceof AzureSecurityRealm azureSecurityRealm) {
                 return azureSecurityRealm.isDisableGraphIntegration();
             }
 

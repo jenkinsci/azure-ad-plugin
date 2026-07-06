@@ -46,6 +46,9 @@
 
         <checkstyle.skip>true</checkstyle.skip>
         <ban-junit4-imports.skip>false</ban-junit4-imports.skip>
+
+        <hpi.bundledArtifacts>azure-core-http-okhttp,jose4j,scribejava-apis,scribejava-core,scribejava-httpclient-okhttp,scribejava-java8</hpi.bundledArtifacts>
+        <hpi.strictBundledArtifacts>true</hpi.strictBundledArtifacts>
     </properties>
 
     <repositories>
@@ -82,44 +85,9 @@
             <artifactId>azure-sdk</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.microsoft.graph</groupId>
-            <artifactId>microsoft-graph</artifactId>
-            <version>5.80.0</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>com.azure</groupId>
-                    <artifactId>azure-core-http-netty</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.squareup.okhttp3</groupId>
-                    <artifactId>okhttp</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.google.guava</groupId>
-                    <artifactId>guava</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>net.java.dev.jna</groupId>
-                    <artifactId>jna-platform</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.azure</groupId>
-                    <artifactId>azure-identity</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.github.spotbugs</groupId>
-                    <artifactId>spotbugs-annotations</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.google.code.gson</groupId>
-                    <artifactId>gson</artifactId>
-                </exclusion>
-                <!-- Comes from Azure SDK plugin -->
-                <exclusion>
-                    <groupId>com.azure</groupId>
-                    <artifactId>azure-core</artifactId>
-                </exclusion>
-            </exclusions>
+            <groupId>io.jenkins.plugins</groupId>
+            <artifactId>microsoft-graph-api</artifactId>
+            <version>1.225181-2.v4b_0434d7d9c5</version>
         </dependency>
         <dependency>
             <groupId>io.jenkins.plugins</groupId>

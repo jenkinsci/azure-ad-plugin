@@ -11,9 +11,9 @@ import com.cloudbees.plugins.credentials.CredentialsProvider;
 import com.cloudbees.plugins.credentials.common.StandardCredentials;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
-import com.microsoft.graph.authentication.TokenCredentialAuthProvider;
-import com.microsoft.graph.httpcore.HttpClients;
-import com.microsoft.graph.requests.GraphServiceClient;
+import com.microsoft.graph.core.authentication.AzureIdentityAuthenticationProvider;
+import com.microsoft.graph.core.requests.GraphClientFactory;
+import io.jenkins.plugins.microsoftgraph.GraphServiceClient;
 import hudson.ProxyConfiguration;
 import hudson.Util;
 import hudson.security.ACL;
@@ -30,7 +30,6 @@ import jenkins.model.Jenkins;
 import jenkins.util.JenkinsJVM;
 import okhttp3.Credentials;
 import okhttp3.OkHttpClient;
-import okhttp3.Request;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 
@@ -45,25 +44,23 @@ import static com.microsoft.jenkins.azuread.AzureEnvironment.AZURE_PUBLIC_CLOUD;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.getAuthorityHost;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.getGraphResource;
 import static com.microsoft.jenkins.azuread.AzureEnvironment.getServiceRoot;
-import static java.util.Collections.singletonList;
 
 public class GraphClientCache {
 
     private static final Logger LOGGER =
             Logger.getLogger(GraphClientCache.class.getName());
     private static final int TEN = 10;
-    private static final LoadingCache<GraphClientCacheKey, GraphServiceClient<Request>> TOKEN_CACHE = Caffeine.newBuilder()
+    private static final LoadingCache<GraphClientCacheKey, GraphServiceClient> TOKEN_CACHE = Caffeine.newBuilder()
             .maximumSize(TEN)
             .build(GraphClientCache::createGraphClient);
 
-    private static GraphServiceClient<Request> createGraphClient(GraphClientCacheKey key) {
+    private static GraphServiceClient createGraphClient(GraphClientCacheKey key) {
         LOGGER.log(Level.FINE,
                 "createGraphClient: creating client for credentialType={0}, environment={1}",
                 new Object[]{key.credentialType(), key.azureEnvironmentName()});
-        TokenCredentialAuthProvider authProvider = getAuthProvider(key);
+        AzureIdentityAuthenticationProvider authProvider = getAuthProvider(key);
 
-        OkHttpClient.Builder builder = HttpClients.createDefault(authProvider)
-                .newBuilder();
+        OkHttpClient.Builder builder = GraphClientFactory.create();
 
         String azureEnv = key.azureEnvironmentName();
         String targetUrl = getGraphResource(azureEnv);
@@ -71,21 +68,16 @@ public class GraphClientCache {
         builder = addProxyToHttpClientIfRequired(builder, targetUrl);
         final OkHttpClient graphHttpClient = builder.build();
 
-        GraphServiceClient<Request> graphServiceClient = GraphServiceClient
-                .builder()
-                .httpClient(graphHttpClient)
-                .buildClient();
-
-
+        GraphServiceClient graphServiceClient = new GraphServiceClient(authProvider, graphHttpClient);
 
         if (!azureEnv.equals(AZURE_PUBLIC_CLOUD)) {
-            graphServiceClient.setServiceRoot(getServiceRoot(azureEnv));
+            graphServiceClient.getRequestAdapter().setBaseUrl(getServiceRoot(azureEnv));
         }
         LOGGER.log(Level.FINE, "createGraphClient: client created successfully");
         return graphServiceClient;
     }
 
-    private static TokenCredentialAuthProvider getAuthProvider(GraphClientCacheKey key) {
+    private static AzureIdentityAuthenticationProvider getAuthProvider(GraphClientCacheKey key) {
         String graphResource = AzureEnvironment.getGraphResource(key.azureEnvironmentName());
 
         TokenCredential tokenCredential = switch (key.credentialType()) {
@@ -94,9 +86,10 @@ public class GraphClientCache {
             case "WorkloadIdentity" -> getWorkloadIdentityCredential(key);
             default -> throw new IllegalArgumentException("Invalid credential type: " + key.credentialType());
         };
-        return new TokenCredentialAuthProvider(
-                singletonList(graphResource + ".default"),
-                tokenCredential);
+        return new AzureIdentityAuthenticationProvider(
+                tokenCredential,
+                new String[]{URI.create(graphResource).getHost()},
+                graphResource + ".default");
     }
 
     static ClientCertificateCredential getClientCertificateCredential(GraphClientCacheKey key) {
@@ -171,11 +164,11 @@ public class GraphClientCache {
         return new ByteArrayInputStream(secretString.getBytes(StandardCharsets.UTF_8));
     }
 
-    static GraphServiceClient<Request> getClient(GraphClientCacheKey key) {
+    static GraphServiceClient getClient(GraphClientCacheKey key) {
         return TOKEN_CACHE.get(key);
     }
 
-    public static GraphServiceClient<Request> getClient(AzureSecurityRealm azureSecurityRealm) {
+    public static GraphServiceClient getClient(AzureSecurityRealm azureSecurityRealm) {
         return TOKEN_CACHE.get(azureSecurityRealm.getGraphClientCacheKey());
     }
 

@@ -12,6 +12,7 @@ import hudson.model.Computer;
 import hudson.model.RootAction;
 import hudson.security.AccessControlled;
 import hudson.security.SecurityRealm;
+import java.util.Objects;
 import jenkins.model.Jenkins;
 import jenkins.model.TransientActionFactory;
 import okhttp3.MediaType;
@@ -139,7 +140,7 @@ public class GraphProxy implements RootAction, StaplerProxy {
         Request okRequest = buildRequest(request, token, url);
 
         try (Response okResp = client.newCall(okRequest).execute()) {
-            String contentType = okResp.header("Content-Type", "application/json");
+            String contentType = Objects.requireNonNull(okResp.header("Content-Type", "application/json"));
 
             response.setContentType(contentType);
 
@@ -147,16 +148,14 @@ public class GraphProxy implements RootAction, StaplerProxy {
             response.addHeader("request-id", okResp.header("request-id"));
             response.addHeader("client-request-id", okResp.header("client-request-id"));
             ResponseBody body = okResp.body();
-            if (body != null) {
-                if (contentType.startsWith("application/json")) {
-                    String string = body.string();
-                    response.getWriter().write(string);
-                } else {
-                    // okhttp guesses the charset wrong for pictures when calling .string directly
-                    // it's supposed to use the content-type but it only seems to get utf-8 when that's not the
-                    // right one, (this is currently used for loading the user's photo
-                    response.getWriter().write(body.byteString().string(StandardCharsets.ISO_8859_1));
-                }
+            if (contentType.startsWith("application/json")) {
+                String string = body.string();
+                response.getWriter().write(string);
+            } else {
+                // okhttp guesses the charset wrong for pictures when calling .string directly
+                // it's supposed to use the content-type but it only seems to get utf-8 when that's not the
+                // right one, (this is currently used for loading the user's photo
+                response.getWriter().write(body.byteString().string(StandardCharsets.ISO_8859_1));
             }
         }
     }
@@ -179,8 +178,7 @@ public class GraphProxy implements RootAction, StaplerProxy {
 
     private String getToken() {
         SecurityRealm securityRealm = Jenkins.get().getSecurityRealm();
-        if (securityRealm instanceof AzureSecurityRealm) {
-            AzureSecurityRealm azureSecurityRealm = ((AzureSecurityRealm) securityRealm);
+        if (securityRealm instanceof AzureSecurityRealm azureSecurityRealm) {
             String cacheKey = azureSecurityRealm.getCredentialCacheKey();
             AccessToken accessToken = tokenCache.get(cacheKey, (unused) -> azureSecurityRealm.getAccessToken());
 
@@ -196,7 +194,7 @@ public class GraphProxy implements RootAction, StaplerProxy {
     private String getBaseUrl() {
         SecurityRealm securityRealm = Jenkins.get().getSecurityRealm();
         if (securityRealm instanceof AzureSecurityRealm) {
-            return ((AzureSecurityRealm) securityRealm).getAzureClient().getServiceRoot();
+            return ((AzureSecurityRealm) securityRealm).getAzureClient().getRequestAdapter().getBaseUrl();
         }
         throw new IllegalStateException("GraphProxy only works when Authentication is set to Azure");
     }

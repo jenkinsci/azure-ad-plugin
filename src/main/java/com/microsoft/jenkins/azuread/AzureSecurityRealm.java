@@ -24,14 +24,13 @@ import com.github.scribejava.httpclient.okhttp.OkHttpHttpClient;
 import com.github.scribejava.httpclient.okhttp.OkHttpHttpClientConfig;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
-import com.microsoft.graph.http.GraphServiceException;
-import com.microsoft.graph.models.Group;
-import com.microsoft.graph.models.ProfilePhoto;
-import com.microsoft.graph.options.Option;
-import com.microsoft.graph.options.QueryOption;
-import com.microsoft.graph.requests.GraphServiceClient;
-import com.microsoft.graph.requests.GroupCollectionPage;
-import com.microsoft.graph.requests.ProfilePhotoRequestBuilder;
+import io.jenkins.plugins.microsoftgraph.models.Entity;
+import io.jenkins.plugins.microsoftgraph.models.Group;
+import io.jenkins.plugins.microsoftgraph.models.GroupCollectionResponse;
+import io.jenkins.plugins.microsoftgraph.models.ProfilePhoto;
+import io.jenkins.plugins.microsoftgraph.GraphServiceClient;
+import io.jenkins.plugins.microsoftgraph.users.item.photos.item.ProfilePhotoItemRequestBuilder;
+import com.microsoft.kiota.ApiException;
 import com.microsoft.jenkins.azuread.avatar.EntraAvatarProperty;
 import com.microsoft.jenkins.azuread.oauth.StateCache;
 import com.microsoft.jenkins.azuread.scribe.AzureAdApi;
@@ -66,7 +65,6 @@ import jakarta.servlet.http.HttpSession;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
@@ -78,7 +76,6 @@ import java.security.cert.X509Certificate;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -91,7 +88,6 @@ import jenkins.model.Jenkins;
 import jenkins.security.SecurityListener;
 import jenkins.util.SystemProperties;
 import okhttp3.OkHttpClient;
-import okhttp3.Request;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jenkinsci.plugins.plaincredentials.FileCredentials;
@@ -423,7 +419,7 @@ public class AzureSecurityRealm extends SecurityRealm {
         return builder.build(AzureAdApi.custom(getTenant(), authorityHost));
     }
 
-    GraphServiceClient<Request> getAzureClient() {
+    GraphServiceClient getAzureClient() {
         return GraphClientCache.getClient(this);
     }
 
@@ -743,17 +739,17 @@ public class AzureSecurityRealm extends SecurityRealm {
             if (SystemProperties.getBoolean(AzureSecurityRealm.class.getName() + ".disableAvatar", false)) {
                 return;
             }
-            ProfilePhotoRequestBuilder photosRequestBuilder = getAzureClient()
-                    .users(userDetails.getObjectID()).photos("48x48");
+            ProfilePhotoItemRequestBuilder photosRequestBuilder = getAzureClient()
+                    .users().byUserId(userDetails.getObjectID()).photos().byProfilePhotoId("48x48");
             LOGGER.finest("Fetching avatar metadata");
-            ProfilePhoto profilePhoto = photosRequestBuilder.buildRequest().get();
+            ProfilePhoto profilePhoto = photosRequestBuilder.get();
             LOGGER.finest("Completed fetching avatar metadata");
             if (profilePhoto != null) {
                 LOGGER.finest("Fetching avatar");
-                try (InputStream inputStream = photosRequestBuilder.content().buildRequest().get()) {
+                try (InputStream inputStream = photosRequestBuilder.content().get()) {
                     if (inputStream != null) {
-                        String mediaContentType = profilePhoto.additionalDataManager().get("@odata.mediaContentType")
-                                .getAsString();
+                        String mediaContentType = (String) profilePhoto.getAdditionalData()
+                                .get("@odata.mediaContentType");
                         EntraAvatarProperty.AvatarImage avatarImage = new EntraAvatarProperty.AvatarImage(
                                 mediaContentType
                         );
@@ -774,8 +770,8 @@ public class AzureSecurityRealm extends SecurityRealm {
             } else {
                 LOGGER.finest("No avatar found");
             }
-        } catch (GraphServiceException e) {
-            LOGGER.log(e.getResponseCode() == 404 ? Level.FINER : Level.WARNING, "Failed to get profile photo for %s".formatted(currentUser.getId()), e);
+        } catch (ApiException e) {
+            LOGGER.log(e.getResponseStatusCode() == NOT_FOUND ? Level.FINER : Level.WARNING, "Failed to get profile photo for %s".formatted(currentUser.getId()), e);
         }
     }
 
@@ -796,8 +792,7 @@ public class AzureSecurityRealm extends SecurityRealm {
 
     @Override
     protected String getPostLogOutUrl2(StaplerRequest2 req, Authentication auth) {
-        if (auth instanceof AzureAuthenticationToken) {
-            AzureAuthenticationToken azureToken = (AzureAuthenticationToken) auth;
+        if (auth instanceof AzureAuthenticationToken azureToken) {
             String oid = azureToken.getAzureAdUser().getObjectID();
             AzureCachePool.invalidateBelongingGroupsByOid(oid);
         }
@@ -829,7 +824,7 @@ public class AzureSecurityRealm extends SecurityRealm {
             }
 
             AzureAdUser azureAdUser = caches.get(username, (cacheKey) -> {
-                GraphServiceClient<Request> azureClient = getAzureClient();
+                GraphServiceClient azureClient = getAzureClient();
                 String userId = ObjId2FullSidMap.extractObjectId(username);
 
                 if (userId == null) {
@@ -840,10 +835,10 @@ public class AzureSecurityRealm extends SecurityRealm {
                 // as we look up by object id we don't know if it's a user or a group :(
                 try {
                     // TODO try https://docs.microsoft.com/en-us/answers/questions/42697/how-to-get-a-particular-azure-ad-guest-user-from-h.html
-                    com.microsoft.graph.models.User activeDirectoryUser = azureClient.users(userId).buildRequest()
+                    io.jenkins.plugins.microsoftgraph.models.User activeDirectoryUser = azureClient.users().byUserId(userId)
                             .get();
 
-                    if (activeDirectoryUser != null & activeDirectoryUser.id == null) {
+                    if (activeDirectoryUser != null && activeDirectoryUser.getId() == null) {
                         // known to happen when subject is a group with display name only and starts with a #
                         LOGGER.log(Level.FINE, "loadUserByUsername: user object has null id for ''{0}''", userId);
                         return null;
@@ -860,11 +855,11 @@ public class AzureSecurityRealm extends SecurityRealm {
 
                     LOGGER.log(Level.FINE, "loadUserByUsername: successfully loaded user ''{0}''", userId);
                     return user;
-                } catch (GraphServiceException e) {
-                    if (e.getResponseCode() == NOT_FOUND) {
+                } catch (ApiException e) {
+                    if (e.getResponseStatusCode() == NOT_FOUND) {
                         LOGGER.log(Level.FINE, "loadUserByUsername: user ''{0}'' not found (404)", userId);
                         return null;
-                    } else if (e.getResponseCode() == BAD_REQUEST) {
+                    } else if (e.getResponseStatusCode() == BAD_REQUEST) {
                         if (LOGGER.isLoggable(Level.FINE)) {
                             LOGGER.log(Level.FINE, "Failed to lookup user with userid '" + userId, e);
                         } else {
@@ -905,7 +900,7 @@ public class AzureSecurityRealm extends SecurityRealm {
             throw new UserMayOrMayNotExistException2("Can't lookup a group if graph integration is disabled");
         }
 
-        GraphServiceClient<Request> azureClient = getAzureClient();
+        GraphServiceClient azureClient = getAzureClient();
 
         String groupId = ObjId2FullSidMap.extractObjectId(groupName);
 
@@ -916,51 +911,55 @@ public class AzureSecurityRealm extends SecurityRealm {
 
         Group group;
         if (UUIDValidator.isValidUUID(groupId)) {
-            group = azureClient.groups(groupId)
-                    .buildRequest()
+            group = azureClient.groups().byGroupId(groupId)
                     .get();
         } else {
             group = loadGroupByDisplayName(groupName);
         }
 
-        if (group == null || group.id == null) {
+        if (group == null || group.getId() == null) {
             LOGGER.log(Level.WARNING, "loadGroupByGroupname2: group ''{0}'' not found", groupName);
             throw new UsernameNotFoundException("Group: " + groupName + " not found");
         }
 
         LOGGER.log(Level.FINE, "loadGroupByGroupname2: found group ''{0}'' with id ''{1}''",
-                new Object[]{group.displayName, group.id});
-        return new AzureAdGroupDetails(group.id, group.displayName);
+                new Object[]{group.getDisplayName(), group.getId()});
+        return new AzureAdGroupDetails(group.getId(), group.getDisplayName());
     }
 
     @CheckForNull
     private Group loadGroupByDisplayName(String groupName) {
-        LinkedList<Option> requestOptions = new LinkedList<>();
         String encodedGroupName = groupName
                 .replace("'", "''");
-        encodedGroupName = URLEncoder.encode(encodedGroupName, StandardCharsets.UTF_8);
 
         String query = String.format("displayName eq '%s'", encodedGroupName);
 
-        requestOptions.add(new QueryOption("$filter", query));
+        GroupCollectionResponse groupCollectionResponse = getAzureClient().groups()
+                .get(requestConfiguration -> {
+                    var queryParameters = requestConfiguration.queryParameters;
+                    if (queryParameters != null) {
+                        queryParameters.filter = query;
+                        queryParameters.select = new String[]{"id", "displayName"};
+                    }
+                });
 
-        GroupCollectionPage groupCollectionPage = getAzureClient().groups()
-                .buildRequest(requestOptions)
-                .select("id,displayName")
-                .get();
-
-        assert groupCollectionPage != null;
-        List<Group> currentPage = groupCollectionPage.getCurrentPage();
+        if (groupCollectionResponse == null) {
+            return null;
+        }
+        List<Group> currentPage = groupCollectionResponse.getValue();
         Group group = null;
+        if (currentPage == null) {
+            return null;
+        }
         if (currentPage.size() > 1) {
             String groupIds = currentPage
                     .stream()
-                    .map(groupO -> groupO.id)
+                    .map(Entity::getId)
                     .collect(Collectors.joining(","));
             throw new UsernameNotFoundException("Multiple matches found for group display name, "
                     + "this must be unique: " + groupIds);
         } else if (currentPage.size() == 1) {
-            group = currentPage.get(0);
+            group = currentPage.getFirst();
         }
         return group;
     }
@@ -1212,7 +1211,7 @@ public class AzureSecurityRealm extends SecurityRealm {
             }
 
             try {
-                GraphServiceClient<Request> graphServiceClient = GraphClientCache.getClient(
+                GraphServiceClient graphServiceClient = GraphClientCache.getClient(
                         new GraphClientCacheKey(
                                 clientId,
                                 Secret.toString(clientSecret),
@@ -1224,9 +1223,13 @@ public class AzureSecurityRealm extends SecurityRealm {
                                 Util.fixEmpty(federatedCredentialsId)
                         )
                 );
-                com.microsoft.graph.models.User user = graphServiceClient.users(testObject).buildRequest().get();
+                io.jenkins.plugins.microsoftgraph.models.User user = graphServiceClient.users().byUserId(testObject).get();
 
-                return FormValidation.ok("Successfully verified, found display name: " + user.displayName);
+                if (user == null) {
+                    return FormValidation.error("Could not find user: " + testObject);
+                }
+
+                return FormValidation.ok("Successfully verified, found display name: " + user.getDisplayName());
             } catch (Exception ex) {
                 return FormValidation.error(ex, ex.getMessage());
             }
