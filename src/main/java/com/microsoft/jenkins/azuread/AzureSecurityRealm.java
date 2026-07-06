@@ -24,12 +24,12 @@ import com.github.scribejava.httpclient.okhttp.OkHttpHttpClient;
 import com.github.scribejava.httpclient.okhttp.OkHttpHttpClientConfig;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
-import com.microsoft.graph.models.Entity;
-import com.microsoft.graph.models.Group;
-import com.microsoft.graph.models.GroupCollectionResponse;
-import com.microsoft.graph.models.ProfilePhoto;
-import com.microsoft.graph.serviceclient.GraphServiceClient;
-import com.microsoft.graph.users.item.photos.item.ProfilePhotoItemRequestBuilder;
+import io.jenkins.plugins.microsoftgraph.models.Entity;
+import io.jenkins.plugins.microsoftgraph.models.Group;
+import io.jenkins.plugins.microsoftgraph.models.GroupCollectionResponse;
+import io.jenkins.plugins.microsoftgraph.models.ProfilePhoto;
+import io.jenkins.plugins.microsoftgraph.GraphServiceClient;
+import io.jenkins.plugins.microsoftgraph.users.item.photos.item.ProfilePhotoItemRequestBuilder;
 import com.microsoft.kiota.ApiException;
 import com.microsoft.jenkins.azuread.avatar.EntraAvatarProperty;
 import com.microsoft.jenkins.azuread.oauth.StateCache;
@@ -835,7 +835,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                 // as we look up by object id we don't know if it's a user or a group :(
                 try {
                     // TODO try https://docs.microsoft.com/en-us/answers/questions/42697/how-to-get-a-particular-azure-ad-guest-user-from-h.html
-                    com.microsoft.graph.models.User activeDirectoryUser = azureClient.users().byUserId(userId)
+                    io.jenkins.plugins.microsoftgraph.models.User activeDirectoryUser = azureClient.users().byUserId(userId)
                             .get();
 
                     if (activeDirectoryUser != null && activeDirectoryUser.getId() == null) {
@@ -1223,7 +1223,7 @@ public class AzureSecurityRealm extends SecurityRealm {
                                 Util.fixEmpty(federatedCredentialsId)
                         )
                 );
-                com.microsoft.graph.models.User user = graphServiceClient.users().byUserId(testObject).get();
+                io.jenkins.plugins.microsoftgraph.models.User user = graphServiceClient.users().byUserId(testObject).get();
 
                 if (user == null) {
                     return FormValidation.error("Could not find user: " + testObject);

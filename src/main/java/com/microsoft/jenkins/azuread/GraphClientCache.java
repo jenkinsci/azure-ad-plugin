@@ -13,7 +13,7 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.microsoft.graph.core.authentication.AzureIdentityAuthenticationProvider;
 import com.microsoft.graph.core.requests.GraphClientFactory;
-import com.microsoft.graph.serviceclient.GraphServiceClient;
+import io.jenkins.plugins.microsoftgraph.GraphServiceClient;
 import hudson.ProxyConfiguration;
 import hudson.Util;
 import hudson.security.ACL;

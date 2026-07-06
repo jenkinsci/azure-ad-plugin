@@ -2,10 +2,10 @@ package com.microsoft.jenkins.azuread;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.microsoft.graph.models.DirectoryObject;
-import com.microsoft.graph.models.DirectoryObjectCollectionResponse;
-import com.microsoft.graph.models.Group;
-import com.microsoft.graph.serviceclient.GraphServiceClient;
+import io.jenkins.plugins.microsoftgraph.models.DirectoryObject;
+import io.jenkins.plugins.microsoftgraph.models.DirectoryObjectCollectionResponse;
+import io.jenkins.plugins.microsoftgraph.models.Group;
+import io.jenkins.plugins.microsoftgraph.GraphServiceClient;
 import com.microsoft.kiota.ApiException;
 
 import java.util.ArrayList;

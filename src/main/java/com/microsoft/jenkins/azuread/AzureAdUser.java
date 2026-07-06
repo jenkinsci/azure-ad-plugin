@@ -44,7 +44,7 @@ public final class AzureAdUser implements UserDetails {
         authorities = Collections.singletonList(SecurityRealm.AUTHENTICATED_AUTHORITY2);
     }
 
-    public static AzureAdUser createFromActiveDirectoryUser(com.microsoft.graph.models.User activeDirectoryUser) {
+    public static AzureAdUser createFromActiveDirectoryUser(io.jenkins.plugins.microsoftgraph.models.User activeDirectoryUser) {
         if (activeDirectoryUser == null) {
             return null;
         }

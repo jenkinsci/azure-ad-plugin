@@ -1,6 +1,6 @@
 package com.microsoft.jenkins.azuread;
 
-import com.microsoft.graph.serviceclient.GraphServiceClient;
+import io.jenkins.plugins.microsoftgraph.GraphServiceClient;
 import hudson.ProxyConfiguration;
 import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.JenkinsRule;

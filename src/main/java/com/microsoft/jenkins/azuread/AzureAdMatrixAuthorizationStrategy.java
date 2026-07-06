@@ -6,11 +6,11 @@
 package com.microsoft.jenkins.azuread;
 
 import com.cloudbees.hudson.plugins.folder.AbstractFolder;
-import com.microsoft.graph.models.Group;
-import com.microsoft.graph.models.GroupCollectionResponse;
-import com.microsoft.graph.models.User;
-import com.microsoft.graph.models.UserCollectionResponse;
-import com.microsoft.graph.serviceclient.GraphServiceClient;
+import io.jenkins.plugins.microsoftgraph.models.Group;
+import io.jenkins.plugins.microsoftgraph.models.GroupCollectionResponse;
+import io.jenkins.plugins.microsoftgraph.models.User;
+import io.jenkins.plugins.microsoftgraph.models.UserCollectionResponse;
+import io.jenkins.plugins.microsoftgraph.GraphServiceClient;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.Functions;

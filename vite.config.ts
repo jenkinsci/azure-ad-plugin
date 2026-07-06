@@ -4,7 +4,7 @@ export default defineConfig(({ mode }) => ({
   build: {
     outDir: 'src/main/webapp/js',
     emptyOutDir: true,
-    sourcemap: mode === 'development' ? 'inline' : true,
+    sourcemap: mode === 'development' ? 'inline' : false,
     minify: mode !== 'development',
     rollupOptions: {
       input: 'src/main/frontend/index.ts',
