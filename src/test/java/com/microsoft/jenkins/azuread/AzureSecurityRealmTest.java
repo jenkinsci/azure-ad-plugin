@@ -7,6 +7,7 @@ import com.github.scribejava.core.model.OAuth2AccessToken;
 import com.github.scribejava.core.oauth.OAuth20Service;
 import com.github.scribejava.httpclient.okhttp.OkHttpHttpClient;
 import com.microsoft.jenkins.azuread.oauth.StateCache;
+import com.microsoft.jenkins.azuread.scribe.AzureClientAssertionApi;
 import hudson.ProxyConfiguration;
 import com.thoughtworks.xstream.io.binary.BinaryStreamReader;
 import com.thoughtworks.xstream.io.binary.BinaryStreamWriter;
@@ -285,7 +286,24 @@ class AzureSecurityRealmTest {
 
         assertNotNull(service);
         assertEquals("openid profile email", service.getDefaultScope());
+        assertInstanceOf(AzureClientAssertionApi.class, service.getApi());
         // the certificate flow authenticates with a client assertion, the PEM must not be used as a secret
+        assertNull(service.getApiSecret());
+    }
+
+    @Test
+    void testGetOAuthServiceBuildsWorkloadIdentityCredentialFlow(JenkinsRule j) {
+        JenkinsLocationConfiguration.get().setUrl("http://localhost/jenkins/");
+        AzureSecurityRealm realm = new AzureSecurityRealm("tenant", "client-id", Secret.fromString("secret"), 0);
+        realm.setCredentialType("WorkloadIdentity");
+        realm.setFederatedCredentialsId("federated-credentials-id");
+
+        OAuth20Service service = realm.getOAuthService();
+
+        assertNotNull(service);
+        assertEquals("openid profile email", service.getDefaultScope());
+        assertInstanceOf(AzureClientAssertionApi.class, service.getApi());
+        // the workload identity flow authenticates with a client assertion instead of a secret
         assertNull(service.getApiSecret());
     }
 

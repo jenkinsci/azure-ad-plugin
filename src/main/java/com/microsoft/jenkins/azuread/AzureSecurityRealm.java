@@ -9,16 +9,12 @@ import com.azure.core.credential.AccessToken;
 import com.azure.core.credential.TokenRequestContext;
 import com.cloudbees.plugins.credentials.common.StandardCredentials;
 import com.cloudbees.plugins.credentials.common.StandardListBoxModel;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.scribejava.core.builder.ServiceBuilder;
 import com.github.scribejava.core.model.OAuth2AccessToken;
-import com.github.scribejava.core.model.OAuthRequest;
-import com.github.scribejava.core.model.Response;
-import com.github.scribejava.core.model.Verb;
 import com.github.scribejava.core.oauth.OAuth20Service;
 import com.github.scribejava.httpclient.okhttp.OkHttpHttpClient;
 import com.github.scribejava.httpclient.okhttp.OkHttpHttpClientConfig;
@@ -34,7 +30,7 @@ import com.microsoft.kiota.ApiException;
 import com.microsoft.jenkins.azuread.avatar.EntraAvatarProperty;
 import com.microsoft.jenkins.azuread.oauth.StateCache;
 import com.microsoft.jenkins.azuread.scribe.AzureAdApi;
-import com.microsoft.jenkins.azuread.scribe.AzureWorkloadIdentityApi;
+import com.microsoft.jenkins.azuread.scribe.AzureClientAssertionApi;
 import com.microsoft.jenkins.azuread.utils.UUIDValidator;
 import com.thoughtworks.xstream.converters.Converter;
 import com.thoughtworks.xstream.converters.MarshallingContext;
@@ -71,14 +67,10 @@ import java.nio.file.StandardCopyOption;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.security.PrivateKey;
-import java.security.Signature;
 import java.security.cert.X509Certificate;
-import java.time.Instant;
-import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
@@ -92,9 +84,13 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jenkinsci.plugins.plaincredentials.FileCredentials;
 import org.jenkinsci.plugins.plaincredentials.StringCredentials;
+import org.jose4j.jws.AlgorithmIdentifiers;
+import org.jose4j.jws.JsonWebSignature;
 import org.jose4j.jwt.JwtClaims;
 import org.jose4j.jwt.consumer.InvalidJwtException;
 import org.jose4j.jwt.consumer.JwtConsumer;
+import org.jose4j.keys.X509Util;
+import org.jose4j.lang.JoseException;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.Header;
@@ -401,7 +397,7 @@ public class AzureSecurityRealm extends SecurityRealm {
         ServiceBuilder serviceBuilder = new ServiceBuilder(clientId.getPlainText());
         if (!"Certificate".equals(credentialType) && !"WorkloadIdentity".equals(credentialType)) {
             // the certificate and workload identity flows authenticate with a client assertion
-            // instead of a shared secret, see #getClientAssertion and AzureWorkloadIdentityApi
+            // instead of a shared secret, see AzureClientAssertionApi
             serviceBuilder.apiSecret(clientSecret.getPlainText());
         }
         var builder = serviceBuilder
@@ -410,11 +406,13 @@ public class AzureSecurityRealm extends SecurityRealm {
                 .defaultScope("openid profile email")
                 .callback(getRootUrl() + CALLBACK_URL);
 
+        if ("Certificate".equals(credentialType)) {
+            return builder.build(AzureClientAssertionApi.custom(getTenant(), authorityHost,
+                    this::getClientAssertion));
+        }
         if ("WorkloadIdentity".equals(credentialType)) {
-            if (Util.fixEmpty(federatedCredentialsId) != null) {
-                builder = builder.apiSecret(federatedCredentialsId);
-            }
-            return builder.build(AzureWorkloadIdentityApi.custom(getTenant(), authorityHost));
+            return builder.build(AzureClientAssertionApi.custom(getTenant(), authorityHost,
+                    ignored -> GraphClientCache.getWorkloadIdentityToken(federatedCredentialsId)));
         }
         return builder.build(AzureAdApi.custom(getTenant(), authorityHost));
     }
@@ -531,39 +529,12 @@ public class AzureSecurityRealm extends SecurityRealm {
                 return HttpResponses.redirectToContextRoot();
             }
 
-            String redirectUri = getRootUrl() + CALLBACK_URL;
-
             OAuth20Service service = getOAuthService();
-            String tokenResponse = "";
-
+            String tokenResponse;
 
             try {
-                if ("Certificate".equals(getCredentialType())) {
-                    LOGGER.log(Level.FINE, "Using certificate-based authentication to exchange authorization code for tokens.");
-                    final OAuthRequest tokenRequest = new OAuthRequest(Verb.POST, service.getApi().getAccessTokenEndpoint());
-                    tokenRequest.addBodyParameter("client_id", getClientId());
-                    tokenRequest.addBodyParameter("grant_type", "authorization_code");
-                    tokenRequest.addBodyParameter("code", authorizationCode);
-                    tokenRequest.addBodyParameter("redirect_uri", redirectUri);
-                    tokenRequest.addBodyParameter("scope", service.getDefaultScope());
-                    String clientAssertion = getClientAssertion(service.getApi().getAccessTokenEndpoint());
-                    tokenRequest.addBodyParameter("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer");
-                    tokenRequest.addBodyParameter("client_assertion", clientAssertion);
-                    Response response = service.execute(tokenRequest);
-                    if (response.isSuccessful()) {
-                        tokenResponse = response.getBody();
-                        LOGGER.log(Level.FINE, "Successfully obtained tokens using certificate-based authentication.");
-                    } else {
-                        LOGGER.log(Level.SEVERE,
-                                "Failed to obtain tokens using certificate-based authentication. HTTP Status: "
-                                        + response.getCode() + ", Message: " + response.getMessage());
-                        throw new IOException("Authentication failed: " + response.getCode() + " " + response.getMessage());
-                    }
-                } else {
-                    LOGGER.log(Level.FINE, "Using client secret-based authentication to exchange authorization code for tokens.");
-                    final OAuth2AccessToken accessToken = service.getAccessToken(authorizationCode);
-                    tokenResponse = accessToken.getRawResponse();
-                }
+                final OAuth2AccessToken accessToken = service.getAccessToken(authorizationCode);
+                tokenResponse = accessToken.getRawResponse();
             } catch (ExecutionException | RuntimeException e) {
                 LOGGER.log(Level.SEVERE, "Error during token exchange", e);
                 throw new IOException("Failed to exchange authorization code for tokens", e);
@@ -667,68 +638,29 @@ public class AzureSecurityRealm extends SecurityRealm {
         try {
             X509Certificate cert = loadCertificateFromString(certPem);
             PrivateKey privateKey = loadPrivateKeyFromString(keyPem);
-            String thumbprint = calculateThumbprint(cert);
-            return generateClientAssertion(privateKey, thumbprint, tokenEndpoint);
-        } catch (GeneralSecurityException | JsonProcessingException e) {
+            return generateClientAssertion(privateKey, X509Util.x5t(cert), tokenEndpoint);
+        } catch (GeneralSecurityException | JoseException e) {
             throw new RuntimeException("Failed to generate client assertion", e);
         }
     }
 
-    // Calculate SHA-1 thumbprint and base64url encode
-    String calculateThumbprint(X509Certificate cert) throws GeneralSecurityException {
-        MessageDigest sha1 = MessageDigest.getInstance("SHA-1");
-        byte[] der = cert.getEncoded();
-        byte[] digest = sha1.digest(der);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(digest);
-    }
+    private static final float CLIENT_ASSERTION_LIFETIME_MINUTES = 10;
 
-    private static final long CLIENT_ASSERTION_LIFETIME_SECONDS = 600L;
+    String generateClientAssertion(PrivateKey privateKey, String thumbprint, String tokenEndpoint) throws JoseException {
+        JwtClaims claims = new JwtClaims();
+        claims.setAudience(tokenEndpoint);
+        claims.setIssuer(getClientId());
+        claims.setSubject(getClientId());
+        claims.setGeneratedJwtId();
+        claims.setIssuedAtToNow();
+        claims.setExpirationTimeMinutesInTheFuture(CLIENT_ASSERTION_LIFETIME_MINUTES);
 
-    // Create JWT header and payload, sign with private key (minimal external libs)
-    String generateClientAssertion(PrivateKey privateKey, String thumbprint, String tokenEndpoint) throws GeneralSecurityException, JsonProcessingException {
-        long now = Instant.now().getEpochSecond();
-        long exp = now + CLIENT_ASSERTION_LIFETIME_SECONDS; // 10 minutes
-
-        ObjectMapper mapper = new ObjectMapper();
-
-        // Header
-        Map<String, Object> headerMap = Map.of(
-                "alg", "RS256",
-                "x5t", thumbprint
-        );
-
-        String headerJson = mapper.writeValueAsString(headerMap);
-
-        String header = Base64.getUrlEncoder()
-                .withoutPadding()
-                .encodeToString(headerJson.getBytes(StandardCharsets.UTF_8));
-
-        // Payload
-        Map<String, Object> payloadMap = Map.of(
-                "aud", tokenEndpoint,
-                "iss", getClientId(),
-                "sub", getClientId(),
-                "jti", UUID.randomUUID().toString(),
-                "exp", exp,
-                "iat", now
-        );
-
-        String payloadJson = mapper.writeValueAsString(payloadMap);
-
-        String payload = Base64.getUrlEncoder()
-                .withoutPadding()
-                .encodeToString(payloadJson.getBytes(StandardCharsets.UTF_8));
-
-
-        // Sign header.payload
-        String signingInput = header + "." + payload;
-        Signature signature = Signature.getInstance("SHA256withRSA");
-        signature.initSign(privateKey);
-        signature.update(signingInput.getBytes(StandardCharsets.UTF_8));
-        byte[] sigBytes = signature.sign();
-        String signatureB64 = Base64.getUrlEncoder().withoutPadding().encodeToString(sigBytes);
-
-        return signingInput + "." + signatureB64;
+        JsonWebSignature jws = new JsonWebSignature();
+        jws.setAlgorithmHeaderValue(AlgorithmIdentifiers.RSA_USING_SHA256);
+        jws.setX509CertSha1ThumbprintHeaderValue(thumbprint);
+        jws.setKey(privateKey);
+        jws.setPayload(claims.toJson());
+        return jws.getCompactSerialization();
     }
 
     private void updateAvatar(AzureAdUser userDetails, User currentUser) {
