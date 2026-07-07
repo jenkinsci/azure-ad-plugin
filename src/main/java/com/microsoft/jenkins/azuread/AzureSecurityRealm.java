@@ -412,7 +412,7 @@ public class AzureSecurityRealm extends SecurityRealm {
         }
         if ("WorkloadIdentity".equals(credentialType)) {
             return builder.build(AzureClientAssertionApi.custom(getTenant(), authorityHost,
-                    tokenEndpoint -> GraphClientCache.getWorkloadIdentityToken(federatedCredentialsId)));
+                    ignored -> GraphClientCache.getWorkloadIdentityToken(federatedCredentialsId)));
         }
         return builder.build(AzureAdApi.custom(getTenant(), authorityHost));
     }

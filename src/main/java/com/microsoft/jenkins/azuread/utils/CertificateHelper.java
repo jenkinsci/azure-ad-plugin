@@ -58,7 +58,7 @@ public final class CertificateHelper {
         return Base64.getDecoder().decode(clean);
     }
 
-    static byte[] wrapPkcs1RsaKey(byte[] pkcs1Bytes) throws GeneralSecurityException {
+    private static byte[] wrapPkcs1RsaKey(byte[] pkcs1Bytes) throws GeneralSecurityException {
         try {
             return new PrivateKeyInfo(
                             new AlgorithmIdentifier(PKCSObjectIdentifiers.rsaEncryption, DERNull.INSTANCE),
