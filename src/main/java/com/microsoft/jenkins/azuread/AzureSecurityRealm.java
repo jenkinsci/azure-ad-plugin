@@ -9,7 +9,6 @@ import com.azure.core.credential.AccessToken;
 import com.azure.core.credential.TokenRequestContext;
 import com.cloudbees.plugins.credentials.common.StandardCredentials;
 import com.cloudbees.plugins.credentials.common.StandardListBoxModel;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
@@ -68,14 +67,10 @@ import java.nio.file.StandardCopyOption;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.security.PrivateKey;
-import java.security.Signature;
 import java.security.cert.X509Certificate;
-import java.time.Instant;
-import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
@@ -89,9 +84,13 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jenkinsci.plugins.plaincredentials.FileCredentials;
 import org.jenkinsci.plugins.plaincredentials.StringCredentials;
+import org.jose4j.jws.AlgorithmIdentifiers;
+import org.jose4j.jws.JsonWebSignature;
 import org.jose4j.jwt.JwtClaims;
 import org.jose4j.jwt.consumer.InvalidJwtException;
 import org.jose4j.jwt.consumer.JwtConsumer;
+import org.jose4j.keys.X509Util;
+import org.jose4j.lang.JoseException;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.Header;
@@ -639,68 +638,29 @@ public class AzureSecurityRealm extends SecurityRealm {
         try {
             X509Certificate cert = loadCertificateFromString(certPem);
             PrivateKey privateKey = loadPrivateKeyFromString(keyPem);
-            String thumbprint = calculateThumbprint(cert);
-            return generateClientAssertion(privateKey, thumbprint, tokenEndpoint);
-        } catch (GeneralSecurityException | JsonProcessingException e) {
+            return generateClientAssertion(privateKey, X509Util.x5t(cert), tokenEndpoint);
+        } catch (GeneralSecurityException | JoseException e) {
             throw new RuntimeException("Failed to generate client assertion", e);
         }
     }
 
-    // Calculate SHA-1 thumbprint and base64url encode
-    String calculateThumbprint(X509Certificate cert) throws GeneralSecurityException {
-        MessageDigest sha1 = MessageDigest.getInstance("SHA-1");
-        byte[] der = cert.getEncoded();
-        byte[] digest = sha1.digest(der);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(digest);
-    }
+    private static final float CLIENT_ASSERTION_LIFETIME_MINUTES = 10;
 
-    private static final long CLIENT_ASSERTION_LIFETIME_SECONDS = 600L;
+    String generateClientAssertion(PrivateKey privateKey, String thumbprint, String tokenEndpoint) throws JoseException {
+        JwtClaims claims = new JwtClaims();
+        claims.setAudience(tokenEndpoint);
+        claims.setIssuer(getClientId());
+        claims.setSubject(getClientId());
+        claims.setGeneratedJwtId();
+        claims.setIssuedAtToNow();
+        claims.setExpirationTimeMinutesInTheFuture(CLIENT_ASSERTION_LIFETIME_MINUTES);
 
-    // Create JWT header and payload, sign with private key (minimal external libs)
-    String generateClientAssertion(PrivateKey privateKey, String thumbprint, String tokenEndpoint) throws GeneralSecurityException, JsonProcessingException {
-        long now = Instant.now().getEpochSecond();
-        long exp = now + CLIENT_ASSERTION_LIFETIME_SECONDS; // 10 minutes
-
-        ObjectMapper mapper = new ObjectMapper();
-
-        // Header
-        Map<String, Object> headerMap = Map.of(
-                "alg", "RS256",
-                "x5t", thumbprint
-        );
-
-        String headerJson = mapper.writeValueAsString(headerMap);
-
-        String header = Base64.getUrlEncoder()
-                .withoutPadding()
-                .encodeToString(headerJson.getBytes(StandardCharsets.UTF_8));
-
-        // Payload
-        Map<String, Object> payloadMap = Map.of(
-                "aud", tokenEndpoint,
-                "iss", getClientId(),
-                "sub", getClientId(),
-                "jti", UUID.randomUUID().toString(),
-                "exp", exp,
-                "iat", now
-        );
-
-        String payloadJson = mapper.writeValueAsString(payloadMap);
-
-        String payload = Base64.getUrlEncoder()
-                .withoutPadding()
-                .encodeToString(payloadJson.getBytes(StandardCharsets.UTF_8));
-
-
-        // Sign header.payload
-        String signingInput = header + "." + payload;
-        Signature signature = Signature.getInstance("SHA256withRSA");
-        signature.initSign(privateKey);
-        signature.update(signingInput.getBytes(StandardCharsets.UTF_8));
-        byte[] sigBytes = signature.sign();
-        String signatureB64 = Base64.getUrlEncoder().withoutPadding().encodeToString(sigBytes);
-
-        return signingInput + "." + signatureB64;
+        JsonWebSignature jws = new JsonWebSignature();
+        jws.setAlgorithmHeaderValue(AlgorithmIdentifiers.RSA_USING_SHA256);
+        jws.setX509CertSha1ThumbprintHeaderValue(thumbprint);
+        jws.setKey(privateKey);
+        jws.setPayload(claims.toJson());
+        return jws.getCompactSerialization();
     }
 
     private void updateAvatar(AzureAdUser userDetails, User currentUser) {
