@@ -1,6 +1,6 @@
 # Microsoft Entra ID Plugin (previously Azure Active Directory Plugin)
 
-> ***Important***: This plug-in is maintained by the Jenkins community and won’t be supported by Microsoft as of February 29, 2024.
+> ***Important***: This plug-in is maintained by the Jenkins community and has not been supported by Microsoft since February 29, 2024.
 
 A Jenkins Plugin that supports authentication & authorization via Microsoft Entra ID ([previously known as Azure Active Directory](https://learn.microsoft.com/entra/fundamentals/new-name)).
 
