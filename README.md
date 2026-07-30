@@ -10,7 +10,11 @@ A Jenkins Plugin that supports authentication & authorization via Microsoft Entr
 
 1. Click `New registration`
 
-1. Add a new Reply URL `https://{your_jenkins_host}/securityRealm/finishLogin`. Make sure "Jenkins URL" (Manage Jenkins => Configure System) is set to the same value as `https://{your_jenkins_host}`.
+1. Add a new Reply URL `https://{your_jenkins_host}/securityRealm/finishLogin`. 
+
+   - Make sure "Jenkins URL" (Manage Jenkins => Configure System) is set to the same value as `https://{your_jenkins_host}`.
+
+   - Verify that the `Platform Type` is "Web" (Manage => Authentication => Redirect URI configuration => Platform Type), and ensure that the `Redirect URI` is set to `https://{your_jenkins_host}/securityRealm/finishLogin`.
 
 1. Click `Certificates & secrets`
 
