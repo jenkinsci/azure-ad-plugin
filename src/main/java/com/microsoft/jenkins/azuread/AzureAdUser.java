@@ -7,7 +7,7 @@ package com.microsoft.jenkins.azuread;
 
 import hudson.security.SecurityRealm;
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.jose4j.jwt.JwtClaims;
 import org.jose4j.jwt.MalformedClaimException;
 import org.springframework.security.authentication.BadCredentialsException;
