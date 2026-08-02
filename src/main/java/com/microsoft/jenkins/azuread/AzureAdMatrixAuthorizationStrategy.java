@@ -31,7 +31,7 @@ import hudson.security.SecurityRealm;
 import hudson.security.SidACL;
 import hudson.util.FormValidation;
 import jenkins.model.Jenkins;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.DoNotUse;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
