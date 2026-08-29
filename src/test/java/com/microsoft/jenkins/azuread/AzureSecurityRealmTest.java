@@ -643,17 +643,28 @@ class AzureSecurityRealmTest {
     }
 
     @Test
-    void userUnknownToEntraButExistingLocallyMayOrMayNotExist(JenkinsRule j) {
-        // A user that is unknown to Entra ID may still be a pre-existing local
-        // Jenkins user, e.g. a service account authenticating with an API token
-        // minted before the realm was switched. UserMayOrMayNotExistException2
-        // keeps API-token impersonation working (see #155 / #171), while
-        // UsernameNotFoundException would abort the request with a 500.
+    void allowlistedLocalServiceAccountMayOrMayNotExist(JenkinsRule j) {
+        // Review feedback: softening must be an explicit administrator
+        // decision, not a heuristic. Only names on the configured allowlist
+        // keep their API tokens working after the realm switch (#155 / #171).
         AzureSecurityRealm realm = new AzureSecurityRealm();
-        hudson.model.User.getById("svc-account", true);
+        realm.setLocalServiceAccounts("IntegrationTool, svc-account");
 
         assertThrows(UserMayOrMayNotExistException2.class,
                 () -> realm.userDetailsOrThrow("svc-account", null));
+    }
+
+    @Test
+    void nonAllowlistedLocalUserStaysNotFound(JenkinsRule j) {
+        // Default (empty allowlist) behaves exactly like before this change:
+        // even an existing local record stays locked out, so deleting a user
+        // in Entra ID keeps invalidating their API tokens.
+        AzureSecurityRealm realm = new AzureSecurityRealm();
+        hudson.model.User.getById("svc-account", true);
+
+        UsernameNotFoundException e = assertThrows(UsernameNotFoundException.class,
+                () -> realm.userDetailsOrThrow("svc-account", null));
+        assertEquals(UsernameNotFoundException.class, e.getClass());
     }
 
     @Test
@@ -684,17 +695,25 @@ class AzureSecurityRealmTest {
     }
 
     @Test
-    void deletedEntraUserStaysLockedOutByMarker(JenkinsRule j) throws Exception {
-        // Same scenario, but for records not keyed by an object id: the
-        // plugin marks every record it touches with the "Entra ID User"
-        // description — such records are Entra-originated, not local
-        // service accounts.
+    void localServiceAccountsSurviveSerialization(JenkinsRule j) {
         AzureSecurityRealm realm = new AzureSecurityRealm();
-        hudson.model.User user = hudson.model.User.getById("former-entra-user", true);
-        user.setDescription("Entra ID User\n\nUnique Principal Name: x@example.com");
+        realm.setClientId("client");
+        realm.setClientSecret("secret");
+        realm.setCredentialType("Secret");
+        realm.setTenant("tenant");
+        realm.setLocalServiceAccounts("IntegrationTool, sysops");
 
-        UsernameNotFoundException e = assertThrows(UsernameNotFoundException.class,
-                () -> realm.userDetailsOrThrow("former-entra-user", null));
-        assertEquals(UsernameNotFoundException.class, e.getClass());
+        AzureSecurityRealm.ConverterImpl converter = new AzureSecurityRealm.ConverterImpl();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        BinaryStreamWriter writer = new BinaryStreamWriter(out);
+        writer.startNode("parentNode");
+        converter.marshal(realm, writer, null);
+        writer.endNode();
+        writer.close();
+        BinaryStreamReader reader = new BinaryStreamReader(new ByteArrayInputStream(out.toByteArray()));
+        AzureSecurityRealm back = (AzureSecurityRealm) converter.unmarshal(reader, null);
+        reader.close();
+
+        assertEquals("IntegrationTool, sysops", back.getLocalServiceAccounts());
     }
 }

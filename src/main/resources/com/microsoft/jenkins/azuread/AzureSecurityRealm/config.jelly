@@ -43,7 +43,10 @@
                     <f:entry field="federatedCredentialsId" title="${%Federated Credentials}">
                         <c:select/>
                     </f:entry>
-                </f:advanced>
+                    <f:entry title="Local service accounts" field="localServiceAccounts">
+        <f:textbox />
+    </f:entry>
+</f:advanced>
             </f:radioBlock>
         </f:entry>
 

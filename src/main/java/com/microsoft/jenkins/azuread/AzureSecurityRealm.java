@@ -68,8 +68,11 @@ import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -145,14 +148,18 @@ public class AzureSecurityRealm extends SecurityRealm {
     private static final int CACHE_KEY_LOG_LENGTH = 8;
     private static final int NOT_FOUND = 404;
 
-    /** Prefix of the description that {@code updateIdentity} writes on every
-     *  Jenkins user record that originates from an Entra ID login. */
-    static final String ENTRA_USER_DESCRIPTION_MARKER = "Entra ID User";
+    /**
+     * Comma- or newline-separated Jenkins user ids of local (non-Entra)
+     * accounts, e.g. CI service accounts, whose API tokens keep working
+     * after switching to this realm. Explicit administrator opt-in.
+     */
+    private String localServiceAccounts;
     private static final int BAD_REQUEST = 400;
     public static final String CONVERTER_DISABLE_GRAPH_INTEGRATION = "disableGraphIntegration";
     public static final String CONVERTER_SINGLE_LOGOUT = "singleLogout";
     public static final String CONVERTER_PROMPT_ACCOUNT = "promptAccount";
     public static final String CONVERTER_DOMAIN_HINT = "domainHint";
+    public static final String CONVERTER_LOCAL_SERVICE_ACCOUNTS = "localServiceAccounts";
 
     public static final String CONVERTER_ENVIRONMENT_NAME = "environmentName";
 
@@ -222,6 +229,29 @@ public class AzureSecurityRealm extends SecurityRealm {
     @DataBoundSetter
     public void setDomainHint(String domainHint) {
         this.domainHint = domainHint;
+    }
+
+    public String getLocalServiceAccounts() {
+        return localServiceAccounts;
+    }
+
+    @DataBoundSetter
+    public void setLocalServiceAccounts(String localServiceAccounts) {
+        this.localServiceAccounts = Util.fixEmptyAndTrim(localServiceAccounts);
+    }
+
+    private Set<String> getLocalServiceAccountSet() {
+        if (localServiceAccounts == null) {
+            return Collections.emptySet();
+        }
+        Set<String> names = new HashSet<>();
+        for (String name : localServiceAccounts.split("[,\\n]")) {
+            String trimmed = name.trim();
+            if (!trimmed.isEmpty()) {
+                names.add(trimmed);
+            }
+        }
+        return names;
     }
 
     public boolean isSingleLogout() {
@@ -830,38 +860,17 @@ public class AzureSecurityRealm extends SecurityRealm {
         if (azureAdUser != null) {
             return azureAdUser;
         }
-        // An Entra-shaped name (object id / full sid) always designates an
-        // Entra identity: if Entra does not know it (any more), the account
-        // is gone and must stay locked out — otherwise deleting a user in
-        // Entra would no longer invalidate their API tokens, because every
-        // Entra login leaves a local record keyed by object id.
-        if (!looksLikeEntraIdentity(username)) {
-            User localUser = User.getById(username, false);
-            if (localUser != null && !isEntraOriginated(localUser)) {
-                throw new UserMayOrMayNotExistException2("Cannot find user in Entra ID: " + username
-                        + " (existing local Jenkins user, e.g. an API-token service account)");
-            }
+        // Explicit administrator opt-in: only names on the configured
+        // allowlist of local service accounts are treated as "the realm
+        // cannot tell" so their pre-realm API tokens keep working. With an
+        // empty allowlist (the default) the behaviour is unchanged — in
+        // particular, deleting a user in Entra ID keeps invalidating their
+        // API tokens even though the login left a local record.
+        if (getLocalServiceAccountSet().contains(username)) {
+            throw new UserMayOrMayNotExistException2("Cannot find user in Entra ID: " + username
+                    + " (configured local service account, may authenticate via API token)");
         }
         throw new UsernameNotFoundException("Cannot find user: " + username);
-    }
-
-    private static boolean looksLikeEntraIdentity(String username) {
-        if (ObjId2FullSidMap.extractObjectId(username) != null) {
-            return true;
-        }
-        try {
-            java.util.UUID.fromString(username);
-            return true;
-        } catch (IllegalArgumentException e) {
-            return false;
-        }
-    }
-
-    /** Records the plugin created or touched carry the marker description,
-     *  local pre-realm accounts do not. */
-    private static boolean isEntraOriginated(User user) {
-        String description = user.getDescription();
-        return description != null && description.startsWith(ENTRA_USER_DESCRIPTION_MARKER);
     }
 
     private static @NonNull User getByIdOrCreate(AzureAdUser user) {
@@ -1023,6 +1032,12 @@ public class AzureSecurityRealm extends SecurityRealm {
             writer.startNode(CONVERTER_DOMAIN_HINT);
             writer.setValue(String.valueOf(realm.getDomainHint()));
             writer.endNode();
+
+            if (Util.fixEmpty(realm.getLocalServiceAccounts()) != null) {
+                writer.startNode(CONVERTER_LOCAL_SERVICE_ACCOUNTS);
+                writer.setValue(realm.getLocalServiceAccounts());
+                writer.endNode();
+            }
         }
 
         @Override
@@ -1072,6 +1087,9 @@ public class AzureSecurityRealm extends SecurityRealm {
                         break;
                     case CONVERTER_DOMAIN_HINT:
                         realm.setDomainHint(value);
+                        break;
+                    case CONVERTER_LOCAL_SERVICE_ACCOUNTS:
+                        realm.setLocalServiceAccounts(value);
                         break;
                     default:
                         LOGGER.log(Level.WARNING, "ConverterImpl: unknown node ''{0}'' during unmarshal", node);
@@ -1238,7 +1256,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     }
 
     private String generateDescription(AzureAdUser user) {
-        return ENTRA_USER_DESCRIPTION_MARKER + "\n"
+        return "Entra ID User\n"
                 + "\nUnique Principal Name: " + user.getUniqueName()
                 + "\nEmail: " + user.getEmail()
                 + "\nObject ID: " + user.getObjectID()
