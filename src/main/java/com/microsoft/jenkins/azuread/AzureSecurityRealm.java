@@ -144,6 +144,10 @@ public class AzureSecurityRealm extends SecurityRealm {
     private static final String CONVERTER_NODE_FROM_REQUEST = "fromrequest";
     private static final int CACHE_KEY_LOG_LENGTH = 8;
     private static final int NOT_FOUND = 404;
+
+    /** Prefix of the description that {@code updateIdentity} writes on every
+     *  Jenkins user record that originates from an Entra ID login. */
+    static final String ENTRA_USER_DESCRIPTION_MARKER = "Entra ID User";
     private static final int BAD_REQUEST = 400;
     public static final String CONVERTER_DISABLE_GRAPH_INTEGRATION = "disableGraphIntegration";
     public static final String CONVERTER_SINGLE_LOGOUT = "singleLogout";
@@ -826,11 +830,38 @@ public class AzureSecurityRealm extends SecurityRealm {
         if (azureAdUser != null) {
             return azureAdUser;
         }
-        if (User.getById(username, false) != null) {
-            throw new UserMayOrMayNotExistException2("Cannot find user in Entra ID: " + username
-                    + " (existing local Jenkins user, e.g. an API-token service account)");
+        // An Entra-shaped name (object id / full sid) always designates an
+        // Entra identity: if Entra does not know it (any more), the account
+        // is gone and must stay locked out — otherwise deleting a user in
+        // Entra would no longer invalidate their API tokens, because every
+        // Entra login leaves a local record keyed by object id.
+        if (!looksLikeEntraIdentity(username)) {
+            User localUser = User.getById(username, false);
+            if (localUser != null && !isEntraOriginated(localUser)) {
+                throw new UserMayOrMayNotExistException2("Cannot find user in Entra ID: " + username
+                        + " (existing local Jenkins user, e.g. an API-token service account)");
+            }
         }
         throw new UsernameNotFoundException("Cannot find user: " + username);
+    }
+
+    private static boolean looksLikeEntraIdentity(String username) {
+        if (ObjId2FullSidMap.extractObjectId(username) != null) {
+            return true;
+        }
+        try {
+            java.util.UUID.fromString(username);
+            return true;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    /** Records the plugin created or touched carry the marker description,
+     *  local pre-realm accounts do not. */
+    private static boolean isEntraOriginated(User user) {
+        String description = user.getDescription();
+        return description != null && description.startsWith(ENTRA_USER_DESCRIPTION_MARKER);
     }
 
     private static @NonNull User getByIdOrCreate(AzureAdUser user) {
@@ -1207,7 +1238,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     }
 
     private String generateDescription(AzureAdUser user) {
-        return "Entra ID User\n"
+        return ENTRA_USER_DESCRIPTION_MARKER + "\n"
                 + "\nUnique Principal Name: " + user.getUniqueName()
                 + "\nEmail: " + user.getEmail()
                 + "\nObject ID: " + user.getObjectID()

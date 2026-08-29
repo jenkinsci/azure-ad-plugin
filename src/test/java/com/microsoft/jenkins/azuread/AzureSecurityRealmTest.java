@@ -660,7 +660,41 @@ class AzureSecurityRealmTest {
     void userUnknownToEntraAndUnknownLocallyIsNotFound(JenkinsRule j) {
         AzureSecurityRealm realm = new AzureSecurityRealm();
 
-        assertThrows(UsernameNotFoundException.class,
+        UsernameNotFoundException e = assertThrows(UsernameNotFoundException.class,
                 () -> realm.userDetailsOrThrow("no-such-user", null));
+        assertEquals(UsernameNotFoundException.class, e.getClass());
+    }
+
+    @Test
+    void deletedEntraUserStaysLockedOutById(JenkinsRule j) {
+        // Review feedback: an Entra user who logged in before leaves a local
+        // record keyed by object id. After the account is deleted in Entra,
+        // its API tokens must NOT keep working — an object-id shaped name
+        // always designates an Entra identity and is never softened.
+        AzureSecurityRealm realm = new AzureSecurityRealm();
+        String objectId = "3f2504e0-4f89-11d3-9a0c-0305e82c3301";
+        hudson.model.User.getById(objectId, true);
+
+        UsernameNotFoundException e = assertThrows(UsernameNotFoundException.class,
+                () -> realm.userDetailsOrThrow(objectId, null));
+        // UserMayOrMayNotExistException2 extends UsernameNotFoundException,
+        // so the exact class matters: the softer subclass would keep the
+        // deleted user's API tokens alive.
+        assertEquals(UsernameNotFoundException.class, e.getClass());
+    }
+
+    @Test
+    void deletedEntraUserStaysLockedOutByMarker(JenkinsRule j) throws Exception {
+        // Same scenario, but for records not keyed by an object id: the
+        // plugin marks every record it touches with the "Entra ID User"
+        // description — such records are Entra-originated, not local
+        // service accounts.
+        AzureSecurityRealm realm = new AzureSecurityRealm();
+        hudson.model.User user = hudson.model.User.getById("former-entra-user", true);
+        user.setDescription("Entra ID User\n\nUnique Principal Name: x@example.com");
+
+        UsernameNotFoundException e = assertThrows(UsernameNotFoundException.class,
+                () -> realm.userDetailsOrThrow("former-entra-user", null));
+        assertEquals(UsernameNotFoundException.class, e.getClass());
     }
 }
