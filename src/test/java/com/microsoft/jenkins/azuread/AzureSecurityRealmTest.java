@@ -11,6 +11,7 @@ import com.microsoft.jenkins.azuread.scribe.AzureClientAssertionApi;
 import hudson.ProxyConfiguration;
 import com.thoughtworks.xstream.io.binary.BinaryStreamReader;
 import com.thoughtworks.xstream.io.binary.BinaryStreamWriter;
+import hudson.security.UserMayOrMayNotExistException2;
 import hudson.util.Secret;
 import jakarta.servlet.http.HttpSession;
 import jenkins.model.JenkinsLocationConfiguration;
@@ -27,6 +28,7 @@ import org.kohsuke.stapler.HttpRedirect;
 import org.kohsuke.stapler.HttpResponse;
 import org.kohsuke.stapler.StaplerRequest2;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 import java.io.ByteArrayInputStream;
 import java.io.OutputStream;
@@ -638,5 +640,27 @@ class AzureSecurityRealmTest {
             return '\0';
         }
         return null;
+    }
+
+    @Test
+    void userUnknownToEntraButExistingLocallyMayOrMayNotExist(JenkinsRule j) {
+        // A user that is unknown to Entra ID may still be a pre-existing local
+        // Jenkins user, e.g. a service account authenticating with an API token
+        // minted before the realm was switched. UserMayOrMayNotExistException2
+        // keeps API-token impersonation working (see #155 / #171), while
+        // UsernameNotFoundException would abort the request with a 500.
+        AzureSecurityRealm realm = new AzureSecurityRealm();
+        hudson.model.User.getById("svc-account", true);
+
+        assertThrows(UserMayOrMayNotExistException2.class,
+                () -> realm.userDetailsOrThrow("svc-account", null));
+    }
+
+    @Test
+    void userUnknownToEntraAndUnknownLocallyIsNotFound(JenkinsRule j) {
+        AzureSecurityRealm realm = new AzureSecurityRealm();
+
+        assertThrows(UsernameNotFoundException.class,
+                () -> realm.userDetailsOrThrow("no-such-user", null));
     }
 }

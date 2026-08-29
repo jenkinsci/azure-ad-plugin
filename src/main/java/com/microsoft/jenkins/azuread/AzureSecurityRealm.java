@@ -104,6 +104,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 import static com.cloudbees.plugins.credentials.CredentialsMatchers.anyOf;
@@ -805,12 +806,31 @@ public class AzureSecurityRealm extends SecurityRealm {
                 }
             });
 
-            if (azureAdUser == null) {
-                throw new UsernameNotFoundException("Cannot find user: " + username);
-            }
-
-            return azureAdUser;
+            return userDetailsOrThrow(username, azureAdUser);
         });
+    }
+
+    /**
+     * Maps the result of the Entra ID lookup to {@link UserDetails}.
+     *
+     * <p>A user that is unknown to Entra ID may still be a pre-existing local
+     * Jenkins user, e.g. a service account that authenticates with an API
+     * token minted before the realm was switched to Entra ID. Core treats
+     * {@link UserMayOrMayNotExistException2} as "the realm cannot tell" and
+     * keeps API-token impersonation working for such users
+     * ({@code BasicHeaderApiTokenAuthenticator} otherwise fails the request
+     * with a 500 after the token already matched, see #155 and #171).
+     * For names without any local user record the behaviour is unchanged.
+     */
+    UserDetails userDetailsOrThrow(String username, @CheckForNull AzureAdUser azureAdUser) {
+        if (azureAdUser != null) {
+            return azureAdUser;
+        }
+        if (User.getById(username, false) != null) {
+            throw new UserMayOrMayNotExistException2("Cannot find user in Entra ID: " + username
+                    + " (existing local Jenkins user, e.g. an API-token service account)");
+        }
+        throw new UsernameNotFoundException("Cannot find user: " + username);
     }
 
     private static @NonNull User getByIdOrCreate(AzureAdUser user) {
