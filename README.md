@@ -34,7 +34,7 @@ This is used for:
 
 * Autocompleting users and groups on the 'Security' page
 * Jenkins looking up the user, e.g. when you use the Rest API
-* Group display name support (rather than just object ID)
+* Resolving group object IDs to display names when configuring authorization
 
 _Note: You can skip this part and just use the claims returned when authenticating._
 
@@ -167,11 +167,31 @@ You can still use other authorization strategies such as:
 The following can normally be used:
 
 * Object ID of user or group
-* Display name of group (Only if Graph API permissions granted)
 * `preferred_username` claim which is normally the 'User principal name', but not always.
 
-It is recommended that you use the Object ID, after adding the object ID you will be
-able to see the user or group's display name.
+Always configure group grants by **Object ID**. After adding the object ID you will be able to
+see the user or group's display name (the picker does this automatically, storing the entry as
+`displayName (objectId)`).
+
+> [!WARNING]
+> **Authorizing groups by display name is disabled by default (SECURITY-3935).**
+> Entra group display names are neither unique nor immutable, and unless your tenant restricts
+> it, any member can create a group with an arbitrary display name (the Entra default). If a
+> group grant were matched by display name, an attacker who creates a group whose name collides
+> with a privileged group and adds themselves would inherit its permissions — even when the
+> grant was configured by object ID. For this reason a group's display name is no longer used
+> for authorization; only its object ID is.
+>
+> If you previously relied on display-name-based group grants and are locked out after
+> upgrading, you can temporarily restore the old (insecure) behaviour by setting the following
+> system property at startup while you migrate your grants to object IDs:
+>
+> ```
+> -Dcom.microsoft.jenkins.azuread.ObjId2FullSidMap.enableDisplayNameAuthorization=true
+> ```
+>
+> See the [Jenkins documentation on setting system properties](https://www.jenkins.io/doc/book/managing/system-properties/).
+> This escape hatch is insecure and intended only as a short-term migration aid.
 
 ## Configuration as Code and Job DSL support
 The plugin has full support for use in Configuration as Code and Job DSL.

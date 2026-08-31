@@ -111,10 +111,23 @@ public final class AzureAdUser implements UserDetails {
 
     public void setAuthorities(List<AzureAdGroup> groups, String userPrincipalName) {
         List<GrantedAuthority> newAuthorities = new ArrayList<>();
+        boolean displayNameAuthorization = ObjId2FullSidMap.isDisplayNameAuthorizationEnabled();
         if (!groups.isEmpty()) {
             for (AzureAdGroup group : groups) {
                 newAuthorities.add(group);
-                newAuthorities.add(new SimpleGrantedAuthority(group.getGroupName()));
+                // Granting the group's (non-unique, user-creatable) display name as an authority
+                // lets an attacker inherit a privileged group's permissions by creating a colliding
+                // group (SECURITY-3935). Disabled by default; only granted via the legacy escape
+                // hatch while administrators migrate their grants to object IDs.
+                if (displayNameAuthorization) {
+                    String groupName = group.getGroupName();
+                    // Even then, only expose plain display names. A display name shaped like
+                    // "x (objectId)" would be extracted back to that objectId by
+                    // ObjId2FullSidMap.getOrOriginal and inherit an unrelated objectId-keyed grant.
+                    if (ObjId2FullSidMap.extractObjectId(groupName) == null) {
+                        newAuthorities.add(new SimpleGrantedAuthority(groupName));
+                    }
+                }
             }
         } else {
             for (String groupOID : groupOIDs) {

@@ -1,7 +1,10 @@
 package com.microsoft.jenkins.azuread;
 
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import org.jvnet.hudson.test.junit.jupiter.FlagExtension;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,9 +34,42 @@ class ObjId2FullSidMapTest {
         map.putFullSid(FULL_SID_1);
         assertEquals(FULL_SID_1, map.get(OBJECT_ID_1));
         assertEquals(FULL_SID_1, map.getOrOriginal(OBJECT_ID_1));
-        assertEquals(FULL_SID_1, map.getOrOriginal(EMAIL_1));
+        // A bare display name must NOT resolve to the objectId-keyed entry (SECURITY-3935).
+        assertEquals(EMAIL_1, map.getOrOriginal(EMAIL_1));
         assertEquals(FULL_SID_1, map.getOrOriginal(ObjId2FullSidMap.generateFullSid(NAME_1, OBJECT_ID_1)));
         assertEquals("some string", map.getOrOriginal("some string"));
+    }
+
+    @Test
+    void testDisplayNameCollisionDoesNotResolveToObjectId() {
+        // An admin configures a grant by objectId: "Admins (<real object id>)".
+        final String realObjectId = "11111111-11111111-11111111-11111111";
+        final String privilegedFullSid = ObjId2FullSidMap.generateFullSid("Admins", realObjectId);
+        ObjId2FullSidMap map = new ObjId2FullSidMap();
+        map.putFullSid(privilegedFullSid);
+
+        // An attacker creates an Entra group also named "Admins" with a different object id and
+        // presents the display name as an authority. It must not resolve to the privileged entry.
+        assertEquals("Admins", map.getOrOriginal("Admins"));
+
+        // The legitimate group's object id still resolves to the configured grant.
+        assertEquals(privilegedFullSid, map.getOrOriginal(realObjectId));
+    }
+
+    @Nested
+    class WithDisplayNameAuthorizationEnabled {
+
+        @RegisterExtension
+        final FlagExtension<String> escapeHatch = FlagExtension.systemProperty(
+                ObjId2FullSidMap.ENABLE_DISPLAY_NAME_AUTHORIZATION_PROPERTY, "true");
+
+        @Test
+        void displayNameResolvesToFullSid() {
+            ObjId2FullSidMap map = new ObjId2FullSidMap();
+            map.putFullSid(FULL_SID_1);
+            // With the legacy escape hatch enabled, a bare display name resolves to the full sid.
+            assertEquals(FULL_SID_1, map.getOrOriginal(EMAIL_1));
+        }
     }
 
     @Test
