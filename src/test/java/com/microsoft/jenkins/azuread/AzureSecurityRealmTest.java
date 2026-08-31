@@ -643,27 +643,28 @@ class AzureSecurityRealmTest {
     }
 
     @Test
-    void allowlistedLocalServiceAccountMayOrMayNotExist(JenkinsRule j) {
-        // Review feedback: softening must be an explicit administrator
-        // decision, not a heuristic. Only names on the configured allowlist
-        // keep their API tokens working after the realm switch (#155 / #171).
+    void localUserWithoutEntraMarkerMayOrMayNotExist(JenkinsRule j) {
+        // A service account that existed before the realm switch carries no
+        // EntraIdentityProperty, so its pre-realm API tokens keep working
+        // (#155 / #171).
         AzureSecurityRealm realm = new AzureSecurityRealm();
-        realm.setLocalServiceAccounts("IntegrationTool, svc-account");
+        hudson.model.User.getById("IntegrationTool", true);
 
         assertThrows(UserMayOrMayNotExistException2.class,
-                () -> realm.userDetailsOrThrow("svc-account", null));
+                () -> realm.userDetailsOrThrow("IntegrationTool", null));
     }
 
     @Test
-    void nonAllowlistedLocalUserStaysNotFound(JenkinsRule j) {
-        // Default (empty allowlist) behaves exactly like before this change:
-        // even an existing local record stays locked out, so deleting a user
-        // in Entra ID keeps invalidating their API tokens.
+    void localUserWithEntraMarkerStaysNotFound(JenkinsRule j) throws Exception {
+        // Review feedback: deleting a user in Entra ID must invalidate their
+        // API tokens. Every login writes the marker, so a record carrying it
+        // is Entra-owned and never softened.
         AzureSecurityRealm realm = new AzureSecurityRealm();
-        hudson.model.User.getById("svc-account", true);
+        hudson.model.User user = hudson.model.User.getById("entra-user", true);
+        user.addProperty(new EntraIdentityProperty("3f2504e0-4f89-11d3-9a0c-0305e82c3301"));
 
         UsernameNotFoundException e = assertThrows(UsernameNotFoundException.class,
-                () -> realm.userDetailsOrThrow("svc-account", null));
+                () -> realm.userDetailsOrThrow("entra-user", null));
         assertEquals(UsernameNotFoundException.class, e.getClass());
     }
 
@@ -678,10 +679,9 @@ class AzureSecurityRealmTest {
 
     @Test
     void deletedEntraUserStaysLockedOutById(JenkinsRule j) {
-        // Review feedback: an Entra user who logged in before leaves a local
-        // record keyed by object id. After the account is deleted in Entra,
-        // its API tokens must NOT keep working — an object-id shaped name
-        // always designates an Entra identity and is never softened.
+        // Records created before the marker existed are covered by the shape
+        // of their id: getByIdOrCreate keys Entra users by object id, so an
+        // object-id shaped name always designates an Entra identity.
         AzureSecurityRealm realm = new AzureSecurityRealm();
         String objectId = "3f2504e0-4f89-11d3-9a0c-0305e82c3301";
         hudson.model.User.getById(objectId, true);
@@ -695,25 +695,13 @@ class AzureSecurityRealmTest {
     }
 
     @Test
-    void localServiceAccountsSurviveSerialization(JenkinsRule j) {
+    void deletedEntraUserStaysLockedOutByFullSid(JenkinsRule j) {
         AzureSecurityRealm realm = new AzureSecurityRealm();
-        realm.setClientId("client");
-        realm.setClientSecret("secret");
-        realm.setCredentialType("Secret");
-        realm.setTenant("tenant");
-        realm.setLocalServiceAccounts("IntegrationTool, sysops");
+        String fullSid = "Some User (3f2504e0-4f89-11d3-9a0c-0305e82c3301)";
+        hudson.model.User.getById(fullSid, true);
 
-        AzureSecurityRealm.ConverterImpl converter = new AzureSecurityRealm.ConverterImpl();
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        BinaryStreamWriter writer = new BinaryStreamWriter(out);
-        writer.startNode("parentNode");
-        converter.marshal(realm, writer, null);
-        writer.endNode();
-        writer.close();
-        BinaryStreamReader reader = new BinaryStreamReader(new ByteArrayInputStream(out.toByteArray()));
-        AzureSecurityRealm back = (AzureSecurityRealm) converter.unmarshal(reader, null);
-        reader.close();
-
-        assertEquals("IntegrationTool, sysops", back.getLocalServiceAccounts());
+        UsernameNotFoundException e = assertThrows(UsernameNotFoundException.class,
+                () -> realm.userDetailsOrThrow(fullSid, null));
+        assertEquals(UsernameNotFoundException.class, e.getClass());
     }
 }

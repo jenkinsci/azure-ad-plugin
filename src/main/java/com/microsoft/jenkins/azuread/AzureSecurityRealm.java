@@ -68,11 +68,8 @@ import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -148,18 +145,11 @@ public class AzureSecurityRealm extends SecurityRealm {
     private static final int CACHE_KEY_LOG_LENGTH = 8;
     private static final int NOT_FOUND = 404;
 
-    /**
-     * Comma- or newline-separated Jenkins user ids of local (non-Entra)
-     * accounts, e.g. CI service accounts, whose API tokens keep working
-     * after switching to this realm. Explicit administrator opt-in.
-     */
-    private String localServiceAccounts;
     private static final int BAD_REQUEST = 400;
     public static final String CONVERTER_DISABLE_GRAPH_INTEGRATION = "disableGraphIntegration";
     public static final String CONVERTER_SINGLE_LOGOUT = "singleLogout";
     public static final String CONVERTER_PROMPT_ACCOUNT = "promptAccount";
     public static final String CONVERTER_DOMAIN_HINT = "domainHint";
-    public static final String CONVERTER_LOCAL_SERVICE_ACCOUNTS = "localServiceAccounts";
 
     public static final String CONVERTER_ENVIRONMENT_NAME = "environmentName";
 
@@ -231,28 +221,8 @@ public class AzureSecurityRealm extends SecurityRealm {
         this.domainHint = domainHint;
     }
 
-    public String getLocalServiceAccounts() {
-        return localServiceAccounts;
-    }
 
-    @DataBoundSetter
-    public void setLocalServiceAccounts(String localServiceAccounts) {
-        this.localServiceAccounts = Util.fixEmptyAndTrim(localServiceAccounts);
-    }
 
-    private Set<String> getLocalServiceAccountSet() {
-        if (localServiceAccounts == null) {
-            return Collections.emptySet();
-        }
-        Set<String> names = new HashSet<>();
-        for (String name : localServiceAccounts.split("[,\\n]")) {
-            String trimmed = name.trim();
-            if (!trimmed.isEmpty()) {
-                names.add(trimmed);
-            }
-        }
-        return names;
-    }
 
     public boolean isSingleLogout() {
         return singleLogout;
@@ -860,17 +830,37 @@ public class AzureSecurityRealm extends SecurityRealm {
         if (azureAdUser != null) {
             return azureAdUser;
         }
-        // Explicit administrator opt-in: only names on the configured
-        // allowlist of local service accounts are treated as "the realm
-        // cannot tell" so their pre-realm API tokens keep working. With an
-        // empty allowlist (the default) the behaviour is unchanged — in
-        // particular, deleting a user in Entra ID keeps invalidating their
-        // API tokens even though the login left a local record.
-        if (getLocalServiceAccountSet().contains(username)) {
+        if (isPreRealmLocalUser(username)) {
             throw new UserMayOrMayNotExistException2("Cannot find user in Entra ID: " + username
-                    + " (configured local service account, may authenticate via API token)");
+                    + " (local account predating this realm, may authenticate via API token)");
         }
         throw new UsernameNotFoundException("Cannot find user: " + username);
+    }
+
+    /**
+     * True for a local Jenkins account that already existed when the realm was
+     * switched to Entra ID.
+     *
+     * <p>Every successful authentication attaches {@link EntraIdentityProperty},
+     * so a record carrying it belongs to Entra ID: once the account is deleted
+     * there, the lookup must stay a hard {@link UsernameNotFoundException} and
+     * its API tokens must stop working.
+     *
+     * <p>Records created before that property existed are covered by the shape
+     * of their id: {@code getByIdOrCreate} keys Entra users by object id, so an
+     * object-id or full-sid shaped name designates an Entra identity. Note the
+     * direction of that check — it can only ever deny, never admit, so it
+     * cannot be used to slip an account past the deletion guard.
+     */
+    static boolean isPreRealmLocalUser(String username) {
+        if (UUIDValidator.isValidUUID(username) || ObjId2FullSidMap.extractObjectId(username) != null) {
+            return false;
+        }
+        User user = User.getById(username, false);
+        if (user == null) {
+            return false;
+        }
+        return user.getProperty(EntraIdentityProperty.class) == null;
     }
 
     private static @NonNull User getByIdOrCreate(AzureAdUser user) {
@@ -1032,12 +1022,6 @@ public class AzureSecurityRealm extends SecurityRealm {
             writer.startNode(CONVERTER_DOMAIN_HINT);
             writer.setValue(String.valueOf(realm.getDomainHint()));
             writer.endNode();
-
-            if (Util.fixEmpty(realm.getLocalServiceAccounts()) != null) {
-                writer.startNode(CONVERTER_LOCAL_SERVICE_ACCOUNTS);
-                writer.setValue(realm.getLocalServiceAccounts());
-                writer.endNode();
-            }
         }
 
         @Override
@@ -1087,9 +1071,6 @@ public class AzureSecurityRealm extends SecurityRealm {
                         break;
                     case CONVERTER_DOMAIN_HINT:
                         realm.setDomainHint(value);
-                        break;
-                    case CONVERTER_LOCAL_SERVICE_ACCOUNTS:
-                        realm.setLocalServiceAccounts(value);
                         break;
                     default:
                         LOGGER.log(Level.WARNING, "ConverterImpl: unknown node ''{0}'' during unmarshal", node);
@@ -1248,6 +1229,13 @@ public class AzureSecurityRealm extends SecurityRealm {
                     if (existing == null || !existing.hasExplicitlyConfiguredAddress()) {
                         u.addProperty(new Mailer.UserProperty(azureAdUser.getEmail()));
                     }
+                }
+                // Marks the record as Entra-owned for later lookups. Only
+                // written when it changes, otherwise every login would persist
+                // the user record again.
+                EntraIdentityProperty identity = u.getProperty(EntraIdentityProperty.class);
+                if (identity == null || !azureAdUser.getObjectID().equals(identity.getObjectId())) {
+                    u.addProperty(new EntraIdentityProperty(azureAdUser.getObjectID()));
                 }
             } catch (IOException e) {
                 LOGGER.log(Level.WARNING, "Failed to update user mail with userid: " + azureAdUser.getObjectID(), e);
