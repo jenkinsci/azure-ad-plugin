@@ -11,6 +11,7 @@ import com.microsoft.jenkins.azuread.scribe.AzureClientAssertionApi;
 import hudson.ProxyConfiguration;
 import com.thoughtworks.xstream.io.binary.BinaryStreamReader;
 import com.thoughtworks.xstream.io.binary.BinaryStreamWriter;
+import hudson.model.User;
 import hudson.security.UserMayOrMayNotExistException2;
 import hudson.util.Secret;
 import jakarta.servlet.http.HttpSession;
@@ -415,6 +416,36 @@ class AzureSecurityRealmTest {
         assertInstanceOf(HttpRedirect.class, response);
     }
 
+    @Test
+    void successfulLoginMarksTheUserRecordAsEntraOwned(JenkinsRule j) throws Exception {
+        // Guards the production path: the deletion guard only holds as long as
+        // every login actually writes the marker.
+        JenkinsLocationConfiguration.get().setUrl("http://localhost/jenkins/");
+        TestAzureSecurityRealm realm = new TestAzureSecurityRealm("tenant", "client-id", Secret.fromString("secret"), 0);
+        realm.setCredentialType("Secret");
+        realm.setDisableGraphIntegration(true);
+        realm.setOAuthService(new FakeOAuth20Service(
+                "https://login.example/authorize",
+                new OAuth2AccessToken("access-token", "{\"id_token\":\"token-value\"}")));
+        realm.setValidatedClaims(createValidClaims());
+
+        RequestStub requestStub = new RequestStub(true);
+        requestStub.setParameter("state", "state-marker");
+        requestStub.setParameter("code", "auth-code");
+        StateCache.CACHE.put(
+                "state-marker",
+                new StateCache.CacheHolder("http://localhost/jenkins/job/test/", 1L, "nonce-value"));
+
+        realm.doFinishLogin(requestStub.request());
+
+        String objectId = "12345678-1234-1234-1234-123456789012";
+        User user = User.getById(objectId, false);
+        assertNotNull(user, "login should have created the user record");
+        EntraIdentityProperty marker = user.getProperty(EntraIdentityProperty.class);
+        assertNotNull(marker, "login should have marked the record as Entra-owned");
+        assertEquals(objectId, marker.getObjectId());
+    }
+
     private static JwtClaims createValidClaims() {
         JwtClaims claims = new JwtClaims();
         claims.setClaim("name", "Test User");
@@ -648,7 +679,7 @@ class AzureSecurityRealmTest {
         // EntraIdentityProperty, so its pre-realm API tokens keep working
         // (#155 / #171).
         AzureSecurityRealm realm = new AzureSecurityRealm();
-        hudson.model.User.getById("IntegrationTool", true);
+        User.getById("IntegrationTool", true);
 
         assertThrows(UserMayOrMayNotExistException2.class,
                 () -> realm.userDetailsOrThrow("IntegrationTool", null));
@@ -660,7 +691,7 @@ class AzureSecurityRealmTest {
         // API tokens. Every login writes the marker, so a record carrying it
         // is Entra-owned and never softened.
         AzureSecurityRealm realm = new AzureSecurityRealm();
-        hudson.model.User user = hudson.model.User.getById("entra-user", true);
+        User user = User.getById("entra-user", true);
         user.addProperty(new EntraIdentityProperty("3f2504e0-4f89-11d3-9a0c-0305e82c3301"));
 
         UsernameNotFoundException e = assertThrows(UsernameNotFoundException.class,
@@ -684,7 +715,7 @@ class AzureSecurityRealmTest {
         // object-id shaped name always designates an Entra identity.
         AzureSecurityRealm realm = new AzureSecurityRealm();
         String objectId = "3f2504e0-4f89-11d3-9a0c-0305e82c3301";
-        hudson.model.User.getById(objectId, true);
+        User.getById(objectId, true);
 
         UsernameNotFoundException e = assertThrows(UsernameNotFoundException.class,
                 () -> realm.userDetailsOrThrow(objectId, null));
@@ -695,10 +726,22 @@ class AzureSecurityRealmTest {
     }
 
     @Test
+    void localUserWithParenthesesInNameIsNotMistakenForEntra(JenkinsRule j) {
+        // extractObjectId accepts any parenthesised suffix, so the trailing
+        // part has to be validated as a UUID; otherwise a local account like
+        // this one would lose its API token.
+        AzureSecurityRealm realm = new AzureSecurityRealm();
+        User.getById("build-user (prod)", true);
+
+        assertThrows(UserMayOrMayNotExistException2.class,
+                () -> realm.userDetailsOrThrow("build-user (prod)", null));
+    }
+
+    @Test
     void deletedEntraUserStaysLockedOutByFullSid(JenkinsRule j) {
         AzureSecurityRealm realm = new AzureSecurityRealm();
         String fullSid = "Some User (3f2504e0-4f89-11d3-9a0c-0305e82c3301)";
-        hudson.model.User.getById(fullSid, true);
+        User.getById(fullSid, true);
 
         UsernameNotFoundException e = assertThrows(UsernameNotFoundException.class,
                 () -> realm.userDetailsOrThrow(fullSid, null));

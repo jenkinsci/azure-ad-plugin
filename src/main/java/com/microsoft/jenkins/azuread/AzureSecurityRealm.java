@@ -221,9 +221,6 @@ public class AzureSecurityRealm extends SecurityRealm {
         this.domainHint = domainHint;
     }
 
-
-
-
     public boolean isSingleLogout() {
         return singleLogout;
     }
@@ -830,7 +827,7 @@ public class AzureSecurityRealm extends SecurityRealm {
         if (azureAdUser != null) {
             return azureAdUser;
         }
-        if (isPreRealmLocalUser(username)) {
+        if (isLocalOnlyUser(username)) {
             throw new UserMayOrMayNotExistException2("Cannot find user in Entra ID: " + username
                     + " (local account predating this realm, may authenticate via API token)");
         }
@@ -847,13 +844,13 @@ public class AzureSecurityRealm extends SecurityRealm {
      * its API tokens must stop working.
      *
      * <p>Records created before that property existed are covered by the shape
-     * of their id: {@code getByIdOrCreate} keys Entra users by object id, so an
-     * object-id or full-sid shaped name designates an Entra identity. Note the
-     * direction of that check — it can only ever deny, never admit, so it
-     * cannot be used to slip an account past the deletion guard.
+     * of their id: {@code getByIdOrCreate} keys Entra users by object id, so a
+     * name that is an object id, or ends in one, designates an Entra identity.
+     * Note the direction of that check — it can only ever deny, never admit, so
+     * it cannot be used to slip an account past the deletion guard.
      */
-    static boolean isPreRealmLocalUser(String username) {
-        if (UUIDValidator.isValidUUID(username) || ObjId2FullSidMap.extractObjectId(username) != null) {
+    static boolean isLocalOnlyUser(String username) {
+        if (looksLikeEntraObjectId(username)) {
             return false;
         }
         User user = User.getById(username, false);
@@ -861,6 +858,20 @@ public class AzureSecurityRealm extends SecurityRealm {
             return false;
         }
         return user.getProperty(EntraIdentityProperty.class) == null;
+    }
+
+    /**
+     * True for a plain object id and for the {@code "<display name> (<object id>)"}
+     * full-sid form. The trailing part has to be a UUID: {@code extractObjectId}
+     * accepts any parenthesised suffix, so without that check a local account
+     * called {@code "build-user (prod)"} would be mistaken for an Entra identity.
+     */
+    private static boolean looksLikeEntraObjectId(String username) {
+        if (UUIDValidator.isValidUUID(username)) {
+            return true;
+        }
+        String extracted = ObjId2FullSidMap.extractObjectId(username);
+        return extracted != null && UUIDValidator.isValidUUID(extracted);
     }
 
     private static @NonNull User getByIdOrCreate(AzureAdUser user) {
