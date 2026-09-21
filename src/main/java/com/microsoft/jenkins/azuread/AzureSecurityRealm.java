@@ -104,6 +104,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 import static com.cloudbees.plugins.credentials.CredentialsMatchers.anyOf;
@@ -143,6 +144,7 @@ public class AzureSecurityRealm extends SecurityRealm {
     private static final String CONVERTER_NODE_FROM_REQUEST = "fromrequest";
     private static final int CACHE_KEY_LOG_LENGTH = 8;
     private static final int NOT_FOUND = 404;
+
     private static final int BAD_REQUEST = 400;
     public static final String CONVERTER_DISABLE_GRAPH_INTEGRATION = "disableGraphIntegration";
     public static final String CONVERTER_SINGLE_LOGOUT = "singleLogout";
@@ -805,12 +807,71 @@ public class AzureSecurityRealm extends SecurityRealm {
                 }
             });
 
-            if (azureAdUser == null) {
-                throw new UsernameNotFoundException("Cannot find user: " + username);
-            }
-
-            return azureAdUser;
+            return userDetailsOrThrow(username, azureAdUser);
         });
+    }
+
+    /**
+     * Maps the result of the Entra ID lookup to {@link UserDetails}.
+     *
+     * <p>A user that is unknown to Entra ID may still be a pre-existing local
+     * Jenkins user, e.g. a service account that authenticates with an API
+     * token minted before the realm was switched to Entra ID. Core treats
+     * {@link UserMayOrMayNotExistException2} as "the realm cannot tell" and
+     * keeps API-token impersonation working for such users
+     * ({@code BasicHeaderApiTokenAuthenticator} otherwise fails the request
+     * with a 500 after the token already matched, see #155 and #171).
+     * For names without any local user record the behaviour is unchanged.
+     */
+    UserDetails userDetailsOrThrow(String username, @CheckForNull AzureAdUser azureAdUser) {
+        if (azureAdUser != null) {
+            return azureAdUser;
+        }
+        if (isLocalOnlyUser(username)) {
+            throw new UserMayOrMayNotExistException2("Cannot find user in Entra ID: " + username
+                    + " (local account predating this realm, may authenticate via API token)");
+        }
+        throw new UsernameNotFoundException("Cannot find user: " + username);
+    }
+
+    /**
+     * True for a local Jenkins account that already existed when the realm was
+     * switched to Entra ID.
+     *
+     * <p>Every successful authentication attaches {@link EntraIdentityProperty},
+     * so a record carrying it belongs to Entra ID: once the account is deleted
+     * there, the lookup must stay a hard {@link UsernameNotFoundException} and
+     * its API tokens must stop working.
+     *
+     * <p>Records created before that property existed are covered by the shape
+     * of their id: {@code getByIdOrCreate} keys Entra users by object id, so a
+     * name that is an object id, or ends in one, designates an Entra identity.
+     * Note the direction of that check — it can only ever deny, never admit, so
+     * it cannot be used to slip an account past the deletion guard.
+     */
+    static boolean isLocalOnlyUser(String username) {
+        if (looksLikeEntraObjectId(username)) {
+            return false;
+        }
+        User user = User.getById(username, false);
+        if (user == null) {
+            return false;
+        }
+        return user.getProperty(EntraIdentityProperty.class) == null;
+    }
+
+    /**
+     * True for a plain object id and for the {@code "<display name> (<object id>)"}
+     * full-sid form. The trailing part has to be a UUID: {@code extractObjectId}
+     * accepts any parenthesised suffix, so without that check a local account
+     * called {@code "build-user (prod)"} would be mistaken for an Entra identity.
+     */
+    private static boolean looksLikeEntraObjectId(String username) {
+        if (UUIDValidator.isValidUUID(username)) {
+            return true;
+        }
+        String extracted = ObjId2FullSidMap.extractObjectId(username);
+        return extracted != null && UUIDValidator.isValidUUID(extracted);
     }
 
     private static @NonNull User getByIdOrCreate(AzureAdUser user) {
@@ -1179,6 +1240,13 @@ public class AzureSecurityRealm extends SecurityRealm {
                     if (existing == null || !existing.hasExplicitlyConfiguredAddress()) {
                         u.addProperty(new Mailer.UserProperty(azureAdUser.getEmail()));
                     }
+                }
+                // Marks the record as Entra-owned for later lookups. Only
+                // written when it changes, otherwise every login would persist
+                // the user record again.
+                EntraIdentityProperty identity = u.getProperty(EntraIdentityProperty.class);
+                if (identity == null || !azureAdUser.getObjectID().equals(identity.getObjectId())) {
+                    u.addProperty(new EntraIdentityProperty(azureAdUser.getObjectID()));
                 }
             } catch (IOException e) {
                 LOGGER.log(Level.WARNING, "Failed to update user mail with userid: " + azureAdUser.getObjectID(), e);
