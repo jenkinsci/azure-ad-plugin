@@ -11,6 +11,8 @@ import com.microsoft.jenkins.azuread.scribe.AzureClientAssertionApi;
 import hudson.ProxyConfiguration;
 import com.thoughtworks.xstream.io.binary.BinaryStreamReader;
 import com.thoughtworks.xstream.io.binary.BinaryStreamWriter;
+import hudson.model.User;
+import hudson.security.UserMayOrMayNotExistException2;
 import hudson.util.Secret;
 import jakarta.servlet.http.HttpSession;
 import jenkins.model.JenkinsLocationConfiguration;
@@ -27,6 +29,7 @@ import org.kohsuke.stapler.HttpRedirect;
 import org.kohsuke.stapler.HttpResponse;
 import org.kohsuke.stapler.StaplerRequest2;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 import java.io.ByteArrayInputStream;
 import java.io.OutputStream;
@@ -413,6 +416,36 @@ class AzureSecurityRealmTest {
         assertInstanceOf(HttpRedirect.class, response);
     }
 
+    @Test
+    void successfulLoginMarksTheUserRecordAsEntraOwned(JenkinsRule j) throws Exception {
+        // Guards the production path: the deletion guard only holds as long as
+        // every login actually writes the marker.
+        JenkinsLocationConfiguration.get().setUrl("http://localhost/jenkins/");
+        TestAzureSecurityRealm realm = new TestAzureSecurityRealm("tenant", "client-id", Secret.fromString("secret"), 0);
+        realm.setCredentialType("Secret");
+        realm.setDisableGraphIntegration(true);
+        realm.setOAuthService(new FakeOAuth20Service(
+                "https://login.example/authorize",
+                new OAuth2AccessToken("access-token", "{\"id_token\":\"token-value\"}")));
+        realm.setValidatedClaims(createValidClaims());
+
+        RequestStub requestStub = new RequestStub(true);
+        requestStub.setParameter("state", "state-marker");
+        requestStub.setParameter("code", "auth-code");
+        StateCache.CACHE.put(
+                "state-marker",
+                new StateCache.CacheHolder("http://localhost/jenkins/job/test/", 1L, "nonce-value"));
+
+        realm.doFinishLogin(requestStub.request());
+
+        String objectId = "12345678-1234-1234-1234-123456789012";
+        User user = User.getById(objectId, false);
+        assertNotNull(user, "login should have created the user record");
+        EntraIdentityProperty marker = user.getProperty(EntraIdentityProperty.class);
+        assertNotNull(marker, "login should have marked the record as Entra-owned");
+        assertEquals(objectId, marker.getObjectId());
+    }
+
     private static JwtClaims createValidClaims() {
         JwtClaims claims = new JwtClaims();
         claims.setClaim("name", "Test User");
@@ -638,5 +671,80 @@ class AzureSecurityRealmTest {
             return '\0';
         }
         return null;
+    }
+
+    @Test
+    void localUserWithoutEntraMarkerMayOrMayNotExist(JenkinsRule j) {
+        // A service account that existed before the realm switch carries no
+        // EntraIdentityProperty, so its pre-realm API tokens keep working
+        // (#155 / #171).
+        AzureSecurityRealm realm = new AzureSecurityRealm();
+        User.getById("IntegrationTool", true);
+
+        assertThrows(UserMayOrMayNotExistException2.class,
+                () -> realm.userDetailsOrThrow("IntegrationTool", null));
+    }
+
+    @Test
+    void localUserWithEntraMarkerStaysNotFound(JenkinsRule j) throws Exception {
+        // Review feedback: deleting a user in Entra ID must invalidate their
+        // API tokens. Every login writes the marker, so a record carrying it
+        // is Entra-owned and never softened.
+        AzureSecurityRealm realm = new AzureSecurityRealm();
+        User user = User.getById("entra-user", true);
+        user.addProperty(new EntraIdentityProperty("3f2504e0-4f89-11d3-9a0c-0305e82c3301"));
+
+        UsernameNotFoundException e = assertThrows(UsernameNotFoundException.class,
+                () -> realm.userDetailsOrThrow("entra-user", null));
+        assertEquals(UsernameNotFoundException.class, e.getClass());
+    }
+
+    @Test
+    void userUnknownToEntraAndUnknownLocallyIsNotFound(JenkinsRule j) {
+        AzureSecurityRealm realm = new AzureSecurityRealm();
+
+        UsernameNotFoundException e = assertThrows(UsernameNotFoundException.class,
+                () -> realm.userDetailsOrThrow("no-such-user", null));
+        assertEquals(UsernameNotFoundException.class, e.getClass());
+    }
+
+    @Test
+    void deletedEntraUserStaysLockedOutById(JenkinsRule j) {
+        // Records created before the marker existed are covered by the shape
+        // of their id: getByIdOrCreate keys Entra users by object id, so an
+        // object-id shaped name always designates an Entra identity.
+        AzureSecurityRealm realm = new AzureSecurityRealm();
+        String objectId = "3f2504e0-4f89-11d3-9a0c-0305e82c3301";
+        User.getById(objectId, true);
+
+        UsernameNotFoundException e = assertThrows(UsernameNotFoundException.class,
+                () -> realm.userDetailsOrThrow(objectId, null));
+        // UserMayOrMayNotExistException2 extends UsernameNotFoundException,
+        // so the exact class matters: the softer subclass would keep the
+        // deleted user's API tokens alive.
+        assertEquals(UsernameNotFoundException.class, e.getClass());
+    }
+
+    @Test
+    void localUserWithParenthesesInNameIsNotMistakenForEntra(JenkinsRule j) {
+        // extractObjectId accepts any parenthesised suffix, so the trailing
+        // part has to be validated as a UUID; otherwise a local account like
+        // this one would lose its API token.
+        AzureSecurityRealm realm = new AzureSecurityRealm();
+        User.getById("build-user (prod)", true);
+
+        assertThrows(UserMayOrMayNotExistException2.class,
+                () -> realm.userDetailsOrThrow("build-user (prod)", null));
+    }
+
+    @Test
+    void deletedEntraUserStaysLockedOutByFullSid(JenkinsRule j) {
+        AzureSecurityRealm realm = new AzureSecurityRealm();
+        String fullSid = "Some User (3f2504e0-4f89-11d3-9a0c-0305e82c3301)";
+        User.getById(fullSid, true);
+
+        UsernameNotFoundException e = assertThrows(UsernameNotFoundException.class,
+                () -> realm.userDetailsOrThrow(fullSid, null));
+        assertEquals(UsernameNotFoundException.class, e.getClass());
     }
 }
