@@ -24,6 +24,7 @@ import java.io.UncheckedIOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import jenkins.model.Jenkins;
@@ -80,14 +81,14 @@ public class GraphClientCache {
     private static AzureIdentityAuthenticationProvider getAuthProvider(GraphClientCacheKey key) {
         String graphResource = AzureEnvironment.getGraphResource(key.azureEnvironmentName());
 
-        TokenCredential tokenCredential = switch (key.credentialType()) {
-            case "Secret" -> getClientSecretCredential(key);
-            case "Certificate" -> getClientCertificateCredential(key);
-            case "WorkloadIdentity" -> getWorkloadIdentityCredential(key);
+        Supplier<TokenCredential> tokenCredentialFactory = switch (key.credentialType()) {
+            case "Secret" -> () -> getClientSecretCredential(key);
+            case "Certificate" -> () -> getClientCertificateCredential(key);
+            case "WorkloadIdentity" -> () -> getWorkloadIdentityCredential(key);
             default -> throw new IllegalArgumentException("Invalid credential type: " + key.credentialType());
         };
         return new AzureIdentityAuthenticationProvider(
-                tokenCredential,
+                new CaeRecoveringTokenCredential(tokenCredentialFactory),
                 new String[]{URI.create(graphResource).getHost()},
                 graphResource + ".default");
     }
