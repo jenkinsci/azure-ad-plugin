@@ -34,17 +34,12 @@ import com.microsoft.jenkins.azuread.PermissionEntry;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.Extension;
-import hudson.model.AbstractItem;
 import hudson.model.Item;
-import hudson.model.User;
-import hudson.model.listeners.ItemListener;
-import hudson.security.AuthorizationStrategy;
 import hudson.security.Permission;
 import hudson.security.PermissionScope;
 import hudson.security.ProjectMatrixAuthorizationStrategy;
 import hudson.security.SidACL;
 import hudson.util.FormValidation;
-import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
 import org.acegisecurity.acls.sid.PrincipalSid;
 import org.acegisecurity.acls.sid.Sid;
@@ -53,7 +48,6 @@ import org.jenkinsci.plugins.matrixauth.inheritance.InheritParentStrategy;
 import org.jenkinsci.plugins.matrixauth.inheritance.InheritanceStrategy;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.DoNotUse;
-import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
@@ -61,14 +55,12 @@ import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest2;
 import org.kohsuke.stapler.verb.GET;
 
-import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -223,56 +215,6 @@ public class AuthorizationMatrixProperty extends AbstractFolderProperty<Abstract
         }
     }
 
-    /**
-     * Ensure that the user creating a folder has Read and Configure permissions
-     */
-    @Extension(optional = true)
-    @Restricted(NoExternalUse.class)
-    public static class ItemListenerImpl extends ItemListener {
-        @Override
-        public void onCreated(Item item) {
-            AuthorizationStrategy authorizationStrategy = Jenkins.get().getAuthorizationStrategy();
-            if (authorizationStrategy instanceof ProjectMatrixAuthorizationStrategy) {
-                ProjectMatrixAuthorizationStrategy strategy =
-                        (ProjectMatrixAuthorizationStrategy) authorizationStrategy;
-
-                if (item instanceof AbstractFolder) {
-                    AbstractFolder<?> folder = (AbstractFolder<?>) item;
-                    AuthorizationMatrixProperty prop = folder.getProperties().get(AuthorizationMatrixProperty.class);
-                    boolean propIsNew = prop == null;
-                    if (propIsNew) {
-                        prop = new AuthorizationMatrixProperty();
-                    }
-
-                    User current = User.current();
-                    String sid = current == null ? "anonymous" : current.getId();
-
-                    if (!strategy.getACL((AbstractItem) folder)
-                            .hasPermission2(Jenkins.getAuthentication2(), Item.READ)) {
-                        prop.add(Item.READ, PermissionEntry.user(sid));
-                    }
-                    if (!strategy.getACL((AbstractItem) folder)
-                            .hasPermission2(Jenkins.getAuthentication2(), Item.CONFIGURE)) {
-                        prop.add(Item.CONFIGURE, PermissionEntry.user(sid));
-                    }
-                    if (!prop.getGrantedPermissionEntries().isEmpty()) {
-                        try {
-                            if (propIsNew) {
-                                folder.addProperty(prop);
-                            } else {
-                                folder.save();
-                            }
-                        } catch (IOException ex) {
-                            LOGGER.log(
-                                    Level.WARNING,
-                                    "Failed to grant creator permissions on folder " + item.getFullName(),
-                                    ex);
-                        }
-                    }
-                }
-            }
-        }
-    }
 
     private static final Logger LOGGER = Logger.getLogger(AuthorizationMatrixProperty.class.getName());
 }

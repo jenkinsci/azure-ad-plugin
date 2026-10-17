@@ -29,15 +29,10 @@ import hudson.model.Item;
 import hudson.model.Job;
 import hudson.model.JobProperty;
 import hudson.model.JobPropertyDescriptor;
-import hudson.model.User;
-import hudson.model.listeners.ItemListener;
-import hudson.security.AuthorizationStrategy;
 import hudson.security.Permission;
 import hudson.security.PermissionScope;
-import hudson.security.ProjectMatrixAuthorizationStrategy;
 import hudson.security.SidACL;
 import hudson.util.FormValidation;
-import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
 import org.acegisecurity.acls.sid.PrincipalSid;
 import org.acegisecurity.acls.sid.Sid;
@@ -46,7 +41,6 @@ import org.jenkinsci.plugins.matrixauth.inheritance.InheritParentStrategy;
 import org.jenkinsci.plugins.matrixauth.inheritance.InheritanceStrategy;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.DoNotUse;
-import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
@@ -54,7 +48,6 @@ import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest2;
 import org.kohsuke.stapler.verb.GET;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -66,7 +59,6 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -264,54 +256,6 @@ public class AuthorizationMatrixProperty extends JobProperty<Job<?, ?>> implemen
         }
     }
 
-    /**
-     * Ensure that the user creating a job has Read and Configure permissions
-     */
-    @Extension
-    @Restricted(NoExternalUse.class)
-    public static class ItemListenerImpl extends ItemListener {
-        @Override
-        public void onCreated(Item item) {
-            AuthorizationStrategy authorizationStrategy = Jenkins.get().getAuthorizationStrategy();
-            if (authorizationStrategy instanceof ProjectMatrixAuthorizationStrategy) {
-                ProjectMatrixAuthorizationStrategy strategy =
-                        (ProjectMatrixAuthorizationStrategy) authorizationStrategy;
-
-                if (item instanceof Job) {
-                    Job<?, ?> job = (Job<?, ?>) item;
-                    AuthorizationMatrixProperty prop = job.getProperty(AuthorizationMatrixProperty.class);
-                    boolean propIsNew = prop == null;
-                    if (propIsNew) {
-                        prop = new AuthorizationMatrixProperty();
-                    }
-
-                    User current = User.current();
-                    String sid = current == null ? "anonymous" : current.getId();
-
-                    if (!strategy.getACL(job).hasPermission2(Jenkins.getAuthentication2(), Item.READ)) {
-                        prop.add(Item.READ, new PermissionEntry(AuthorizationType.USER, sid));
-                    }
-                    if (!strategy.getACL(job).hasPermission2(Jenkins.getAuthentication2(), Item.CONFIGURE)) {
-                        prop.add(Item.CONFIGURE, new PermissionEntry(AuthorizationType.USER, sid));
-                    }
-                    if (!prop.getGrantedPermissionEntries().isEmpty()) {
-                        try {
-                            if (propIsNew) {
-                                job.addProperty(prop);
-                            } else {
-                                job.save();
-                            }
-                        } catch (IOException ex) {
-                            LOGGER.log(
-                                    Level.WARNING,
-                                    "Failed to grant creator permissions on job " + item.getFullName(),
-                                    ex);
-                        }
-                    }
-                }
-            }
-        }
-    }
 
     private static final Logger LOGGER = Logger.getLogger(AuthorizationMatrixProperty.class.getName());
 }
