@@ -164,6 +164,12 @@ You can still use other authorization strategies such as:
 * [Folder-based Authorization Strategy](https://plugins.jenkins.io/folder-auth/)
 * [Role-based Authorization Strategy](https://plugins.jenkins.io/role-strategy/)
 
+When Graph integration is enabled, authorization strategies that use the
+[Authentication and Authorization Commons](https://plugins.jenkins.io/auth-commons/) plugin's principal search,
+such as the Role-based Authorization Strategy, search Entra ID for users and groups as you type in their 'Add user' and 'Add group' dialogs.
+Users and groups are stored by object ID, and the display name is shown when you view the configuration.
+Searching requires the `User.ReadBasic.All` and `Group.Read.All` (or `GroupMember.Read.All`) Graph permissions.
+
 The following can normally be used:
 
 * Object ID of user or group
