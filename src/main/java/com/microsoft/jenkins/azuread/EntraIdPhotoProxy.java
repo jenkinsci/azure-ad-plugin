@@ -11,7 +11,6 @@ import jenkins.model.Jenkins;
 import jenkins.model.TransientActionFactory;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
-import org.kohsuke.stapler.StaplerProxy;
 import org.kohsuke.stapler.StaplerRequest2;
 import org.kohsuke.stapler.StaplerResponse2;
 import org.kohsuke.stapler.verb.GET;
@@ -29,7 +28,7 @@ import java.util.Set;
  */
 @Extension
 @Restricted(NoExternalUse.class)
-public class EntraIdPhotoProxy implements RootAction, StaplerProxy {
+public class EntraIdPhotoProxy implements RootAction {
 
     static final String URL_NAME = "EntraIdPhoto";
 
@@ -64,8 +63,7 @@ public class EntraIdPhotoProxy implements RootAction, StaplerProxy {
         return URL_NAME;
     }
 
-    @Override
-    public Object getTarget() {
+    private void checkPermission() {
         if (accessControlled instanceof AbstractItem) {
             accessControlled.checkPermission(AbstractItem.CONFIGURE);
         } else if (accessControlled instanceof Computer) {
@@ -74,11 +72,11 @@ public class EntraIdPhotoProxy implements RootAction, StaplerProxy {
             // role-based strategy's role admins search from the root with SystemRead
             Jenkins.get().checkPermission(Jenkins.SYSTEM_READ);
         }
-        return this;
     }
 
     @GET
     public void doDynamic(StaplerRequest2 req, StaplerResponse2 rsp) throws IOException {
+        checkPermission();
         String objectId = req.getRestOfPath().replaceFirst("^/", "");
         EntraIdDirectory.Photo photo = EntraIdPrincipalSearchProvider.get().getUserPhoto(objectId);
         if (photo == null) {

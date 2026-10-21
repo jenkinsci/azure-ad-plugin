@@ -6,10 +6,6 @@ import hudson.model.Computer;
 import hudson.model.FreeStyleProject;
 import hudson.model.Item;
 import hudson.model.UnprotectedRootAction;
-import hudson.security.ACL;
-import hudson.security.ACLContext;
-import hudson.security.AccessDeniedException3;
-import hudson.security.SecurityRealm;
 import hudson.util.Secret;
 import io.jenkins.plugins.authcommons.PrincipalSearch;
 import jenkins.model.Jenkins;
@@ -25,7 +21,6 @@ import org.jvnet.hudson.test.TestExtension;
 import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 import org.kohsuke.stapler.HttpResponse;
 import org.kohsuke.stapler.QueryParameter;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 
 import java.util.Collection;
 import java.util.List;
@@ -35,8 +30,6 @@ import static com.microsoft.jenkins.azuread.EntraIdPrincipalSearchProviderTest.A
 import static com.microsoft.jenkins.azuread.EntraIdPrincipalSearchProviderTest.ALICE_ID;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @WithJenkins
 class EntraIdPhotoProxyTest {
@@ -73,25 +66,40 @@ class EntraIdPhotoProxyTest {
     }
 
     @Test
-    void requiresPermissionToConfigureAccessWhereAttached() {
+    void requiresPermissionToConfigureAccessWhereAttached() throws Exception {
+        // the dummy realm allows logging in; requests that get past the permission check then find no Entra
+        // directory, so allowed is a 404 and denied a 403
+        j.jenkins.setSecurityRealm(j.createDummySecurityRealm());
         j.jenkins.setAuthorizationStrategy(new MockAuthorizationStrategy()
-                .grant(Jenkins.READ).everywhere().to("bob", "carol")
+                .grant(Jenkins.READ).everywhere().to("bob", "carol", "dave")
                 .grant(Item.READ, Item.CONFIGURE).onItems(job).to("bob")
-                .grant(Computer.CONFIGURE).everywhere().to("carol"));
-        Computer builtIn = j.jenkins.toComputer();
+                .grant(Item.READ).onItems(job).to("carol")
+                .grant(Computer.CONFIGURE).everywhere().to("carol")
+                .grant(Jenkins.SYSTEM_READ).everywhere().to("dave"));
 
-        try (ACLContext ignored = ACL.as2(authentication("bob"))) {
-            assertDoesNotThrow(() -> new EntraIdPhotoProxy(job).getTarget());
-            assertThrows(AccessDeniedException3.class, () -> new EntraIdPhotoProxy(builtIn).getTarget());
-            assertThrows(AccessDeniedException3.class, () -> new EntraIdPhotoProxy().getTarget());
+        try (JenkinsRule.WebClient wc = j.createWebClient().login("bob")) {
+            assertThat(photoStatus(wc, "job/job/"), is(404));
+            assertThat(photoStatus(wc, "computer/(built-in)/"), is(403));
+            assertThat(photoStatus(wc, ""), is(403));
         }
-        try (ACLContext ignored = ACL.as2(authentication("carol"))) {
-            assertDoesNotThrow(() -> new EntraIdPhotoProxy(builtIn).getTarget());
-            assertThrows(AccessDeniedException3.class, () -> new EntraIdPhotoProxy(job).getTarget());
+        try (JenkinsRule.WebClient wc = j.createWebClient().login("carol")) {
+            assertThat(photoStatus(wc, "computer/(built-in)/"), is(404));
+            assertThat(photoStatus(wc, "job/job/"), is(403));
+            assertThat(photoStatus(wc, ""), is(403));
         }
-        try (ACLContext ignored = ACL.as2(Jenkins.ANONYMOUS2)) {
-            assertThrows(AccessDeniedException3.class, () -> new EntraIdPhotoProxy().getTarget());
+        try (JenkinsRule.WebClient wc = j.createWebClient().login("dave")) {
+            assertThat(photoStatus(wc, ""), is(404));
         }
+        try (JenkinsRule.WebClient wc = j.createWebClient()) {
+            wc.setThrowExceptionOnFailingStatusCode(false);
+            Page page = wc.goTo("EntraIdPhoto/" + ALICE_ID, null);
+            assertThat(page.getUrl().getPath(), is("/jenkins/login"));
+        }
+    }
+
+    private static int photoStatus(JenkinsRule.WebClient wc, String prefix) throws Exception {
+        wc.setThrowExceptionOnFailingStatusCode(false);
+        return wc.goTo(prefix + "EntraIdPhoto/" + ALICE_ID, null).getWebResponse().getStatusCode();
     }
 
     @Test
@@ -128,10 +136,6 @@ class EntraIdPhotoProxyTest {
     private static JSONArray search(JenkinsRule.WebClient wc, String path) throws Exception {
         Page page = wc.goTo(path, "application/json");
         return JSONObject.fromObject(page.getWebResponse().getContentAsString()).getJSONArray("results");
-    }
-
-    private static UsernamePasswordAuthenticationToken authentication(String user) {
-        return new UsernamePasswordAuthenticationToken(user, "", List.of(SecurityRealm.AUTHENTICATED_AUTHORITY2));
     }
 
     public static class SearchAction implements UnprotectedRootAction {
