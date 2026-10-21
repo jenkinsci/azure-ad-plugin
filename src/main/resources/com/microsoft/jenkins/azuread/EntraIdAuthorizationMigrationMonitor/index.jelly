@@ -1,0 +1,36 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:l="/lib/layout" xmlns:f="/lib/form">
+  <l:layout title="${it.displayName}" permission="${app.ADMINISTER}" type="one-column">
+    <l:main-panel>
+      <l:app-bar title="${it.displayName}"/>
+      <j:set var="result" value="${it.lastResult}"/>
+      <j:choose>
+        <j:when test="${!it.activated}">
+          <div class="jenkins-alert jenkins-alert-success">
+            ${%done(rootURL)}
+          </div>
+          <j:if test="${result != null}">
+            <j:set var="plan" value="${result}"/>
+            <j:set var="verb" value="${%migrated}"/>
+            <st:include page="plan.jelly"/>
+          </j:if>
+        </j:when>
+        <j:otherwise>
+          <j:if test="${result != null and !result.possible}">
+            <div class="jenkins-alert jenkins-alert-danger">${%failed}</div>
+          </j:if>
+          <p>${%intro}</p>
+          <j:set var="plan" value="${it.preview}"/>
+          <j:set var="verb" value="${%willMigrate}"/>
+          <st:include page="plan.jelly"/>
+          <j:if test="${plan.possible}">
+            <p>${%before}</p>
+            <f:form method="post" action="migrate" name="migrate">
+              <f:submit value="${%Migrate}"/>
+            </f:form>
+          </j:if>
+        </j:otherwise>
+      </j:choose>
+    </l:main-panel>
+  </l:layout>
+</j:jelly>

@@ -1,0 +1,38 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core">
+  <j:forEach var="error" items="${plan.errors}">
+    <div class="jenkins-alert jenkins-alert-danger">${error}</div>
+  </j:forEach>
+  <j:if test="${plan.targetStrategy != null}">
+    <ul>
+      <li>${%strategy(verb, plan.targetStrategy)}</li>
+      <li>${%items(plan.jobs, plan.folders, plan.nodes)}</li>
+    </ul>
+  </j:if>
+  <j:if test="${!plan.sidChanges.isEmpty()}">
+    <h2>${%Changed users and groups}</h2>
+    <p>${%sidChangesBlurb}</p>
+    <table class="jenkins-table jenkins-table--small sortable">
+      <thead>
+        <tr>
+          <th>${%Before}</th>
+          <th>${%After}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <j:forEach var="change" items="${plan.sidChanges.entrySet()}">
+          <tr>
+            <td>${change.key}</td>
+            <td><code>${change.value}</code></td>
+          </tr>
+        </j:forEach>
+      </tbody>
+    </table>
+  </j:if>
+  <j:if test="${!plan.warnings.isEmpty()}">
+    <h2>${%Warnings}</h2>
+    <j:forEach var="warning" items="${plan.warnings}">
+      <div class="jenkins-alert jenkins-alert-warning">${warning}</div>
+    </j:forEach>
+  </j:if>
+</j:jelly>
