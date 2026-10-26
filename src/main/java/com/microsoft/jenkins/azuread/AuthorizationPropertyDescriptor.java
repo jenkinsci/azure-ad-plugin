@@ -25,8 +25,6 @@ package com.microsoft.jenkins.azuread;
 
 import hudson.model.Descriptor;
 import hudson.security.Permission;
-import hudson.security.ProjectMatrixAuthorizationStrategy;
-import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
 import org.jenkinsci.plugins.matrixauth.inheritance.InheritanceStrategy;
 import org.kohsuke.accmod.Restricted;
@@ -97,7 +95,8 @@ public interface AuthorizationPropertyDescriptor<T extends AuthorizationProperty
     }
 
     default boolean isApplicable() {
-        // only applicable when ProjectMatrixAuthorizationStrategy is in charge
-        return Jenkins.get().getAuthorizationStrategy() instanceof ProjectMatrixAuthorizationStrategy;
+        // The copied matrix-auth properties are only kept to load existing configuration.
+        // Subclasses used with AzureAdMatrixAuthorizationStrategy override this.
+        return false;
     }
 }

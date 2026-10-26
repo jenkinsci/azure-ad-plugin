@@ -1,0 +1,12 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core">
+  <div class="jenkins-alert jenkins-alert-warning">
+    <div style="display: flex; gap: 1rem; align-items: center; justify-content: space-between; flex-wrap: wrap">
+      <div>
+        <strong>${%title}</strong>
+        <p style="margin: 0.4rem 0 0">${%blurb}</p>
+      </div>
+      <a href="${rootURL}/${it.url}/" class="jenkins-button jenkins-button--primary">${%Review migration}</a>
+    </div>
+  </div>
+</j:jelly>

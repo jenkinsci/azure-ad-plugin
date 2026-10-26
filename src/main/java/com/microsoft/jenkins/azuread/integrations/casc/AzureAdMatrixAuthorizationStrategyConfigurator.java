@@ -10,10 +10,15 @@ import io.jenkins.plugins.casc.model.Mapping;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 
+import java.util.logging.Logger;
+
 @Extension(optional = true, ordinal = 2)
 @Restricted(NoExternalUse.class)
 public class AzureAdMatrixAuthorizationStrategyConfigurator
         extends MatrixAuthorizationStrategyConfigurator<AzureAdMatrixAuthorizationStrategy> {
+
+    private static final Logger LOGGER =
+            Logger.getLogger(AzureAdMatrixAuthorizationStrategyConfigurator.class.getName());
 
     @Override
     @NonNull
@@ -28,6 +33,9 @@ public class AzureAdMatrixAuthorizationStrategyConfigurator
 
     @Override
     public AzureAdMatrixAuthorizationStrategy instance(Mapping mapping, ConfigurationContext context) {
+        LOGGER.warning("The 'azureAdMatrix' authorization strategy is deprecated. Use 'projectMatrix' from the "
+                + "Matrix Authorization Strategy plugin instead, identifying Entra ID users and groups by object id. "
+                + "Manage Jenkins offers to migrate the configuration.");
         return new AzureAdMatrixAuthorizationStrategy();
     }
 
