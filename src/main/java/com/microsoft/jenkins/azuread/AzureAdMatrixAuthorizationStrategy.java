@@ -48,6 +48,15 @@ import java.util.logging.Logger;
 import static com.microsoft.jenkins.azuread.ValidationUtil.formatNonExistentUserGroupValidationResponse;
 import static com.microsoft.jenkins.azuread.ValidationUtil.formatUserGroupValidationResponse;
 
+/**
+ * Matrix-based security with Entra ID user and group lookup.
+ *
+ * @deprecated Use the Matrix Authorization Strategy plugin's project-based matrix authorization strategy, or the
+ * Role-based Authorization Strategy plugin, instead. Both autocomplete Entra ID users and groups through
+ * {@link EntraIdPrincipalSearchProvider}. Existing configurations can be migrated using
+ * {@link EntraIdAuthorizationMigrationMonitor}.
+ */
+@Deprecated
 public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizationStrategy {
 
     private static final Logger LOGGER = Logger.getLogger(AzureAdMatrixAuthorizationStrategy.class.getName());
@@ -177,9 +186,10 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
         GraphServiceClient graphClient = ((AzureSecurityRealm) realm).getAzureClient();
 
         List<AzureObject> candidates = new ArrayList<>();
-        LOGGER.info("search users with prefix: " + prefix);
+        LOGGER.fine("search users with prefix: " + prefix);
         try {
-            UserCollectionResponse usersResponse = lookupUsers(prefix, graphClient);
+            UserCollectionResponse usersResponse = GraphEntraIdDirectory.lookupUsers(prefix, maxCandidates,
+                    graphClient);
             List<User> users = usersResponse == null ? null : usersResponse.getValue();
 
             if (users != null) {
@@ -192,7 +202,8 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
             }
 
             if (candidates.size() < maxCandidates) {
-                GroupCollectionResponse groupsResponse = lookupGroups(prefix, graphClient);
+                GroupCollectionResponse groupsResponse = GraphEntraIdDirectory.lookupGroups(prefix, maxCandidates,
+                        graphClient);
                 List<Group> groups = groupsResponse == null ? null : groupsResponse.getValue();
 
                 if (groups != null) {
@@ -215,35 +226,6 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
         return c;
     }
 
-        private static GroupCollectionResponse lookupGroups(String prefix, GraphServiceClient graphClient) {
-        String search = String.format("\"displayName:%s\"", prefix);
-
-        return graphClient.groups()
-                .get(requestConfiguration -> {
-                    var queryParameters = requestConfiguration.queryParameters;
-                    if (queryParameters != null) {
-                        queryParameters.search = search;
-                        queryParameters.orderby = new String[]{"displayName"};
-                        queryParameters.select = new String[]{"id", "displayName"};
-                    }
-                    requestConfiguration.headers.add("ConsistencyLevel", "eventual");
-                });
-    }
-
-    private static UserCollectionResponse lookupUsers(String prefix, GraphServiceClient graphClient) {
-        String search = String.format("\"displayName:%s\" OR \"userPrincipalName:%s\"", prefix, prefix);
-        return graphClient.users()
-                .get(requestConfiguration -> {
-                    var queryParameters = requestConfiguration.queryParameters;
-                    if (queryParameters != null) {
-                        queryParameters.search = search;
-                        queryParameters.select = new String[]{"id", "displayName"};
-                        queryParameters.orderby = new String[]{"displayName"};
-                    }
-                    requestConfiguration.headers.add("ConsistencyLevel", "eventual");
-                });
-    }
-
     @Extension
     public static final DescriptorImpl DESCRIPTOR = new DescriptorImpl();
 
@@ -261,7 +243,7 @@ public class AzureAdMatrixAuthorizationStrategy extends GlobalMatrixAuthorizatio
         @Override
         @NonNull
         public String getDisplayName() {
-            return "Entra ID Matrix-based security";
+            return Messages.AzureAdMatrixAuthorizationStrategy_DisplayName();
         }
 
 

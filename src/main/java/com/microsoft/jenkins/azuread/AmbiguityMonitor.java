@@ -38,7 +38,6 @@ import hudson.model.Saveable;
 import hudson.model.listeners.ItemListener;
 import hudson.model.listeners.SaveableListener;
 import hudson.security.AuthorizationStrategy;
-import hudson.security.ProjectMatrixAuthorizationStrategy;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -123,7 +122,7 @@ public class AmbiguityMonitor extends AdministrativeMonitor {
 
         @Override
         public boolean hasAmbiguousEntries() {
-            return Jenkins.get().getAuthorizationStrategy() instanceof ProjectMatrixAuthorizationStrategy
+            return Jenkins.get().getAuthorizationStrategy() instanceof AzureAdMatrixAuthorizationStrategy
                     && activeNodes.values().stream().anyMatch(v -> v);
         }
 
@@ -165,7 +164,7 @@ public class AmbiguityMonitor extends AdministrativeMonitor {
 
         @Override
         public boolean hasAmbiguousEntries() {
-            return Jenkins.get().getAuthorizationStrategy() instanceof ProjectMatrixAuthorizationStrategy
+            return Jenkins.get().getAuthorizationStrategy() instanceof AzureAdMatrixAuthorizationStrategy
                     && activeJobs.values().stream().anyMatch(v -> v);
         }
 

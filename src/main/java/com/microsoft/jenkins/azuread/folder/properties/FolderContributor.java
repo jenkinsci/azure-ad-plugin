@@ -33,7 +33,7 @@ import hudson.model.Item;
 import hudson.model.Saveable;
 import hudson.model.listeners.ItemListener;
 import hudson.model.listeners.SaveableListener;
-import hudson.security.ProjectMatrixAuthorizationStrategy;
+import com.microsoft.jenkins.azuread.AzureAdMatrixAuthorizationStrategy;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -56,7 +56,7 @@ public class FolderContributor implements AmbiguityMonitor.Contributor {
 
     @Override
     public boolean hasAmbiguousEntries() {
-        return Jenkins.get().getAuthorizationStrategy() instanceof ProjectMatrixAuthorizationStrategy
+        return Jenkins.get().getAuthorizationStrategy() instanceof AzureAdMatrixAuthorizationStrategy
                 && activeFolders.values().stream().anyMatch(v -> v);
     }
 

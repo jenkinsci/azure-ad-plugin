@@ -148,21 +148,33 @@ _Note: if you haven't setup Graph API permissions, verify application will fail,
 
 Jenkins will match permissions based on the Object ID of a user or group.
 
-This plugin extends the traditional [Matrix Authorization Strategy](https://plugins.jenkins.io/matrix-auth/)
-with the ability to search by users / groups by display name when configuring the authorization rules.
-
-To use this feature:
-
-1. Click `Entra ID Matrix-based security`
-1. Search for user in 'Azure User/group to add' and click Add
-1. Select the permission(s) in the table
-1. Click 'Apply'
-
-You can still use other authorization strategies such as:
+Use one of these authorization strategies:
 
 * [Matrix Authorization Strategy](https://plugins.jenkins.io/matrix-auth/)
-* [Folder-based Authorization Strategy](https://plugins.jenkins.io/folder-auth/)
 * [Role-based Authorization Strategy](https://plugins.jenkins.io/role-strategy/)
+* [Folder-based Authorization Strategy](https://plugins.jenkins.io/folder-auth/)
+
+When Graph integration is enabled, the Matrix Authorization Strategy and Role-based Authorization Strategy
+plugins search Entra ID for users and groups as you type in their 'Add user' and 'Add group' dialogs.
+The plugin provides the search through the [Authentication and Authorization Commons](https://plugins.jenkins.io/auth-commons/) plugin.
+Users and groups are stored by object ID, and the display name is shown when you view the configuration.
+Searching requires the `User.ReadBasic.All` and `Group.Read.All` (or `GroupMember.Read.All`) Graph permissions.
+
+### Migrating from `Entra ID Matrix-based security`
+
+The `Entra ID Matrix-based security` authorization strategy that this plugin provided is deprecated.
+It only exists to add user and group search to matrix-based security, and other authorization strategies now provide that search.
+It is hidden from the security configuration unless it is already in use.
+
+If you use it, Jenkins shows a warning under 'Manage Jenkins' that links to a migration page:
+
+1. Review the preview. It lists the jobs, folders and agents that will be converted, and how users and groups will be renamed.
+   For example, `Developers (00000000-0000-0000-0000-000000000000)` becomes `00000000-0000-0000-0000-000000000000`.
+1. Click 'Migrate'. Global, job, folder and agent permissions are converted to the Matrix Authorization Strategy plugin's
+   'Project-based Matrix Authorization Strategy'.
+   The migration is refused if you would lose Overall/Administer.
+1. If you use Configuration as Code, export your configuration again.
+   Replace `azureAdMatrix` with `projectMatrix`, and the `azureAdAuthorizationMatrix` job, folder and node properties with `authorizationMatrix`.
 
 When Graph integration is enabled, authorization strategies that use the
 [Authentication and Authorization Commons](https://plugins.jenkins.io/auth-commons/) plugin's principal search,
@@ -176,8 +188,7 @@ The following can normally be used:
 * `preferred_username` claim which is normally the 'User principal name', but not always.
 
 Always configure group grants by **Object ID**. After adding the object ID you will be able to
-see the user or group's display name (the picker does this automatically, storing the entry as
-`displayName (objectId)`).
+see the user or group's display name.
 
 > [!WARNING]
 > **Authorizing groups by display name is disabled by default (SECURITY-3935).**
