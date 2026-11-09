@@ -28,17 +28,13 @@ import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.model.Computer;
 import hudson.model.Node;
-import hudson.model.User;
-import hudson.security.AuthorizationStrategy;
 import hudson.security.Permission;
 import hudson.security.PermissionScope;
-import hudson.security.ProjectMatrixAuthorizationStrategy;
 import hudson.security.SidACL;
 import hudson.slaves.NodeProperty;
 import hudson.slaves.NodePropertyDescriptor;
 import hudson.util.FormValidation;
 import jenkins.model.Jenkins;
-import jenkins.model.NodeListener;
 import net.sf.json.JSONObject;
 import org.acegisecurity.acls.sid.PrincipalSid;
 import org.acegisecurity.acls.sid.Sid;
@@ -51,12 +47,10 @@ import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest2;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class AuthorizationMatrixNodeProperty extends NodeProperty<Node> implements AuthorizationProperty {
@@ -188,43 +182,6 @@ public class AuthorizationMatrixNodeProperty extends NodeProperty<Node> implemen
         }
     }
 
-    /**
-     * Ensure that the user creating a node has Read and Configure permissions
-     */
-    @Extension
-    @Restricted(NoExternalUse.class)
-    public static class NodeListenerImpl extends NodeListener {
-        @Override
-        protected void onCreated(@NonNull Node node) {
-            AuthorizationStrategy authorizationStrategy = Jenkins.get().getAuthorizationStrategy();
-            if (authorizationStrategy instanceof ProjectMatrixAuthorizationStrategy) {
-                ProjectMatrixAuthorizationStrategy strategy =
-                        (ProjectMatrixAuthorizationStrategy) authorizationStrategy;
-
-                AuthorizationMatrixNodeProperty prop = node.getNodeProperty(AuthorizationMatrixNodeProperty.class);
-                if (prop == null) {
-                    prop = new AuthorizationMatrixNodeProperty();
-                }
-
-                User current = User.current();
-                String sid = current == null ? "anonymous" : current.getId();
-
-                if (!strategy.getACL(node).hasPermission2(Jenkins.getAuthentication2(), Computer.CONFIGURE)) {
-                    prop.add(Computer.CONFIGURE, PermissionEntry.user(sid));
-                }
-                if (!prop.getGrantedPermissionEntries().isEmpty()) {
-                    try {
-                        node.getNodeProperties().replace(prop);
-                    } catch (IOException ex) {
-                        LOGGER.log(
-                                Level.WARNING,
-                                "Failed to grant creator permissions on node " + node.getDisplayName(),
-                                ex);
-                    }
-                }
-            }
-        }
-    }
 
     private static final Logger LOGGER = Logger.getLogger(AuthorizationMatrixNodeProperty.class.getName());
 }
